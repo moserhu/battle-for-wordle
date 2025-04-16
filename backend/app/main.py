@@ -40,3 +40,7 @@ def create_campaign(camp: models.NewCampaign):
 def join_campaign(data: models.JoinCampaign):
     return crud.join_campaign(data.invite_code, data.user_id)
 
+@app.post("/api/campaign/progress")
+def get_campaign_progress(data: CampaignOnly):
+    return crud.get_campaign_progress(data.campaign_id)
+

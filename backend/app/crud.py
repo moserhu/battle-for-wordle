@@ -5,6 +5,7 @@ import string
 from zoneinfo import ZoneInfo  
 from hashlib import sha256
 from collections import Counter
+import os
 
 DB = "game.db"
 
@@ -62,6 +63,19 @@ def join_campaign(invite_code, user_id):
         )
         return {"message": "Joined campaign", "campaign_id": campaign_id}
 
+
+
+
+def load_valid_words():
+    base_dir = os.path.dirname(__file__)
+    wordlist_path = os.path.join(base_dir, "data", "wordlist.txt")
+    with open(wordlist_path, "r") as f:
+        return set(word.strip().lower() for word in f.readlines())
+
+VALID_WORDS = load_valid_words()
+
+
+
 #word list and the daily word function
 WORDLIST = ["apple", "stone", "ghost", "liver", "brave", "quest", "flame", "crown", "witch", "armor"]
 
@@ -85,6 +99,8 @@ def get_daily_word(campaign_id: int):
 
 
 def validate_guess(word: str, user_id: int, campaign_id: int):
+    if word.lower() not in VALID_WORDS:
+        raise HTTPException(status_code=400, detail="Invalid word")
     secret = get_daily_word(campaign_id)
     guess = word.lower()
     result = ['absent'] * 5
@@ -119,6 +135,43 @@ def validate_guess(word: str, user_id: int, campaign_id: int):
         "word": secret
     }
 
+def get_campaign_day(campaign_id: int):
+    with get_db() as conn:
+        row = conn.execute(
+            "SELECT start_date FROM campaigns WHERE id = ?",
+            (campaign_id,)
+        ).fetchone()
+    
+    if not row:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    start_date = datetime.strptime(row[0], "%Y-%m-%d").date()
+    today = datetime.now(ZoneInfo("America/Chicago")).date()
+    delta = (today - start_date).days
+
+    return {"day": delta + 1, "total": 5}  
+
+def get_campaign_progress(campaign_id: int):
+    with get_db() as conn:
+        row = conn.execute(
+            "SELECT name, start_date FROM campaigns WHERE id = ?",
+            (campaign_id,)
+        ).fetchone()
+
+    if not row:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    name, start_date_str = row
+    start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
+    today = datetime.now(ZoneInfo("America/Chicago")).date()
+    delta = (today - start_date).days
+
+    return {
+        "name": name,
+        "day": min(delta + 1, 5),
+        "total": 5
+    }
+
 
 def get_leaderboard(campaign_id: int):
     with get_db() as conn:
@@ -134,5 +187,6 @@ def get_leaderboard(campaign_id: int):
         ).fetchall()
 
     return [{"username": row[0], "score": row[1]} for row in rows]
+
 
 
