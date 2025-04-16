@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom';
 const EMPTY_GRID = Array.from({ length: 6 }, () => Array(5).fill(""));
 
 // Get the campaign_id from localStorage
-const campaign_id = localStorage.getItem("campaign_id");
+const campaign_id = parseInt(localStorage.getItem("campaign_id"));
 const saveKey = `wordle_state_${campaign_id}`;
 function getTimeUntilMidnightCT() {
   const now = new Date();
@@ -47,7 +47,7 @@ export default function GameScreen() {
       const res = await fetch("http://localhost:8000/api/campaign/progress", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ campaign_id }),
+        body: JSON.stringify({ campaign_id: parseInt(localStorage.getItem("campaign_id")) }),
       });
     
       const data = await res.json();

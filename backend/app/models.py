@@ -9,7 +9,7 @@ class GuessWithMeta(BaseModel):
     campaign_id: int
 
 class UserLogin(BaseModel):
-    username: str
+    email: str  
     password: str
 
 class NewCampaign(BaseModel):
@@ -22,4 +22,16 @@ class JoinCampaign(BaseModel):
 
 class CampaignOnly(BaseModel):
     campaign_id: int
+
+class UserRegister(BaseModel):
+    first_name: str
+    last_name: str
+    phone: str
+    email: str 
+    password: str
+
+class UserOnly(BaseModel):
+    user_id: int
+
+
 

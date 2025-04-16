@@ -6,25 +6,41 @@ from zoneinfo import ZoneInfo
 from hashlib import sha256
 from collections import Counter
 import os
+from fastapi import HTTPException
 
 DB = "game.db"
 
 def get_db():
     return sqlite3.connect(DB)
 
-def register_user(username, password):
+
+def register_user(first_name, last_name, email, phone, password):
     with get_db() as conn:
         try:
-            conn.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, password))
+            conn.execute("""
+                INSERT INTO users (first_name, last_name, email, phone, password)
+                VALUES (?, ?, ?, ?, ?)
+            """, (first_name, last_name, email.lower(), phone, password))
             return {"status": "ok"}
-        except sqlite3.IntegrityError:
-            raise HTTPException(status_code=400, detail="Username already exists")
+        except sqlite3.IntegrityError as e:
+            if "email" in str(e).lower():
+                raise HTTPException(status_code=400, detail="Email already registered")
+            elif "phone" in str(e).lower():
+                raise HTTPException(status_code=400, detail="Phone number already registered")
+            else:
+                raise HTTPException(status_code=400, detail="Registration failed")
 
-def login_user(username, password):
+
+def login_user(email, password):
     with get_db() as conn:
-        user = conn.execute("SELECT id FROM users WHERE username = ? AND password = ?", (username, password)).fetchone()
+        user = conn.execute(
+            "SELECT id, first_name FROM users WHERE email = ? AND password = ?",
+            (email.lower(), password)
+        ).fetchone()
+
         if user:
-            return {"user_id": user[0]}
+            return {"user_id": user[0], "first_name": user[1]}
+        
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
 def create_campaign(name, user_id):
@@ -65,6 +81,30 @@ def join_campaign(invite_code, user_id):
 
 
 
+def get_user_campaigns(user_id: int):
+    with get_db() as conn:
+        rows = conn.execute("""
+            SELECT c.id, c.name,
+                   EXISTS (
+                       SELECT 1 FROM guesses g
+                       WHERE g.user_id = ? AND g.campaign_id = c.id
+                             AND g.date = DATE('now', 'localtime')
+                   ) as has_played
+            FROM campaigns c
+            JOIN campaign_members cm ON cm.campaign_id = c.id
+            WHERE cm.user_id = ?
+        """, (user_id, user_id)).fetchall()
+
+    return [
+        {
+            "campaign_id": row[0],
+            "name": row[1],
+            "has_played": bool(row[2])
+        }
+        for row in rows
+    ]
+
+
 
 def load_valid_words():
     base_dir = os.path.dirname(__file__)
@@ -101,6 +141,7 @@ def get_daily_word(campaign_id: int):
 def validate_guess(word: str, user_id: int, campaign_id: int):
     if word.lower() not in VALID_WORDS:
         raise HTTPException(status_code=400, detail="Invalid word")
+
     secret = get_daily_word(campaign_id)
     guess = word.lower()
     result = ['absent'] * 5
@@ -120,20 +161,28 @@ def validate_guess(word: str, user_id: int, campaign_id: int):
             result[i] = 'present'
             secret_counts[guess[i]] -= 1
 
-    # Track score and return as before
     correct = all(r == 'correct' for r in result)
-    if correct:
-        with get_db() as conn:
+
+    with get_db() as conn:
+        #  Save a win if correct
+        if correct:
             conn.execute(
                 "UPDATE campaign_members SET score = score + 1 WHERE user_id = ? AND campaign_id = ?",
                 (user_id, campaign_id)
             )
+
+        #  Always insert the guess for "played today" tracking
+        conn.execute("""
+            INSERT INTO guesses (user_id, campaign_id, word, date)
+            VALUES (?, ?, ?, DATE('now', 'localtime'))
+        """, (user_id, campaign_id, guess))
 
     return {
         "result": result,
         "correct": correct,
         "word": secret
     }
+
 
 def get_campaign_day(campaign_id: int):
     with get_db() as conn:
@@ -177,7 +226,7 @@ def get_leaderboard(campaign_id: int):
     with get_db() as conn:
         rows = conn.execute(
             """
-            SELECT u.username, cm.score
+            SELECT u.first_name, cm.score
             FROM campaign_members cm
             JOIN users u ON cm.user_id = u.id
             WHERE cm.campaign_id = ?

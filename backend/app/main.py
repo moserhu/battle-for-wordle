@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from app import database, models, crud
+from app import models, crud
 from app.models import CampaignOnly
 
 app = FastAPI()
@@ -25,12 +25,20 @@ def get_leaderboard(data: CampaignOnly):
     return crud.get_leaderboard(data.campaign_id)
 
 @app.post("/api/register")
-def register(user: models.UserLogin):
-    return crud.register_user(user.username, user.password)
+def register(user: models.UserRegister):
+    return crud.register_user(
+        user.first_name,
+        user.last_name,
+        user.email,
+        user.phone,
+        user.password
+    )
+
 
 @app.post("/api/login")
 def login(user: models.UserLogin):
-    return crud.login_user(user.username, user.password)
+    return crud.login_user(user.email, user.password)
+
 
 @app.post("/api/campaign/create")
 def create_campaign(camp: models.NewCampaign):
@@ -44,3 +52,6 @@ def join_campaign(data: models.JoinCampaign):
 def get_campaign_progress(data: CampaignOnly):
     return crud.get_campaign_progress(data.campaign_id)
 
+@app.post("/api/user/campaigns")
+def user_campaigns(data: models.UserOnly):
+    return crud.get_user_campaigns(data.user_id)
