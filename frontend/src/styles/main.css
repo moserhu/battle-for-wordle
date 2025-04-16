@@ -1,0 +1,57 @@
+/* styles/main.css */
+
+body {
+    margin: 0;
+    font-family: sans-serif;
+    background-color: #121212;
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+  }
+  
+  h1 {
+    margin: 0;
+  }
+  
+  .word-grid {
+    display: grid;
+    gap: 8px;
+  }
+  
+  .word-row {
+    display: grid;
+    grid-template-columns: repeat(5, 48px);
+    gap: 8px;
+  }
+  
+  .letter-box {
+    width: 48px;
+    height: 48px;
+    border: 2px solid #444;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.5rem;
+    text-transform: uppercase;
+    background-color: #1e1e1e;
+  }
+  
+  .keyboard-row {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 8px;
+  }
+  
+  .keyboard-key {
+    padding: 12px;
+    background-color: #333;
+    border: none;
+    color: white;
+    font-size: 1rem;
+    cursor: pointer;
+    border-radius: 4px;
+  }
+  
