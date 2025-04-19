@@ -23,18 +23,40 @@ def init_db():
         """)
         conn.execute("""
             CREATE TABLE IF NOT EXISTS campaign_members (
-                user_id INTEGER,
                 campaign_id INTEGER,
+                user_id INTEGER,
                 score INTEGER DEFAULT 0,
-                PRIMARY KEY (user_id, campaign_id)
+                PRIMARY KEY (campaign_id, user_id)
             )
         """)
         conn.execute("""
-            CREATE TABLE IF NOT EXISTS guesses (
+            CREATE TABLE campaign_guesses (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
                 campaign_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
                 word TEXT NOT NULL,
                 date TEXT NOT NULL
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE campaign_daily_progress (
+                campaign_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                date TEXT NOT NULL,
+                completed INTEGER, -- 1 = done (won/lost), 0 = in progress
+                 PRIMARY KEY (campaign_id, user_id, date)
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS campaign_guess_states (
+                user_id INTEGER NOT NULL,
+                campaign_id INTEGER NOT NULL,
+                date TEXT NOT NULL,
+                guesses TEXT NOT NULL,
+                results TEXT NOT NULL,
+                letter_status TEXT NOT NULL,
+                current_row INTEGER NOT NULL,
+                game_over INTEGER NOT NULL,
+                PRIMARY KEY (user_id, campaign_id, date)
             )
         """)

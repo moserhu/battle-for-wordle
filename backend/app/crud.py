@@ -7,6 +7,7 @@ from hashlib import sha256
 from collections import Counter
 import os
 from fastapi import HTTPException
+import json
 
 DB = "game.db"
 
@@ -84,22 +85,23 @@ def join_campaign(invite_code, user_id):
 def get_user_campaigns(user_id: int):
     with get_db() as conn:
         rows = conn.execute("""
-            SELECT c.id, c.name,
-                   EXISTS (
-                       SELECT 1 FROM guesses g
-                       WHERE g.user_id = ? AND g.campaign_id = c.id
-                             AND g.date = DATE('now', 'localtime')
-                   ) as has_played
-            FROM campaigns c
-            JOIN campaign_members cm ON cm.campaign_id = c.id
-            WHERE cm.user_id = ?
-        """, (user_id, user_id)).fetchall()
+    SELECT c.id, c.name,
+        EXISTS (
+            SELECT 1 FROM campaign_daily_progress dp
+            WHERE dp.user_id = ? AND dp.campaign_id = c.id
+              AND dp.date = DATE('now', 'localtime')
+              AND dp.completed = 1
+        ) as is_finished
+    FROM campaigns c
+    JOIN campaign_members cm ON cm.campaign_id = c.id
+    WHERE cm.user_id = ?
+""", (user_id, user_id)).fetchall()
 
     return [
         {
             "campaign_id": row[0],
             "name": row[1],
-            "has_played": bool(row[2])
+            "is_finished": bool(row[2])
         }
         for row in rows
     ]
@@ -147,13 +149,11 @@ def validate_guess(word: str, user_id: int, campaign_id: int):
     result = ['absent'] * 5
     secret_counts = Counter(secret)
 
-    # First pass: mark correct letters
     for i in range(5):
         if guess[i] == secret[i]:
             result[i] = 'correct'
             secret_counts[guess[i]] -= 1
 
-    # Second pass: mark present letters
     for i in range(5):
         if result[i] == 'correct':
             continue
@@ -162,26 +162,91 @@ def validate_guess(word: str, user_id: int, campaign_id: int):
             secret_counts[guess[i]] -= 1
 
     correct = all(r == 'correct' for r in result)
+    today = datetime.now(ZoneInfo("America/Chicago")).strftime("%Y-%m-%d")
 
     with get_db() as conn:
-        #  Save a win if correct
+        # Fetch existing progress
+        row = conn.execute("""
+            SELECT guesses, results, letter_status, current_row, game_over
+            FROM campaign_guess_states
+            WHERE user_id = ? AND campaign_id = ? AND date = ?
+        """, (user_id, campaign_id, today)).fetchone()
+
+        if row:
+            guesses = json.loads(row[0])
+            results_data = json.loads(row[1])
+            letter_status = json.loads(row[2])
+            current_row = row[3]
+            game_over = bool(row[4])
+        else:
+            guesses = [[""] * 5 for _ in range(6)]
+            results_data = [None] * 6
+            letter_status = {}
+            current_row = 0
+            game_over = False
+
+        if game_over or current_row >= 6:
+            raise HTTPException(status_code=403, detail="You've already played today")
+
+        guesses[current_row] = list(guess)
+        results_data[current_row] = result
+
+        for i in range(5):
+            letter = guess[i]
+            current = letter_status.get(letter, None)
+            if result[i] == "correct":
+                letter_status[letter] = "correct"
+            elif result[i] == "present" and current != "correct":
+                letter_status[letter] = "present"
+            elif not current:
+                letter_status[letter] = "absent"
+
+        new_game_over = correct or current_row == 5
+
         if correct:
-            conn.execute(
-                "UPDATE campaign_members SET score = score + 1 WHERE user_id = ? AND campaign_id = ?",
-                (user_id, campaign_id)
-            )
+            conn.execute("""
+                UPDATE campaign_members SET score = score + 1
+                WHERE user_id = ? AND campaign_id = ?
+            """, (user_id, campaign_id))
 
-        #  Always insert the guess for "played today" tracking
+        # Save guess to guesses table for history (optional)
         conn.execute("""
-            INSERT INTO guesses (user_id, campaign_id, word, date)
-            VALUES (?, ?, ?, DATE('now', 'localtime'))
-        """, (user_id, campaign_id, guess))
+                INSERT INTO campaign_guesses (user_id, campaign_id, word, date)
+                VALUES (?, ?, ?, ?)
+            """, (user_id, campaign_id, guess, today))
 
-    return {
-        "result": result,
-        "correct": correct,
-        "word": secret
-    }
+        # Save full state in daily_progress
+        conn.execute("""
+            INSERT OR REPLACE INTO campaign_guess_states (
+                user_id, campaign_id, date,
+                guesses, results, letter_status, current_row, game_over
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            user_id, campaign_id, today,
+            json.dumps(guesses), 
+            json.dumps(results_data),
+            json.dumps(letter_status), 
+            current_row + 1,
+            int(new_game_over)
+        ))
+
+        conn.execute("""
+            INSERT OR REPLACE INTO campaign_daily_progress (
+                user_id, campaign_id, date, completed
+            ) VALUES (?, ?, ?, ?)
+        """, (
+            user_id,
+            campaign_id,
+            today,
+            int(new_game_over)
+        ))
+
+        return {
+            "result": result,
+            "correct": correct,
+            "word": secret
+        }
+
 
 
 def get_campaign_day(campaign_id: int):
@@ -239,3 +304,23 @@ def get_leaderboard(campaign_id: int):
 
 
 
+def get_saved_progress(user_id: int, campaign_id: int):
+    today = datetime.now(ZoneInfo("America/Chicago")).strftime("%Y-%m-%d")
+
+    with get_db() as conn:
+        row = conn.execute("""
+            SELECT guesses, results, letter_status, current_row, game_over
+            FROM campaign_guess_states
+            WHERE user_id = ? AND campaign_id = ? AND date = ?
+        """, (user_id, campaign_id, today)).fetchone()
+
+    if row:
+        return {
+            "guesses": json.loads(row[0]),
+            "results": json.loads(row[1]),
+            "letter_status": json.loads(row[2]),
+            "current_row": row[3],
+            "game_over": bool(row[4])
+        }
+
+    return None

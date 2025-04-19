@@ -55,3 +55,7 @@ def get_campaign_progress(data: CampaignOnly):
 @app.post("/api/user/campaigns")
 def user_campaigns(data: models.UserOnly):
     return crud.get_user_campaigns(data.user_id)
+
+@app.post("/api/game/state")
+def fetch_game_state(data: models.CampaignAndUserOnly):
+    return crud.get_saved_progress(data.user_id, data.campaign_id) or {}

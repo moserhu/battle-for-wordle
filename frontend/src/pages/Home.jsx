@@ -243,7 +243,7 @@ export default function Home() {
         <thead>
           <tr>
             <th style={{ border: '1px solid white', padding: '10px', background: 'gray', color: '#fff' }}>Campaign</th>
-            <th style={{ border: '1px solid white', padding: '10px', background: 'gray', color: '#fff' }}>Played Today?</th>
+            <th style={{ border: '1px solid white', padding: '10px', background: 'gray', color: '#fff' }}>Completed</th>
             <th style={{ border: '1px solid white', padding: '10px', background: 'gray', color: '#fff' }}></th>
           </tr>
         </thead>
@@ -251,7 +251,7 @@ export default function Home() {
           {campaigns.map((camp) => (
             <tr key={camp.campaign_id}>
               <td style={{ border: '1px solid white', padding: '10px' }}>{camp.name}</td>
-              <td style={{ border: '1px solid white', padding: '10px' }}>{camp.has_played ? '✅' : '❌'}</td>
+              <td style={{ border: '1px solid white', padding: '10px' }}>{camp.is_finished ? '✅' : '❌'}</td>
               <td style={{ border: '1px solid white', padding: '10px' }}>
                 <button
                   onClick={() => {

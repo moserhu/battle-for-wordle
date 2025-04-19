@@ -1,0 +1,60 @@
+.screenshot-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 999;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  
+  .split-half {
+    position: absolute;
+    top: 0;
+    height: 100vh;
+    width: auto;
+    image-rendering: pixelated;
+    object-fit: contain;
+    transform: translateX(0);
+    transition: transform 2s ease-out, opacity 2s ease-out;
+    will-change: transform, opacity;
+  }
+  
+  
+  .slide-left {
+    animation: slideLeft 3s ease-out forwards;
+  }
+  
+  .slide-right {
+    animation: slideRight 3s ease-out forwards;
+  }
+  
+  @keyframes slideLeft {
+    to {
+      transform: translateX(-300%);
+      opacity: 0;
+    }
+  }
+  
+  @keyframes slideRight {
+    to {
+      transform: translateX(300%);
+      opacity: 0;
+    }
+  }
+  
+
+  .game-content.fade-in {
+    animation: fadeIn 0.5s ease-in-out forwards;
+  }
+  
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  

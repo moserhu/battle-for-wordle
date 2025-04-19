@@ -2,8 +2,8 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import GameScreen from './pages/GameScreen';
-import Leaderboard from './pages/Leaderboard';
 import Home from './pages/Home';
+import './App.css';
 
 function App() {
   return (
@@ -11,7 +11,6 @@ function App() {
       <Routes>
         <Route path="/home" element={<Home />} />
         <Route path="/game" element={<GameScreen />} />
-        <Route path="/leaderboard" element={<Leaderboard />} />
       </Routes>
     </Router>
   );

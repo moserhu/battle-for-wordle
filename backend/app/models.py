@@ -33,5 +33,8 @@ class UserRegister(BaseModel):
 class UserOnly(BaseModel):
     user_id: int
 
+class CampaignAndUserOnly(BaseModel):
+    user_id: int
+    campaign_id: int
 
 

@@ -1,10 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 
-export default function Leaderboard() {
+export default function Leaderboard({ onBack }) {
   const [data, setData] = useState([]);
   const campaign_id = parseInt(localStorage.getItem("campaign_id"));
-  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchLeaderboard = async () => {
@@ -22,9 +20,9 @@ export default function Leaderboard() {
   }, [campaign_id]);
 
   return (
-    <div style={{ textAlign: 'center', marginTop: '30px' }}>
+    <div style={{ padding: '20px' }}>
       <h2>🏆 Campaign Leaderboard</h2>
-      <table style={{ margin: '20px auto', borderCollapse: 'collapse', minWidth: '300px' }}>
+      <table style={{ borderCollapse: 'collapse', minWidth: '300px' }}>
         <thead>
           <tr>
             <th style={{ borderBottom: '1px solid gray', paddingBottom: '10px' }}>Player</th>
@@ -40,7 +38,7 @@ export default function Leaderboard() {
           ))}
         </tbody>
       </table>
-      <button onClick={() => navigate('/game')}>Back to Game</button>
+      <button onClick={onBack}>Back to Game</button>
     </div>
   );
 }
