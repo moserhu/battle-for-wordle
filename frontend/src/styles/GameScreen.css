@@ -16,6 +16,51 @@
   transform: scale(1.2);
 }
 
+.troop-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0,0,0,0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.troop-modal {
+  background-color: #2589b4;
+  padding: 2rem;
+  border-radius: 12px;
+  text-align: center;
+  max-width: 400px;
+  box-shadow: 0 0 20px rgba(0,0,0,0.5);
+  font-family: 'Garamond', serif;
+}
+
+.modal-buttons {
+  margin-top: 1.5rem;
+  display: flex;
+  justify-content: space-evenly;
+  gap: 1rem;
+}
+
+.modal-buttons button {
+  padding: 0.5rem 1rem;
+  font-weight: bold;
+  font-size: 1rem;
+  cursor: pointer;
+  background-color: #d4af37;
+  border: none;
+  border-radius: 6px;
+  transition: background-color 0.2s;
+}
+
+.modal-buttons button:hover {
+  background-color: #b5912c;
+}
+
 .screenshot-overlay {
     position: fixed;
     top: 0;
@@ -75,4 +120,6 @@
       opacity: 1;
     }
   }
+  
+
   

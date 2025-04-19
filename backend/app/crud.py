@@ -141,6 +141,15 @@ def get_daily_word(campaign_id: int):
 
 
 def validate_guess(word: str, user_id: int, campaign_id: int):
+    points_by_row = {
+        0: 12,
+        1: 8,
+        2: 6,
+        3: 4,
+        4: 3,
+        5: 1
+    }
+
     if word.lower() not in VALID_WORDS:
         raise HTTPException(status_code=400, detail="Invalid word")
 
@@ -204,15 +213,12 @@ def validate_guess(word: str, user_id: int, campaign_id: int):
         new_game_over = correct or current_row == 5
 
         if correct:
-         points_by_row = {0: 12, 1: 8, 2: 6, 3: 4, 4: 3, 5: 1}
-        score_to_add = points_by_row.get(current_row, 0)
-
-        conn.execute("""
+            score_to_add = points_by_row.get(current_row, 0)
+            conn.execute("""
                 UPDATE campaign_members
                 SET score = score + ?
                 WHERE user_id = ? AND campaign_id = ?
             """, (score_to_add, user_id, campaign_id))
-
 
         # Save guess to guesses table for history (optional)
         conn.execute("""
@@ -251,6 +257,7 @@ def validate_guess(word: str, user_id: int, campaign_id: int):
             "correct": correct,
             "word": secret
         }
+        
 
 
 

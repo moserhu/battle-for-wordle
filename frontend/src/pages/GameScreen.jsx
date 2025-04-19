@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import '../styles/GameScreen.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faLandmark } from "@fortawesome/free-solid-svg-icons";
+import confetti from 'canvas-confetti';
 
 
 const EMPTY_GRID = Array.from({ length: 6 }, () => Array(5).fill(""));
@@ -50,7 +51,9 @@ export default function GameScreen() {
   const [imageHalfWidth, setImageHalfWidth] = useState(0);
   const [screenWidth, setScreenWidth] = useState(window.innerWidth);
   const [fadingBackIn, setFadingBackIn] = useState(false);
-
+  const [showTroopModal, setShowTroopModal] = useState(false);
+  const [troopsEarned, setTroopsEarned] = useState(0);
+  
 
 
   const saveKey = campaignId ? `wordle_state_${campaignId}` : null;
@@ -221,10 +224,23 @@ export default function GameScreen() {
       if (data.result.every(r => r === "correct")) {
         setGameOver(true);
         saveGame(true, newResults, newStatus);
-        setTimeout(() => alert("🎉 You solved it!"), 200);
+      
+        const troops = [12, 8, 6, 4, 3, 1][currentRow];  
+      
+        if (currentRow <= 2) {
+          confetti({
+            particleCount: 150,
+            spread: 100,
+            origin: { y: 0.6 },
+          });
+        }
+    
+        setTroopsEarned(troops); 
+        setShowTroopModal(true);
         return;
       }
-  
+      
+      
       if (currentRow + 1 === 6) {
         setGameOver(true);
         saveGame(true, newResults, newStatus);
@@ -309,10 +325,10 @@ export default function GameScreen() {
         
 
         requestAnimationFrame(() => setAnimating(true));
-        setTimeout(() => {
+   
           setShowLeaderboard(true);
           setAnimating(true);
-        }, 2000);
+     
       };
    
       img.src = dataUrl;
@@ -412,6 +428,22 @@ export default function GameScreen() {
 <FontAwesomeIcon icon={faLandmark} />
 </button>
     <Leaderboard onBack={handleBackToGame} />
+  </div>
+)}
+{/* Troop Modal */}
+{showTroopModal && (
+  <div className="troop-modal-overlay">
+    <div className="troop-modal">
+      <h2>🎖 Victory!</h2>
+      <p>You gained <strong>{troopsEarned}</strong> troops.</p>
+      <div className="modal-buttons">
+        <button onClick={() => setShowTroopModal(false)}>❌ Close</button>
+        <button onClick={() => {
+          setShowTroopModal(false);
+          handleShowLeaderboard();
+        }}>🏰 Go to Leaderboard</button>
+      </div>
+    </div>
   </div>
 )}
     </div>
