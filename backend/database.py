@@ -4,12 +4,17 @@ def init_db():
     with sqlite3.connect("game.db") as conn:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 first_name TEXT,
                 last_name TEXT,
                 email TEXT UNIQUE,
                 phone TEXT,
-                password TEXT
+                password TEXT,
+                campaigns INTEGER DEFAULT 0,
+                total_guesses INTEGER DEFAULT 0,
+                correct_guesses INTEGER DEFAULT 0,
+                campaign_wins INTEGER DEFAULT 0,
+                campaign_losses INTEGER DEFAULT 0
             )
         """)
         conn.execute("""

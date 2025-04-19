@@ -26,29 +26,49 @@ export default function Leaderboard({ onBack }) {
 
   const scores = data.map((entry) => entry.score);
   const names = data.map((entry) => entry.username);
-
+  const colorPalette = [
+    '#ffd700', // gold
+    '#c0c0c0', // silver
+    '#cd7f32', // bronze
+    '#4caf50',
+    '#2196f3',
+    '#9c27b0',
+    '#ff5722',
+    '#00bcd4',
+    '#795548',
+    '#607d8b',
+  ];
+  
+  const colorMap = data.reduce((acc, entry, index) => {
+    acc[entry.username] = colorPalette[index % colorPalette.length];
+    return acc;
+  }, {});
+  
   const chartData = {
     labels: names,
     datasets: [
       {
         label: 'Troops',
         data: scores,
-        backgroundColor: [
-          '#ffd700', // gold
-          '#c0c0c0', // silver
-          '#cd7f32', // bronze
-          ...Array(Math.max(0, data.length - 3)).fill('#888')
-        ],
+        backgroundColor: data.map((entry, i) => colorMap[entry.username]),
         borderColor: '#222',
         borderWidth: 2,
       },
     ],
   };
+  const chartOptions = {
+    plugins: {
+      legend: {
+        display: false,  // 🔇 hide the default legend
+      },
+    },
+  };
+  
 
   return (
     <div className="leaderboard-container">
       <div className="leaderboard-pie">
-        <Pie data={chartData} />
+      <Pie data={chartData} options={chartOptions} />
       </div>
       <div className="leaderboard-panel">
         <h2>🏆 Leaderboard</h2>
@@ -60,13 +80,24 @@ export default function Leaderboard({ onBack }) {
             </tr>
           </thead>
           <tbody>
-            {data.map((entry, i) => (
-              <tr key={i}>
-                <td>{entry.username}</td>
-                <td>{entry.score}</td>
-              </tr>
-            ))}
-          </tbody>
+  {data.map((entry, i) => (
+    <tr key={i}>
+      <td style={{ display: 'flex', alignItems: 'center' }}>
+        <div
+          style={{
+            width: '12px',
+            height: '12px',
+            backgroundColor: colorMap[entry.username],
+            marginRight: '8px',
+            borderRadius: '2px',
+          }}
+        ></div>
+        {entry.username}
+      </td>
+      <td>{entry.score}</td>
+    </tr>
+  ))}
+</tbody>
         </table>
         <button onClick={onBack}>Back to Game</button>
       </div>

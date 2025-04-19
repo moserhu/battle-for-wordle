@@ -9,6 +9,7 @@ import '../styles/GameScreen.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faLandmark } from "@fortawesome/free-solid-svg-icons";
 import confetti from 'canvas-confetti';
+import InviteShareButton from '../components/InviteShareButton';
 
 
 const EMPTY_GRID = Array.from({ length: 6 }, () => Array(5).fill(""));
@@ -53,10 +54,8 @@ export default function GameScreen() {
   const [fadingBackIn, setFadingBackIn] = useState(false);
   const [showTroopModal, setShowTroopModal] = useState(false);
   const [troopsEarned, setTroopsEarned] = useState(0);
+  const [loading, setLoading] = useState(true);
   
-
-
-  const saveKey = campaignId ? `wordle_state_${campaignId}` : null;
 
   useEffect(() => {
     const storedId = localStorage.getItem("campaign_id");
@@ -64,56 +63,63 @@ export default function GameScreen() {
       navigate("/home");
       return;
     }
-    setCampaignId(parseInt(storedId));
+  
+    const id = parseInt(storedId);
+    setCampaignId(id);
+
+    const resetAndFetch = async () => {
+      setLoading(true);
+      setGuesses(EMPTY_GRID);
+      setResults(Array(6).fill(null));
+      setCurrentRow(0);
+      setCurrentCol(0);
+      setGameOver(false);
+      setLetterStatus({});
+      setShowTroopModal(false);
+      setTroopsEarned(0);
+
+      const [dayRes, stateRes] = await Promise.all([
+        fetch("http://localhost:8000/api/campaign/progress", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ campaign_id: id }),
+        }),
+        fetch("http://localhost:8000/api/game/state", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_id: parseInt(localStorage.getItem("user_id")), campaign_id: id }),
+        }),
+      ]);
+
+      const campaignDay = await dayRes.json();
+      const progress = await stateRes.json();
+      console.log("Fetched game state:", progress);
+      setCampaignDay(campaignDay);
+      localStorage.setItem("invite_code", campaignDay.invite_code);
+
+      const validGuesses = Array.isArray(progress.guesses) && progress.guesses.length === 6
+  ? progress.guesses.map(row => Array.isArray(row) && row.length === 5 ? row : Array(5).fill("")) 
+  : EMPTY_GRID;
+
+    setGuesses(validGuesses);
+    
+    setResults(Array.isArray(progress.results) ? progress.results : Array(6).fill(null));
+    setLetterStatus(typeof progress.letter_status === "object" && progress.letter_status !== null ? progress.letter_status : {});
+    setGameOver(typeof progress.game_over === "boolean" ? progress.game_over : false);
+
+    const newRow = typeof progress.current_row === "number" ? progress.current_row : 0;
+    setCurrentRow(newRow);
+
+    const guessRow = validGuesses[newRow] || [];
+    const nextCol = guessRow.findIndex((l) => l === "");
+    setCurrentCol(nextCol === -1 ? 5 : nextCol);
+
+      setLoading(false);
+    };
+
+    resetAndFetch();
   }, [navigate]);
 
-  useEffect(() => {
-    if (!campaignId) return;
-  
-    const saved = localStorage.getItem(`wordle_state_${campaignId}`);
-    const user_id = parseInt(localStorage.getItem("user_id"));
-  
-    const fetchCampaignDayAndProgress = async () => {
-      const res = await fetch("http://localhost:8000/api/campaign/progress", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ campaign_id: campaignId }),
-      });
-      const data = await res.json();
-      setCampaignDay(data);
-  
-      const progressRes = await fetch("http://localhost:8000/api/game/state", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id, campaign_id: campaignId }),
-      });
-  
-      const progress = await progressRes.json();
-      if (progress && progress.guesses) {
-        setGuesses(progress.guesses);
-        setResults(progress.results);
-        setLetterStatus(progress.letter_status);
-        setCurrentRow(progress.current_row);
-        const guessRow = progress.guesses[progress.current_row] || [];
-        const nextCol = guessRow.findIndex((l) => l === "");
-        setCurrentCol(nextCol === -1 ? 5 : nextCol);
-        setGameOver(progress.game_over);
-        localStorage.setItem(`wordle_state_${campaignId}`, JSON.stringify(progress));
-      } else if (saved) {
-        const { guesses, results, currentRow, letterStatus, gameOver } = JSON.parse(saved);
-        setGuesses(guesses);
-        setResults(results);
-        setLetterStatus(letterStatus);
-        setGameOver(gameOver);
-        setCurrentRow(currentRow);
-        const guessRow = guesses[currentRow] || [];
-        const nextCol = guessRow.findIndex((l) => l === "");
-        setCurrentCol(nextCol === -1 ? 5 : nextCol);
-              }
-    };
-  
-    fetchCampaignDayAndProgress();
-  }, [campaignId]);
   
   useEffect(() => {
     const updateWidth = () => setScreenWidth(window.innerWidth);
@@ -126,41 +132,14 @@ export default function GameScreen() {
   useEffect(() => {
     const interval = setInterval(() => {
       const newCountdown = getTimeUntilMidnightCT();
-  
-      // Auto-refresh when countdown hits zero
-      if (
-        newCountdown.hours === 0 &&
-        newCountdown.minutes === 0 &&
-        newCountdown.seconds === 0
-      ) {
-        window.location.reload(); 
-      }
-  
+      if (newCountdown.hours === 0 && newCountdown.minutes === 0 && newCountdown.seconds === 0) window.location.reload();
       setCountdown(newCountdown);
     }, 1000);
-  
     return () => clearInterval(interval);
   }, []);
   
   
-  const screenRef = useRef();
-
-  
-  //function to save the game state
-  const saveGame = (
-    customGameOver = false,
-    customResults = results,
-    customStatus = letterStatus,
-    customRow = currentRow
-  ) => {
-    localStorage.setItem(saveKey, JSON.stringify({
-      guesses: guesses.map(row => [...row]),
-      results: customResults,
-      currentRow: customRow,
-      letterStatus: { ...customStatus },
-      gameOver: customGameOver,
-    }));
-  };
+  const screenRef = useRef();  
   
   
   
@@ -223,7 +202,6 @@ export default function GameScreen() {
   
       if (data.result.every(r => r === "correct")) {
         setGameOver(true);
-        saveGame(true, newResults, newStatus);
       
         const troops = [12, 8, 6, 4, 3, 1][currentRow];  
       
@@ -243,7 +221,6 @@ export default function GameScreen() {
       
       if (currentRow + 1 === 6) {
         setGameOver(true);
-        saveGame(true, newResults, newStatus);
         setTimeout(() => {
           alert(`❌ Game Over! The word was "${data.word.toUpperCase()}"`);
         }, 200);
@@ -251,12 +228,9 @@ export default function GameScreen() {
       }
   
       // Advance to next row
-      const nextRow = currentRow + 1;
       setCurrentRow(currentRow + 1);
       setCurrentCol(0);
-  
-      saveGame(false, newResults, newStatus, nextRow);
-  
+    
     } catch (err) {
       console.error("Guess submission failed:", err);
       alert("⚠️ Failed to submit guess. Please try again.");
@@ -356,6 +330,16 @@ export default function GameScreen() {
     setTimeout(() => setFadingBackIn(false), 500); // match fade duration
   };
 
+  useEffect(() => {
+    console.log("RENDERED:", { campaignId, guesses });
+    console.log("localStorage keys:", Object.keys(localStorage));
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith("wordle_state_")) {
+        console.log(`${key}:`, localStorage.getItem(key));
+      }
+    });
+  }, [guesses, campaignId]);
+  
     
   return (
 
@@ -374,18 +358,24 @@ export default function GameScreen() {
         <button
           className="home-button"
           onClick={() => {
-         localStorage.removeItem(`wordle_state_${campaignId}`);
           localStorage.removeItem("campaign_id");
+          localStorage.removeItem("invite_code"); 
          setCampaignId(null);
           navigate("/home");
           }}
           >
           <FontAwesomeIcon icon={faLandmark} />
             </button>
+            <InviteShareButton />
           <Header campaignDay={campaignDay} countdown={countdown} onToggleLeaderboard={handleShowLeaderboard}  />
           {errorMsg && <div style={{ color: 'red' }}>{errorMsg}</div>}
-          <WordGrid guesses={guesses} results={results} currentRow={currentRow} currentCol={currentCol} />
-          <Keyboard onKeyPress={handleKeyPress} letterStatus={letterStatus} />
+          {!loading && (
+  <>
+    <WordGrid guesses={guesses} results={results} currentRow={currentRow} currentCol={currentCol} />
+    <Keyboard onKeyPress={handleKeyPress} letterStatus={letterStatus} />
+  </>
+)}
+
         </div>
       </div>
   
@@ -419,9 +409,9 @@ export default function GameScreen() {
     <button
   className="home-button"
   onClick={() => {
-    localStorage.removeItem(`wordle_state_${campaignId}`);
     localStorage.removeItem("campaign_id");
     setCampaignId(null);
+    setGuesses(EMPTY_GRID);
     navigate("/home");
   }}
 >

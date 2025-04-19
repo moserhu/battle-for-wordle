@@ -52,6 +52,7 @@ def create_campaign(name, user_id):
                      (name, user_id, code, today))
         camp_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
         conn.execute("INSERT INTO campaign_members (user_id, campaign_id) VALUES (?, ?)", (user_id, camp_id))
+        conn.execute("UPDATE users SET campaigns = campaigns + 1 WHERE id = ?", (user_id,))
         return {"campaign_id": camp_id, "invite_code": code}
 
 def join_campaign(invite_code, user_id):
@@ -76,6 +77,7 @@ def join_campaign(invite_code, user_id):
 
         conn.execute(
             "INSERT INTO campaign_members (user_id, campaign_id) VALUES (?, ?)",
+        conn.execute("UPDATE users SET campaigns = campaigns + 1 WHERE id = ?", (user_id,))
             (user_id, campaign_id)
         )
         return {"message": "Joined campaign", "campaign_id": campaign_id}
@@ -106,6 +108,43 @@ def get_user_campaigns(user_id: int):
         for row in rows
     ]
 
+def get_user_info(user_id: int):
+    with get_db() as conn:
+        row = conn.execute("""
+            SELECT first_name, last_name, phone, email,
+                   campaigns, total_guesses, correct_guesses,
+                   campaign_wins, campaign_losses
+            FROM users WHERE id = ?
+        """, (user_id,)).fetchone()
+
+        if not row:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        return {
+            "first_name": row[0],
+            "last_name": row[1],
+            "phone": row[2],
+            "email": row[3],
+            "campaigns": row[4],
+            "total_guesses": row[5],
+            "correct_guesses": row[6],
+            "campaign_wins": row[7],
+            "campaign_losses": row[8],
+        }
+
+def update_user_info(user_id: int, first_name: str, last_name: str, phone: str):
+    with get_db() as conn:
+        try:
+            conn.execute("""
+                UPDATE users
+                SET first_name = ?, last_name = ?, phone = ?
+                WHERE id = ?
+            """, (first_name, last_name, phone, user_id))
+            return {"status": "ok"}
+        except sqlite3.IntegrityError as e:
+            if "phone" in str(e).lower():
+                raise HTTPException(status_code=400, detail="Phone number already registered")
+            raise HTTPException(status_code=400, detail="Failed to update user info")
 
 
 def load_valid_words():
@@ -198,6 +237,13 @@ def validate_guess(word: str, user_id: int, campaign_id: int):
             raise HTTPException(status_code=403, detail="You've already played today")
 
         guesses[current_row] = list(guess)
+        # Increment total guess counter
+        conn.execute("""
+            UPDATE users
+            SET total_guesses = total_guesses + 1
+            WHERE id = ?
+        """, (user_id,))
+
         results_data[current_row] = result
 
         for i in range(5):
@@ -213,6 +259,12 @@ def validate_guess(word: str, user_id: int, campaign_id: int):
         new_game_over = correct or current_row == 5
 
         if correct:
+            conn.execute("""
+                UPDATE users
+                SET correct_guesses = correct_guesses + 1
+                WHERE id = ?
+            """, (user_id,))
+
             score_to_add = points_by_row.get(current_row, 0)
             conn.execute("""
                 UPDATE campaign_members
@@ -277,17 +329,18 @@ def get_campaign_day(campaign_id: int):
 
     return {"day": delta + 1, "total": 5}  
 
+
 def get_campaign_progress(campaign_id: int):
     with get_db() as conn:
         row = conn.execute(
-            "SELECT name, start_date FROM campaigns WHERE id = ?",
+            "SELECT name, start_date, invite_code FROM campaigns WHERE id = ?",
             (campaign_id,)
         ).fetchone()
 
     if not row:
         raise HTTPException(status_code=404, detail="Campaign not found")
 
-    name, start_date_str = row
+    name, start_date_str, invite_code = row
     start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
     today = datetime.now(ZoneInfo("America/Chicago")).date()
     delta = (today - start_date).days
@@ -295,8 +348,10 @@ def get_campaign_progress(campaign_id: int):
     return {
         "name": name,
         "day": min(delta + 1, 5),
-        "total": 5
+        "total": 5,
+        "invite_code": invite_code
     }
+
 
 
 def get_leaderboard(campaign_id: int):
@@ -335,4 +390,12 @@ def get_saved_progress(user_id: int, campaign_id: int):
             "game_over": bool(row[4])
         }
 
-    return None
+    # 🧼 Default fallback for new day/campaign
+    return {
+        "guesses": [["", "", "", "", ""] for _ in range(6)],
+        "results": [None for _ in range(6)],
+        "letter_status": {},
+        "current_row": 0,
+        "game_over": 0
+    }
+

@@ -37,4 +37,9 @@ class CampaignAndUserOnly(BaseModel):
     user_id: int
     campaign_id: int
 
+class UpdateUserInfo(BaseModel):
+    user_id: int
+    first_name: str
+    last_name: str
+    phone: str
 

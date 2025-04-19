@@ -1,0 +1,76 @@
+.login-register-container {
+    background-color: #1a1a1a;
+    border: 2px solid #444;
+    border-radius: 10px;
+    padding: 30px;
+    color: #f4f4f4;
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+    max-width: 400px;
+    margin: auto;
+    font-family: 'Garamond', serif;
+  }
+  
+  .toggle-buttons {
+    margin-bottom: 20px;
+  }
+  
+  .toggle-button {
+    padding: 10px 15px;
+    background-color: #6a4f2a;
+    color: #fefefe;
+    border: none;
+    border-radius: 5px;
+    margin: 0 5px;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  
+  .toggle-button:hover {
+    background-color: #8b6731;
+  }
+  
+  .input-field {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    margin: 8px 0;
+    background-color: #2b2b2b;
+    color: #fff;
+    border: 1px solid #555;
+    border-radius: 5px;
+  }
+  
+  .input-field::placeholder {
+    color: #ccc;
+  }
+  
+  .submit-button {
+    width: 100%;
+    padding: 10px;
+    background-color: #ba8c44;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 10px;
+  }
+  
+  .submit-button:hover {
+    background-color: #d4a954;
+  }
+  
+  .message {
+    margin-top: 10px;
+    font-weight: bold;
+    text-align: center;
+  }
+  
+  .message.success {
+    color: #8bc34a;
+  }
+  
+  .message.error {
+    color: #f44336;
+  }
+  

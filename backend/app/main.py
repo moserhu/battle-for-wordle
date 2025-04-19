@@ -59,3 +59,13 @@ def user_campaigns(data: models.UserOnly):
 @app.post("/api/game/state")
 def fetch_game_state(data: models.CampaignAndUserOnly):
     return crud.get_saved_progress(data.user_id, data.campaign_id) or {}
+
+from app.models import UserOnly, UpdateUserInfo
+
+@app.post("/api/user/info")
+def get_user_info(data: UserOnly):
+    return crud.get_user_info(data.user_id)
+
+@app.post("/api/user/update")
+def update_user(data: UpdateUserInfo):
+    return crud.update_user_info(data.user_id, data.first_name, data.last_name, data.phone)
