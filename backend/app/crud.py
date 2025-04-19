@@ -204,10 +204,15 @@ def validate_guess(word: str, user_id: int, campaign_id: int):
         new_game_over = correct or current_row == 5
 
         if correct:
-            conn.execute("""
-                UPDATE campaign_members SET score = score + 1
+         points_by_row = {0: 12, 1: 8, 2: 6, 3: 4, 4: 3, 5: 1}
+        score_to_add = points_by_row.get(current_row, 0)
+
+        conn.execute("""
+                UPDATE campaign_members
+                SET score = score + ?
                 WHERE user_id = ? AND campaign_id = ?
-            """, (user_id, campaign_id))
+            """, (score_to_add, user_id, campaign_id))
+
 
         # Save guess to guesses table for history (optional)
         conn.execute("""

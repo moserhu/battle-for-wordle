@@ -1,3 +1,21 @@
+
+.home-button {
+  position: absolute;
+  top: 2%;
+  right: 5%;
+  font-size: 28px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: white;
+  z-index: 1000;
+  transition: transform 0.2s;
+}
+
+.home-button:hover {
+  transform: scale(1.2);
+}
+
 .screenshot-overlay {
     position: fixed;
     top: 0;

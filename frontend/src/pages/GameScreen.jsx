@@ -6,6 +6,9 @@ import Keyboard from '../components/Keyboard';
 import Leaderboard from '../pages/Leaderboard';
 import { useNavigate } from 'react-router-dom';
 import '../styles/GameScreen.css';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faLandmark } from "@fortawesome/free-solid-svg-icons";
+
 
 const EMPTY_GRID = Array.from({ length: 6 }, () => Array(5).fill(""));
 
@@ -352,17 +355,17 @@ export default function GameScreen() {
            }}
           >
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: '20px' }}>
-          <button
-            style={{ position: 'absolute', top: 20, right: 20 }}
-            onClick={() => {
-              localStorage.removeItem(`wordle_state_${campaignId}`);
-              localStorage.removeItem("campaign_id");
-              setCampaignId(null);
-              navigate("/home");
-            }}
+        <button
+          className="home-button"
+          onClick={() => {
+         localStorage.removeItem(`wordle_state_${campaignId}`);
+          localStorage.removeItem("campaign_id");
+         setCampaignId(null);
+          navigate("/home");
+          }}
           >
-            ☰
-          </button>
+          <FontAwesomeIcon icon={faLandmark} />
+            </button>
           <Header campaignDay={campaignDay} countdown={countdown} onToggleLeaderboard={handleShowLeaderboard}  />
           {errorMsg && <div style={{ color: 'red' }}>{errorMsg}</div>}
           <WordGrid guesses={guesses} results={results} currentRow={currentRow} currentCol={currentCol} />
@@ -397,6 +400,17 @@ export default function GameScreen() {
 {/* Leaderboard Layer */}
 {showLeaderboard && (
   <div className="leaderboard-wrapper">
+    <button
+  className="home-button"
+  onClick={() => {
+    localStorage.removeItem(`wordle_state_${campaignId}`);
+    localStorage.removeItem("campaign_id");
+    setCampaignId(null);
+    navigate("/home");
+  }}
+>
+<FontAwesomeIcon icon={faLandmark} />
+</button>
     <Leaderboard onBack={handleBackToGame} />
   </div>
 )}
