@@ -82,16 +82,8 @@ export default function Leaderboard({ onBack }) {
           <tbody>
   {data.map((entry, i) => (
     <tr key={i}>
-      <td style={{ display: 'flex', alignItems: 'center' }}>
-        <div
-          style={{
-            width: '12px',
-            height: '12px',
-            backgroundColor: colorMap[entry.username],
-            marginRight: '8px',
-            borderRadius: '2px',
-          }}
-        ></div>
+      <td className="player-cell">
+        <div className="color-swatch" style={{ backgroundColor: colorMap[entry.username] }}></div>
         {entry.username}
       </td>
       <td>{entry.score}</td>
@@ -99,7 +91,7 @@ export default function Leaderboard({ onBack }) {
   ))}
 </tbody>
         </table>
-        <button onClick={onBack}>Back to Game</button>
+        <button className="back-button" onClick={onBack}> Back to Battle</button>
       </div>
 
       

@@ -1,21 +1,35 @@
+// src/components/Header.jsx
+import React from 'react';
+import '../styles/Header.css';
+import InviteShareButton from './InviteShareButton';
+
 export default function Header({ campaignDay, countdown, onToggleLeaderboard }) {
   return (
-    <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-      <h1>Battle for Wordle</h1>
+    <div className="header-container">
+  <div className="header-row">
+    <div className="header-left">
+      <h1 className="header-title">Battle for Wordle</h1>
+
       {campaignDay && (
-        <p style={{ fontSize: '18px', color: '#aaa' }}>
+        <p className="campaign-info">
           Day {campaignDay.day} of {campaignDay.total} • Campaign: <strong>{campaignDay.name}</strong>
         </p>
       )}
-      <p style={{ fontSize: '16px', color: '#bbb' }}>
+
+      <p className="countdown-timer">
         ⏳ Next word in: {countdown.hours}h {countdown.minutes}m {countdown.seconds}s
       </p>
-      <button
-        style={{ marginTop: '10px' }}
-        onClick={onToggleLeaderboard}
-      >
-        View Leaderboard
-      </button>
+
+      {/* ⚔ Both buttons grouped here */}
+      <div className="header-buttons">
+          <InviteShareButton />
+        <button className="leaderboard-toggle-btn" onClick={onToggleLeaderboard}>
+          View Leaderboard
+        </button>
+      </div>
     </div>
+  </div>
+</div>
+
   );
 }

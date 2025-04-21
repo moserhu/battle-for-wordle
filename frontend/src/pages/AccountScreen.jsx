@@ -1,4 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState} from 'react';
+import { useNavigate } from 'react-router-dom';
+
 import '../styles/AccountScreen.css';
 
 export default function AccountScreen() {
@@ -17,6 +19,9 @@ export default function AccountScreen() {
   const [originalUser, setOriginalUser] = useState({});
   const [message, setMessage] = useState('');
   const [editing, setEditing] = useState(false);
+
+  const navigate = useNavigate();
+
 
   useEffect(() => {
     const userId = localStorage.getItem('user_id');
@@ -64,7 +69,9 @@ export default function AccountScreen() {
   const hasChanges = JSON.stringify(user) !== JSON.stringify(originalUser);
 
   return (
+    <div className="account-wrapper">
     <div className="account-screen">
+        <button onClick={() => navigate('/home')} className="back-btn">← Back to Home</button>
       <h2>My Account</h2>
 
       <div className="account-info">
@@ -107,6 +114,7 @@ export default function AccountScreen() {
     <p>Losses: {user.campaign_losses}</p>
   </div>
 </div>
+    </div>
     </div>
   );
 }

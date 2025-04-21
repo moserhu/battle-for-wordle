@@ -1,0 +1,210 @@
+/* src/styles/Login.css */
+
+.login-page {
+  height: 100vh;
+  width: 100vw;
+  background: url('../assets/B4W_main.png') no-repeat center center fixed;
+  background-size: cover;
+  background-position: center center; /* ensure full centering */
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  background-color: #967b36;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding-top: 80px;
+  font-family: 'Garamond', serif;
+}
+
+  
+  .login-toggle {
+    position: absolute;
+    top: 40%;
+    background-color: rgba(26, 26, 26, 0.8);
+    padding: 10px 20px;
+    border: 2px solid #444;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.2);
+    margin-bottom: 20px;
+  }
+  
+  .login-toggle button {
+    padding: 10px 20px;
+    margin: 0 5px;
+    background-color: #6a4f2a;
+    color: #fefefe;
+    border: none;
+    border-radius: 5px;
+    font-weight: bold;
+    font-size: 16px;
+    cursor: pointer;
+  }
+  
+  .login-toggle button:hover {
+    background-color: #8b6731;
+  }
+  
+  .login-toggle button.active {
+    background-color: #ba8c44;
+    box-shadow: 0 0 8px rgba(218, 165, 32, 0.5);
+  }
+  
+  .form-container {
+    position: absolute;
+    top: 50%;
+    width: 100%;
+    max-width: 400px;
+  }
+  
+  /* src/styles/Login.css */
+
+.login-form {
+    background-color: #1a1a1a8e;
+    border: 2px solid #444;
+    border-radius: 10px;
+    padding: 30px;
+    color: #f4f4f4;
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+    max-width: 400px;
+    margin: auto;
+    font-family: 'Garamond', serif;
+  }
+  
+  .login-form h2 {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  
+  .login-form input {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    margin: 8px 0;
+    background-color: #2b2b2b;
+    color: #fff;
+    border: 1px solid #555;
+    border-radius: 5px;
+    font-family: inherit;
+  }
+  
+  .login-form input::placeholder {
+    color: #ccc;
+  }
+  
+  .login-form button {
+    width: 100%;
+    padding: 10px;
+    background-color: #ba8c44;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 10px;
+    font-family: inherit;
+  }
+  
+  .login-form button:hover {
+    background-color: #d4a954;
+  }
+  
+  .login-form .error {
+    color: #f44336;
+    font-weight: bold;
+    text-align: center;
+    margin-top: 10px;
+  }
+
+  .login-title {
+    font-size: 3.2rem;
+    background: linear-gradient(to right, #f7e7b2, #d4af37, #b8860b);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow:
+      1px 1px 0 #000,
+      2px 2px 4px rgba(0, 0, 0, 0.6),
+      0 0 10px rgba(255, 215, 0, 0.3);
+    font-family: 'Cinzel', serif;
+    letter-spacing: 2px;
+    margin-bottom: 20px;
+    text-align: center;
+  }
+  
+  
+  /* Scale down for mobile */
+  @media (max-width: 600px) {
+    .login-title {
+      font-size: 2rem;
+      margin-top: 10px;
+      text-align: center;
+      padding: 0 1rem;
+    }
+  }
+  
+
+  /* === MOBILE STYLES === */
+@media (max-width: 600px) {
+  .login-page {
+    padding-top: 40px;
+    background-position: center center;
+    background-size: cover;
+  }
+
+  .login-toggle {
+    top: 20%;
+    padding: 8px 12px;
+    flex-direction: column;
+    gap: 10px;
+    width: 90%;
+    max-width: 300px;
+    text-align: center;
+  }
+
+  .login-toggle button {
+    font-size: 0.95rem;
+    padding: 8px 12px;
+    margin: 6px 0;
+    width: 100%;
+  }
+
+  .form-container {
+    top: 45%;
+    width: 90%;
+    max-width: 360px;
+    padding: 0 1rem;
+  }
+
+  .login-form,
+  .register-form {
+    padding: 20px;
+  }
+
+  .login-form input,
+  .register-form input {
+    font-size: 0.95rem;
+    padding: 8px;
+  }
+
+  .login-form button,
+  .register-form button {
+    font-size: 1rem;
+    padding: 8px;
+  }
+}
+
+/* === TABLET STYLES === */
+@media (min-width: 601px) and (max-width: 1024px) {
+  .login-toggle {
+    top: 30%;
+  }
+
+  .form-container {
+    top: 50%;
+  }
+}
+@media (max-width: 600px) {
+  .login-page {
+    background-attachment: scroll; /* fallback on mobile for smoother behavior */
+  }
+}

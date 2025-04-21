@@ -1,16 +1,40 @@
 /* AccountScreen.css */
+.account-wrapper {
+  background: url('../assets/bedroom_background.png') no-repeat center center fixed;
+  background-size: cover;
+  min-height: 100vh;
+  width: 100vw;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 60px;
+}
+
+.account-wrapper::before {
+  content: "";
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: radial-gradient(ellipse at center, rgba(0,0,0,0) 40%, rgba(0,0,0,0.7) 100%);
+  z-index: 0;
+  pointer-events: none;
+}
 
 .account-screen {
-    max-width: 700px;
-    margin: 60px auto;
-    padding: 30px;
-    background-color: #1e1b18;
-    border: 2px solid #8b6f47;
-    border-radius: 10px;
-    color: #f4e9d8;
-    font-family: 'Cinzel', serif;
-    box-shadow: 0 0 20px rgba(0, 0, 0, 0.6);
-  }
+  max-width: 700px;
+  margin: 60px auto;
+  padding: 30px;
+  background-color: rgba(30, 27, 24, 0.651); /* <== Added transparency */
+  border: 2px solid #8b6f47;
+  border-radius: 10px;
+  color: #f4e9d8;
+  font-family: 'Cinzel', serif;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.6);
+  position: relative; /* Needed for z-index layering */
+  z-index: 1;
+}
+
   
   .account-screen h2 {
     font-size: 2rem;
@@ -130,4 +154,95 @@
 
 .save-btn:hover {
   background-color: #40916c;
+}
+
+.back-btn {
+    background-color: transparent;
+    border: none;
+    color: #fff;
+    font-size: 16px;
+    cursor: pointer;
+    margin-bottom: 10px;
+    text-align: left;
+  }
+.back-btn:hover {
+    text-decoration: underline;
+}
+  /* === MOBILE STYLES === */
+@media (max-width: 600px) {
+  .account-wrapper {
+    padding-top: 40px;
+  }
+
+  .account-screen {
+    margin: 20px 12px;
+    padding: 20px;
+  }
+
+  .account-screen h2 {
+    font-size: 1.6rem;
+    margin-bottom: 16px;
+  }
+
+  .account-info label {
+    font-size: 0.95rem;
+  }
+
+  .account-info input {
+    padding: 8px;
+    font-size: 0.95rem;
+  }
+
+  .edit-btn,
+  .cancel-btn,
+  .save-btn {
+    font-size: 0.95rem;
+    padding: 8px 12px;
+    width: 100%;
+    margin: 8px 0 0;
+  }
+
+  .cancel-btn {
+    margin-left: 0;
+  }
+
+  .message {
+    font-size: 0.95rem;
+  }
+
+  .account-highlights h3 {
+    font-size: 1.2rem;
+  }
+
+  .highlight-box {
+    font-size: 1rem;
+    padding: 12px;
+  }
+
+  .back-btn {
+    font-size: 0.95rem;
+    margin-bottom: 16px;
+  }
+}
+
+/* === TABLET STYLES === */
+@media (min-width: 601px) and (max-width: 1024px) {
+  .account-screen {
+    padding: 24px;
+  }
+
+  .account-screen h2 {
+    font-size: 1.8rem;
+  }
+
+  .highlight-box {
+    font-size: 1.05rem;
+  }
+
+  .edit-btn,
+  .cancel-btn,
+  .save-btn {
+    font-size: 1rem;
+    padding: 9px 14px;
+  }
 }

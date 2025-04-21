@@ -9,7 +9,6 @@ import '../styles/GameScreen.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faLandmark } from "@fortawesome/free-solid-svg-icons";
 import confetti from 'canvas-confetti';
-import InviteShareButton from '../components/InviteShareButton';
 
 
 const EMPTY_GRID = Array.from({ length: 6 }, () => Array(5).fill(""));
@@ -342,100 +341,86 @@ export default function GameScreen() {
   
     
   return (
-
-<div className="screenshot-container" ref={screenRef}>
-{/* Game UI Layer */}
-        <div
-          className={`game-content ${fadingBackIn ? "fade-in" : ""}`}
-          style={{
-            display:
-            animating || (showLeaderboard && !fadingBackIn)
-             ? 'none'
-            : 'block'
-           }}
-          >
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: '20px' }}>
-        <button
-          className="home-button"
-          onClick={() => {
-          localStorage.removeItem("campaign_id");
-          localStorage.removeItem("invite_code"); 
-         setCampaignId(null);
-          navigate("/home");
-          }}
-          >
-          <FontAwesomeIcon icon={faLandmark} />
+    <div className="screenshot-container" ref={screenRef}>
+      {/* Game UI Layer */}
+      <div className="game-wrapper">
+        <div className={`game-content ${fadingBackIn ? "fade-in" : ""} ${animating || (showLeaderboard && !fadingBackIn) ? "hidden" : ""}`}>
+          <div className="game-inner">
+            <button
+              className="home-button"
+              onClick={() => {
+                localStorage.removeItem("campaign_id");
+                localStorage.removeItem("invite_code");
+                setCampaignId(null);
+                navigate("/home");
+              }}
+            >
+              <FontAwesomeIcon icon={faLandmark} />
             </button>
-            <InviteShareButton />
-          <Header campaignDay={campaignDay} countdown={countdown} onToggleLeaderboard={handleShowLeaderboard}  />
-          {errorMsg && <div style={{ color: 'red' }}>{errorMsg}</div>}
-          {!loading && (
-  <>
-    <WordGrid guesses={guesses} results={results} currentRow={currentRow} currentCol={currentCol} />
-    <Keyboard onKeyPress={handleKeyPress} letterStatus={letterStatus} />
-  </>
-)}
-
+            <Header campaignDay={campaignDay} countdown={countdown} onToggleLeaderboard={handleShowLeaderboard} />
+            {errorMsg && <div className="error-msg">{errorMsg}</div>}
+            {!loading && (
+              <>
+                <WordGrid guesses={guesses} results={results} currentRow={currentRow} currentCol={currentCol} />
+                <Keyboard onKeyPress={handleKeyPress} letterStatus={letterStatus} />
+              </>
+            )}
+          </div>
         </div>
-      </div>
   
-      {/* Screenshot Background */}
-      {(screenshotLeft && screenshotRight) && (
-  <div className="screenshot-overlay">
-    {/* Screenshot Background */}
-{(screenshotLeft && screenshotRight) && (
-  <div className="screenshot-overlay">
-    <img
-      src={screenshotLeft}
-      alt="Left Half"
-      className={`split-half left ${animating ? 'slide-left' : ''}`}
-      style={{ left: `${screenWidth / 2 - imageHalfWidth}px` }}
-    />
-    <img
-      src={screenshotRight}
-      alt="Right Half"
-      className={`split-half right ${animating ? 'slide-right' : ''}`}
-      style={{ left: `${screenWidth / 2}px` }}
-    />
-  </div>
-)}
-
-  </div>
-)}
-
-{/* Leaderboard Layer */}
-{showLeaderboard && (
-  <div className="leaderboard-wrapper">
-    <button
-  className="home-button"
-  onClick={() => {
-    localStorage.removeItem("campaign_id");
-    setCampaignId(null);
-    setGuesses(EMPTY_GRID);
-    navigate("/home");
-  }}
->
-<FontAwesomeIcon icon={faLandmark} />
-</button>
-    <Leaderboard onBack={handleBackToGame} />
-  </div>
-)}
-{/* Troop Modal */}
-{showTroopModal && (
-  <div className="troop-modal-overlay">
-    <div className="troop-modal">
-      <h2>🎖 Victory!</h2>
-      <p>You gained <strong>{troopsEarned}</strong> troops.</p>
-      <div className="modal-buttons">
-        <button onClick={() => setShowTroopModal(false)}>❌ Close</button>
-        <button onClick={() => {
-          setShowTroopModal(false);
-          handleShowLeaderboard();
-        }}>🏰 Go to Leaderboard</button>
+        {/* Screenshot Background */}
+        {(screenshotLeft && screenshotRight) && (
+          <div className="screenshot-overlay">
+            <img
+              src={screenshotLeft}
+              alt="Left Half"
+              className={`split-half left ${animating ? 'slide-left' : ''}`}
+              style={{ left: `${screenWidth / 2 - imageHalfWidth}px` }}
+            />
+            <img
+              src={screenshotRight}
+              alt="Right Half"
+              className={`split-half right ${animating ? 'slide-right' : ''}`}
+              style={{ left: `${screenWidth / 2}px` }}
+            />
+          </div>
+        )}
+  
+        {/* Leaderboard */}
+        {showLeaderboard && (
+          <div className="leaderboard-wrapper">
+            <button
+              className="home-button"
+              onClick={() => {
+                localStorage.removeItem("campaign_id");
+                setCampaignId(null);
+                setGuesses(EMPTY_GRID);
+                navigate("/home");
+              }}
+            >
+              <FontAwesomeIcon icon={faLandmark} />
+            </button>
+            <Leaderboard onBack={handleBackToGame} />
+          </div>
+        )}
+  
+        {/* Troop Modal */}
+        {showTroopModal && (
+          <div className="troop-modal-overlay">
+            <div className="troop-modal">
+              <h2>🎖 Victory!</h2>
+              <p>You gained <strong>{troopsEarned}</strong> troops.</p>
+              <div className="modal-buttons">
+                <button className="troop-btn close-btn" onClick={() => setShowTroopModal(false)}>❌ Close</button>
+                <button className="troop-btn leaderboard-btn" onClick={() => {
+                  setShowTroopModal(false);
+                  handleShowLeaderboard();
+                }}>🏰 Go to Leaderboard</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
-    </div>
-  </div>
-)}
     </div>
   );
   

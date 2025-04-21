@@ -1,0 +1,108 @@
+/* Base Header Styles */
+.header-container {
+  text-align: center;
+  font-family: 'Cinzel', serif;
+  color: #f4e9d8;
+  margin-bottom: 1%;
+  padding: 0 1rem;
+  box-sizing: border-box;
+}
+
+.header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.header-left {
+  flex: 1;
+  min-width: 250px;
+}
+
+.header-title {
+  font-size: 2rem;
+  color: #d4af7f;
+  margin-bottom: 0.3rem;
+}
+
+.campaign-info {
+  font-size: 1.2rem;
+  color: #e8d8b8;
+  margin-bottom: 0.2rem;
+}
+
+.countdown-timer {
+  font-size: 1.1rem;
+}
+
+/* Leaderboard Button */
+.leaderboard-toggle-btn {
+  margin-top: 1rem;
+  padding: 0.6rem 1.2rem;
+  background: linear-gradient(145deg, #3b2e2a, #5a453e);
+  border: 2px solid #c2a370;
+  border-radius: 8px;
+  color: #fef4e6;
+  font-family: 'Cinzel', serif;
+  font-size: 1.1rem;
+  cursor: pointer;
+  box-shadow: 2px 2px 6px rgba(0, 0, 0, 0.5);
+  transition: transform 0.2s ease-in-out, background 0.3s;
+}
+
+.leaderboard-toggle-btn:hover {
+  background: #715643;
+  transform: scale(1.05);
+}
+
+/* Mobile Responsive */
+@media (max-width: 600px) {
+  .header-title {
+    font-size: 1.6rem;
+  }
+
+  .campaign-info,
+  .countdown-timer {
+    font-size: 1rem;
+  }
+
+  .leaderboard-toggle-btn {
+    font-size: 1rem;
+    padding: 0.5rem 1rem;
+    width: 100%;
+  }
+}
+
+/* Tablet Responsive */
+@media (min-width: 601px) and (max-width: 900px) {
+  .header-title {
+    font-size: 1.8rem;
+  }
+
+  .campaign-info,
+  .countdown-timer {
+    font-size: 1.1rem;
+  }
+
+  .leaderboard-toggle-btn {
+    font-size: 1.05rem;
+  }
+}
+
+@media (max-width: 600px) {
+  .header-buttons {
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem; /* reduce vertical spacing */
+    margin-top: 0.75rem;
+  }
+
+  .header-buttons button,
+  .header-buttons .invite-share-button {
+    width: 100%;
+    max-width: 250px;
+    margin: 0; /* remove extra margin if any got inherited */
+  }
+}

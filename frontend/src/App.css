@@ -1,4 +1,11 @@
 /* App.css */
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&display=swap');
+
+body {
+  font-family: 'Cinzel', serif;
+}
+
+
 .screen-container {
   position: relative;
   overflow: hidden;
@@ -14,4 +21,5 @@
   50% { transform: translateX(-100%); }
   100% { transform: translateX(-100%); }
 }
+
 

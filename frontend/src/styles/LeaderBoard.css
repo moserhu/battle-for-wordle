@@ -1,16 +1,19 @@
 .leaderboard-container {
-   position: relative;
-     height: 100vh;
+  position: relative;
+  height: 100vh;
   width: 100vw;
-background-image: url('../assets/B4W_BG.png');
-background-size: cover;
+  background-image: url('../assets/B4W_BG.png');
+  background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
   display: flex;
-  justify-content: space-between;
+  justify-content: center; /* 🌟 centered content */
   align-items: center;
+  flex-wrap: wrap;
+  gap: 5vw; /* adds space between pie and panel */
+  padding: 5vh 5vw;
   animation: fadeInBackground 2s ease-in-out forwards;
-  opacity: 0; /* start fully transparent */
+  opacity: 0;
 }
 
 @keyframes fadeInBackground {
@@ -19,50 +22,117 @@ background-size: cover;
   }
 }
 
-
 .leaderboard-panel {
+  display: flex;
+  flex-direction: column;
+  background: rgba(46, 37, 28, 0.85);
+  padding: 32px;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 400px;
+  font-family: 'Cinzel', serif;
+  color: #f4e9d8;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+}
+
+
+.leaderboard-panel h2 {
+  font-size: 2rem;
+  color: #d4af7f;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.leaderboard-panel table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 1.1rem;
+}
+
+.leaderboard-panel th,
+.leaderboard-panel td {
+  padding: 10px;
+  border-bottom: 1px solid #a38457;
+  text-align: left;
+}
+
+.player-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #fff4e6;
+  word-break: break-word;
+}
+
+.color-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid #000;
+  box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.back-button {
+  margin-top: 24px;
+  background: linear-gradient(145deg, #3b2e2a, #5a453e);
+  border: 2px solid #c2a370;
+  border-radius: 8px;
+  color: #fef4e6;
+  font-family: 'Cinzel', serif;
+  font-size: 1.1rem;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: transform 0.1s ease-in-out, background 0.3s;
+  box-shadow: 2px 2px 6px rgba(0, 0, 0, 0.5);
+  align-self: center;
+}
+
+.back-button:hover {
+  background: #715643;
+  transform: scale(1.05);
+}
+
+
+.leaderboard-pie {
+  width: 35vw;
+  height: 35vw;
+  max-width: 500px;
+  max-height: 500px;
+  min-width: 250px;
+  min-height: 250px;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 50%;
+  border: 0.6vw solid #d4af7f;
+  padding: 2vw;
+  box-shadow: 0 0 1.5vw rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 📱 Responsive layout for small screens */
+@media (max-width: 768px) {
+  .leaderboard-container {
     flex-direction: column;
-    background-color: rgba(101, 177, 196, 0.85);
-    padding: 24px;
-    border-radius: 12px;
-    min-width: 5%;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-    margin-right: 10%;
-    margin-left: 10%;
-
-  }
-  
-  .leaderboard-panel table {
-    border-collapse: collapse;
-    width: 50%;
-  }
-  
-  .leaderboard-panel th,
-  .leaderboard-panel td {
-    padding: 15px;
-    text-align: left;
-    border-bottom: 1px solid #aaa;
-  }
-
-  .leaderboard-pie {
-    width: 400px;
-    height: 400px;
-    background: rgba(255, 255, 255, 0.8);
-    border-radius: 50%;
     padding: 20px;
-    box-shadow: 0 0 12px #000;
-    margin-left: 10%;
-    
+    gap: 30px;
+    align-items: center;
+  }
+
+  .leaderboard-panel {
+    width: auto;
+    max-width: 90vw;
+    padding: 5vw;
+    margin: 0 auto; /* ✅ center horizontally */
   }
   
-  table {
-    width: 100%;
-    color: white;
-    border-collapse: collapse;
+  .leaderboard-pie {
+    width: 70vw;
+    height: 70vw;
   }
-  
-  th, td {
-    padding: 8px;
-    border-bottom: 1px solid #999;
+
+  .back-button {
+    font-size: 1rem;
+    padding: 8px 14px;
   }
-  
+}

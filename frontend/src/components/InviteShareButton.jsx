@@ -9,7 +9,8 @@ export default function InviteShareButton() {
     navigator.clipboard.writeText(inviteCode);
     alert("Invite code copied!");
   };
-
+  
+//   // Check if the device supports the Web Share API
   const handleShare = async () => {
     if (navigator.share) {
       try {
@@ -29,7 +30,7 @@ export default function InviteShareButton() {
   return (
     <>
       <button className="invite-share-button" onClick={() => setShowModal(true)}>
-        Share Invite Code
+        Invite
       </button>
 
       {showModal && (
