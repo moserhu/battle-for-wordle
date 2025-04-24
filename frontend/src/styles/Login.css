@@ -14,7 +14,7 @@
   align-items: center;
   justify-content: flex-start;
   padding-top: 80px;
-  font-family: 'Garamond', serif;
+  font-family: 'Cinzel', serif;
 }
 
   
@@ -52,7 +52,7 @@
   
   .form-container {
     position: absolute;
-    top: 50%;
+    top: 40%;
     width: 100%;
     max-width: 400px;
   }
@@ -68,7 +68,7 @@
     box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
     max-width: 400px;
     margin: auto;
-    font-family: 'Garamond', serif;
+    font-family: 'Cinzel', serif;
   }
   
   .login-form h2 {
@@ -115,21 +115,6 @@
     text-align: center;
     margin-top: 10px;
   }
-
-  .login-title {
-    font-size: 3.2rem;
-    background: linear-gradient(to right, #f7e7b2, #d4af37, #b8860b);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    text-shadow:
-      1px 1px 0 #000,
-      2px 2px 4px rgba(0, 0, 0, 0.6),
-      0 0 10px rgba(255, 215, 0, 0.3);
-    font-family: 'Cinzel', serif;
-    letter-spacing: 2px;
-    margin-bottom: 20px;
-    text-align: center;
-  }
   
   
   /* Scale down for mobile */
@@ -169,7 +154,7 @@
   }
 
   .form-container {
-    top: 45%;
+    top: 35%;
     width: 90%;
     max-width: 360px;
     padding: 0 1rem;
@@ -200,11 +185,28 @@
   }
 
   .form-container {
-    top: 50%;
+    top: 30%;
   }
 }
 @media (max-width: 600px) {
   .login-page {
     background-attachment: scroll; /* fallback on mobile for smoother behavior */
   }
+}
+
+.small-link {
+  text-align: center;
+  font-size: 0.9rem;
+  color: #ddd;
+  margin-top: 10px;
+}
+
+.small-link a {
+  color: #f4e9d8;
+  text-decoration: underline;
+  font-weight: bold;
+}
+
+.small-link a:hover {
+  color: #d4af37;
 }

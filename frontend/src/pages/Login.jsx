@@ -1,32 +1,69 @@
 // src/pages/LoginPage.jsx
 import React, { useState } from 'react';
-import LoginForm from '../components/LoginForm';
-import RegisterForm from '../components/RegisterForm';
+import { useNavigate, Link } from 'react-router-dom';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons';
+import { useAuth } from '../auth/AuthProvider';
 import '../styles/Login.css';
 
-export default function LoginPage() {
-  const [mode, setMode] = useState('login'); // 'login' or 'register'
+export default function Login() {
+  const navigate = useNavigate();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+
+  const { login } = useAuth();
+
+  const handleLogin = async () => {
+    const res = await fetch('http://localhost:8000/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+  
+    const data = await res.json();
+  
+    if (res.ok) {
+      login(data.user, data.access_token); // <- this is the correct format now
+      navigate('/home');
+    }
+     else {
+      setError(data.detail || 'Login failed');
+    }
+  };
+  
 
   return (
     <div className="login-page">
-        <h1 className="login-title">Battle for Wordle</h1>
-      <div className="login-toggle">
-        <button
-          className={mode === 'login' ? 'active' : ''}
-          onClick={() => setMode('login')}
-        >
-          Login
-        </button>
-        <button
-          className={mode === 'register' ? 'active' : ''}
-          onClick={() => setMode('register')}
-        >
-          Register
-        </button>
-      </div>
-
       <div className="form-container">
-        {mode === 'login' ? <LoginForm /> : <RegisterForm />}
+        <div className="login-form">
+          <h2>Login</h2>
+          {error && <p className="error">{error}</p>}
+          <input
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Email"
+          />
+          <div className="password-input-wrapper">
+          <input
+           type={showPassword ? 'text' : 'password'}
+           value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Password"
+          />
+          <span
+            className="toggle-password"
+            onClick={() => setShowPassword((prev) => !prev)}
+          >
+         <FontAwesomeIcon icon={showPassword ? faEyeSlash : faEye} />
+        </span>
+          </div>
+          <button onClick={handleLogin}>Login</button>
+          <p className="small-link">
+          Don’t have an account? <Link to="/register">Register</Link>
+        </p>
+        </div>
       </div>
     </div>
   );

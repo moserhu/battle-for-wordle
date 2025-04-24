@@ -8,20 +8,29 @@ from collections import Counter
 import os
 from fastapi import HTTPException
 import json
+from jose import JWTError, jwt
+from datetime import timedelta
+import os
+from dotenv import load_dotenv
+import bcrypt
 
-DB = "game.db"
+# Load environment variables from .env file
+load_dotenv()
+
+DB = os.getenv("DB_PATH")
 
 def get_db():
     return sqlite3.connect(DB)
 
 
 def register_user(first_name, last_name, email, phone, password):
+    hashed_pw = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
     with get_db() as conn:
         try:
             conn.execute("""
                 INSERT INTO users (first_name, last_name, email, phone, password)
                 VALUES (?, ?, ?, ?, ?)
-            """, (first_name, last_name, email.lower(), phone, password))
+            """, (first_name, last_name, email.lower(), phone, hashed_pw))
             return {"status": "ok"}
         except sqlite3.IntegrityError as e:
             if "email" in str(e).lower():
@@ -32,17 +41,20 @@ def register_user(first_name, last_name, email, phone, password):
                 raise HTTPException(status_code=400, detail="Registration failed")
 
 
+
 def login_user(email, password):
     with get_db() as conn:
         user = conn.execute(
-            "SELECT id, first_name FROM users WHERE email = ? AND password = ?",
-            (email.lower(), password)
+            "SELECT id, first_name, password FROM users WHERE email = ?",
+            (email.lower(),)
         ).fetchone()
 
-        if user:
+        if user and bcrypt.checkpw(password.encode('utf-8'), user[2]):
             return {"user_id": user[0], "first_name": user[1]}
-        
+
         raise HTTPException(status_code=401, detail="Invalid credentials")
+
+
 
 def create_campaign(name, user_id):
     code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
@@ -399,3 +411,48 @@ def get_saved_progress(user_id: int, campaign_id: int):
         "game_over": 0
     }
 
+def handle_campaign_end(campaign_id: int):
+    with get_db() as conn:
+        # 1. Get winner by highest score
+        winner = conn.execute("""
+            SELECT user_id FROM campaign_members
+            WHERE campaign_id = ?
+            ORDER BY score DESC
+            LIMIT 1
+        """, (campaign_id,)).fetchone()
+
+        if winner:
+            conn.execute("""
+                UPDATE users
+                SET campaign_wins = campaign_wins + 1
+                WHERE id = ?
+            """, (winner[0],))
+
+        # 2. Reset campaign to start over
+        today = datetime.now(ZoneInfo("America/Chicago")).strftime("%Y-%m-%d")
+        conn.execute("UPDATE campaigns SET start_date = ? WHERE id = ?", (today, campaign_id))
+
+        # 3. Clear old campaign data
+        conn.execute("DELETE FROM campaign_guesses WHERE campaign_id = ?", (campaign_id,))
+        conn.execute("DELETE FROM campaign_guess_states WHERE campaign_id = ?", (campaign_id,))
+        conn.execute("DELETE FROM campaign_daily_progress WHERE campaign_id = ?", (campaign_id,))
+        conn.execute("UPDATE campaign_members SET score = 0 WHERE campaign_id = ?", (campaign_id,))
+
+        return {"status": "campaign reset", "new_start_date": today}
+
+
+def has_campaign_finished_for_day(campaign_id: int):
+    with get_db() as conn:
+        # Total members
+        total_members = conn.execute("""
+            SELECT COUNT(*) FROM campaign_members WHERE campaign_id = ?
+        """, (campaign_id,)).fetchone()[0]
+
+        # Total who completed today
+        today = datetime.now(ZoneInfo("America/Chicago")).strftime("%Y-%m-%d")
+        finished_today = conn.execute("""
+            SELECT COUNT(*) FROM campaign_daily_progress
+            WHERE campaign_id = ? AND date = ? AND completed = 1
+        """, (campaign_id, today)).fetchone()[0]
+
+        return finished_today >= total_members

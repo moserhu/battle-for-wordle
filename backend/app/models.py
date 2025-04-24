@@ -5,7 +5,6 @@ class GuessRequest(BaseModel):
 
 class GuessWithMeta(BaseModel):
     word: str
-    user_id: int
     campaign_id: int
 
 class UserLogin(BaseModel):

@@ -2,39 +2,62 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faUserCircle, faSignOutAlt } from '@fortawesome/free-solid-svg-icons';
+import { useAuth } from '../auth/AuthProvider';
 import '../styles/Home.css';
 
 export default function Home() {
   const navigate = useNavigate();
-  const [userId, setUserId] = useState(localStorage.getItem('user_id'));
   const [campaigns, setCampaigns] = useState([]);
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [inviteCode, setInviteCode] = useState('');
   const [campaignName, setCampaignName] = useState('');
 
+  const { user, token, logout, isAuthenticated, loading } = useAuth();
+
+  useEffect(() => {
+    if (!loading && (!isAuthenticated || !user?.user_id)) {
+      navigate('/login');
+    }
+  }, [isAuthenticated, user, loading, navigate]);
+  
   useEffect(() => {
     const fetchCampaigns = async () => {
-      if (!userId) return;
+      if (!user?.user_id) return;
+  
       const res = await fetch('http://localhost:8000/api/user/campaigns', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: parseInt(userId) }),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ user_id: user?.user_id })
       });
+  
       const data = await res.json();
       if (res.ok) {
         setCampaigns(data);
       }
     };
-    fetchCampaigns();
-  }, [userId]);
+  
+    if (!loading && token) {
+      fetchCampaigns();
+    }
+  }, [user, token, loading]);
+  
+  if (loading) return null; // <-- move this AFTER the hooks
+  
 
   const handleCreate = async () => {
     const res = await fetch('http://localhost:8000/api/campaign/create', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: campaignName, user_id: parseInt(userId) }),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ name: campaignName, user_id: user.user_id })
     });
+    
     const data = await res.json();
     if (res.ok) {
       localStorage.setItem('campaign_id', data.campaign_id);
@@ -48,9 +71,13 @@ export default function Home() {
   const handleJoin = async () => {
     const res = await fetch('http://localhost:8000/api/campaign/join', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ invite_code: inviteCode, user_id: parseInt(userId) }),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ invite_code: inviteCode, user_id: user.user_id })
     });
+    
     const data = await res.json();
     if (res.ok) {
       localStorage.setItem('campaign_id', data.campaign_id);
@@ -60,34 +87,25 @@ export default function Home() {
     }
   };
 
-  const logout = () => {
-    localStorage.clear();
-    setUserId(null);
-    setCampaigns([]);
-    setInviteCode('');
-    setCampaignName('');
-    navigate('/login');
-  };
-
   return (
     <div className="home-wrapper">
-      {userId && (
+      {user && (
           <div className="top-buttons">
             <button className="account-button" onClick={() => navigate('/account')}>
               <FontAwesomeIcon icon={faUserCircle} />
             </button>
             <button className="logout-button" onClick={logout}>
-              <FontAwesomeIcon icon={faSignOutAlt} />
+           <FontAwesomeIcon icon={faSignOutAlt} />
             </button>
           </div>
         )}
       <div className="home-container">
         
-        <h1>Battle for Wordle</h1>
+        <h1 className='main-title'>Battle for Wordle</h1>
   
-        {userId ? (
+        {user ? (
           <>
-            <h2>Welcome, {localStorage.getItem('first_name') || 'Player'}!</h2>
+            <h2 className='sub-main-title'>Welcome, {user?.first_name || 'Player'}!</h2>
             <div className="campaign-actions">
               <button onClick={() => setShowJoinModal(true)}>Join Campaign</button>
               <button onClick={() => setShowCreateModal(true)}>Create Campaign</button>

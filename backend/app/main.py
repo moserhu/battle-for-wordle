@@ -2,6 +2,10 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from app import models, crud
 from app.models import CampaignOnly
+from fastapi import Depends
+from app.auth import get_current_user
+from app.auth import create_access_token
+from app.models import UserOnly, UpdateUserInfo
 
 app = FastAPI()
 
@@ -12,13 +16,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 @app.post("/api/word/reveal")
 def reveal_word(data: models.CampaignOnly):
     return {"word": crud.get_daily_word(data.campaign_id)}
 
 @app.post("/api/guess")
-def guess_with_meta(data: models.GuessWithMeta):
-    return crud.validate_guess(data.word, data.user_id, data.campaign_id)
+def guess_with_meta(data: models.GuessWithMeta, current_user: dict = Depends(get_current_user)):
+    return crud.validate_guess(data.word, current_user["user_id"], data.campaign_id)
 
 @app.post("/api/leaderboard")
 def get_leaderboard(data: CampaignOnly):
@@ -37,35 +42,42 @@ def register(user: models.UserRegister):
 
 @app.post("/api/login")
 def login(user: models.UserLogin):
-    return crud.login_user(user.email, user.password)
-
+    user_data = crud.login_user(user.email, user.password)
+    token = create_access_token({"user_id": user_data["user_id"]})
+    return {"access_token": token, "user": user_data}
 
 @app.post("/api/campaign/create")
-def create_campaign(camp: models.NewCampaign):
-    return crud.create_campaign(camp.name, camp.user_id)
+def create_campaign(camp: models.NewCampaign, current_user: dict = Depends(get_current_user)):
+    return crud.create_campaign(camp.name, current_user["user_id"])
 
 @app.post("/api/campaign/join")
-def join_campaign(data: models.JoinCampaign):
-    return crud.join_campaign(data.invite_code, data.user_id)
+def join_campaign(data: models.JoinCampaign, current_user: dict = Depends(get_current_user)):
+    return crud.join_campaign(data.invite_code, current_user["user_id"])
 
 @app.post("/api/campaign/progress")
 def get_campaign_progress(data: CampaignOnly):
     return crud.get_campaign_progress(data.campaign_id)
 
-@app.post("/api/user/campaigns")
-def user_campaigns(data: models.UserOnly):
-    return crud.get_user_campaigns(data.user_id)
+@app.post("/api/campaign/end")
+def end_campaign(data: CampaignOnly):
+    return crud.handle_campaign_end(data.campaign_id)
 
 @app.post("/api/game/state")
-def fetch_game_state(data: models.CampaignAndUserOnly):
-    return crud.get_saved_progress(data.user_id, data.campaign_id) or {}
+def fetch_game_state(data: models.CampaignOnly, current_user: dict = Depends(get_current_user)):
+    return crud.get_saved_progress(current_user["user_id"], data.campaign_id)
 
-from app.models import UserOnly, UpdateUserInfo
+@app.get("/api/user/info")
+def get_user_info(current_user: dict = Depends(get_current_user)):
+    return crud.get_user_info(current_user["user_id"])
 
-@app.post("/api/user/info")
-def get_user_info(data: UserOnly):
-    return crud.get_user_info(data.user_id)
+@app.post("/api/user/campaigns")
+def user_campaigns(current_user: dict = Depends(get_current_user)):
+    return crud.get_user_campaigns(current_user["user_id"])
 
 @app.post("/api/user/update")
-def update_user(data: UpdateUserInfo):
-    return crud.update_user_info(data.user_id, data.first_name, data.last_name, data.phone)
+def update_user(data: UpdateUserInfo, current_user: dict = Depends(get_current_user)):
+    return crud.update_user_info(current_user["user_id"], data.first_name, data.last_name, data.phone)
+
+@app.post("/api/campaign/finished_today")
+def check_finished_today(data: CampaignOnly):
+    return {"ended": crud.has_campaign_finished_for_day(data.campaign_id)}

@@ -48,7 +48,24 @@
   .main-title {
     font-size: 2.5rem;
     margin-bottom: 20px;
-    color: #d4af7f;
+    background: linear-gradient(to right, #f7e7b2, #d4af37, #b8860b);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow:
+      1px 1px 0 #be1f1f,
+      2px 2px 4px rgba(0, 0, 0, 0.6),
+      0 0 10px rgba(255, 215, 0, 0.3);
+  }
+
+  .sub-main-title {
+    font-size: 1.5rem;
+    background: linear-gradient(to right, #f7e7b2, #d4af37, #b8860b);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow:
+      1px 1px 0 #be1f1f,
+      2px 2px 4px rgba(0, 0, 0, 0.6),
+      0 0 10px rgba(255, 215, 0, 0.3);
   }
   
   .top-buttons {

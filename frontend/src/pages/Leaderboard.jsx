@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Pie } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
+import throneBackground from '../assets/throne_background.png'; // adjust path if needed
 import '../styles/LeaderBoard.css'; 
 
 ChartJS.register(ArcElement, Tooltip, Legend);
@@ -8,6 +9,8 @@ ChartJS.register(ArcElement, Tooltip, Legend);
 export default function Leaderboard({ onBack }) {
   const [data, setData] = useState([]);
   const campaign_id = parseInt(localStorage.getItem("campaign_id"));
+  const [declaredWinner, setDeclaredWinner] = useState(null);
+
 
   useEffect(() => {
     const fetchLeaderboard = async () => {
@@ -16,11 +19,20 @@ export default function Leaderboard({ onBack }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ campaign_id }),
       });
-
+  
       const json = await res.json();
       setData(json);
-    };
+  
+      // 👑 Check for declared winner
+      const campaignEndedFlag = localStorage.getItem("campaign_ended") === "true";
 
+    if (campaignEndedFlag && json.length > 0) {
+    const sorted = [...json].sort((a, b) => b.score - a.score);
+    setDeclaredWinner(sorted[0]);
+        }
+
+    };
+  
     fetchLeaderboard();
   }, [campaign_id]);
 
@@ -65,10 +77,22 @@ export default function Leaderboard({ onBack }) {
   };
   
 
-  return (
+  return declaredWinner ? (
+    <div
+      className="declared-winner-screen"
+      style={{ backgroundImage: `url(${throneBackground})` }}
+    >
+      <div className="winner-content">
+        <h1>👑 Declared Ruler</h1>
+        <h2>{declaredWinner.username}</h2>
+        <p>🏅 Troops: {declaredWinner.score}</p>
+        <button className="back-button" onClick={onBack}> Back to Battle</button>
+      </div>
+    </div>
+  ) : (
     <div className="leaderboard-container">
       <div className="leaderboard-pie">
-      <Pie data={chartData} options={chartOptions} />
+        <Pie data={chartData} options={chartOptions} />
       </div>
       <div className="leaderboard-panel">
         <h2>🏆 Leaderboard</h2>
@@ -80,21 +104,24 @@ export default function Leaderboard({ onBack }) {
             </tr>
           </thead>
           <tbody>
-  {data.map((entry, i) => (
-    <tr key={i}>
-      <td className="player-cell">
-        <div className="color-swatch" style={{ backgroundColor: colorMap[entry.username] }}></div>
-        {entry.username}
-      </td>
-      <td>{entry.score}</td>
-    </tr>
-  ))}
-</tbody>
+            {data.map((entry, i) => (
+              <tr key={i}>
+                <td className="player-cell">
+                  <div
+                    className="color-swatch"
+                    style={{ backgroundColor: colorMap[entry.username] }}
+                  ></div>
+                  {entry.username}
+                </td>
+                <td>{entry.score}</td>
+              </tr>
+            ))}
+          </tbody>
         </table>
-        <button className="back-button" onClick={onBack}> Back to Battle</button>
+        <button className="back-button" onClick={onBack}>
+          Back to Battle
+        </button>
       </div>
-
-      
     </div>
-  );
+  );  
 }

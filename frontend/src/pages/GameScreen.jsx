@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import html2canvas from 'html2canvas';
 import Header from '../components/Header';
 import WordGrid from '../components/WordGrid';
@@ -9,31 +9,46 @@ import '../styles/GameScreen.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faLandmark } from "@fortawesome/free-solid-svg-icons";
 import confetti from 'canvas-confetti';
+import { useAuth } from '../auth/AuthProvider';
 
 
 const EMPTY_GRID = Array.from({ length: 6 }, () => Array(5).fill(""));
 
+function getTimeUntilCutoffCT() {
+  const now = new Date();
+  const nowCT = new Date(now.toLocaleString("en-US", { timeZone: "America/Chicago" }));
+  const cutoff = new Date(nowCT);
+  cutoff.setHours(20, 0, 0, 0); // 8 PM CT
+  return getCountdownFrom(nowCT, cutoff);
+}
+
 function getTimeUntilMidnightCT() {
   const now = new Date();
-
-  // Convert local time to Central Time
   const nowCT = new Date(now.toLocaleString("en-US", { timeZone: "America/Chicago" }));
+  const midnight = new Date(nowCT);
+  midnight.setHours(24, 0, 0, 0);
+  return getCountdownFrom(nowCT, midnight);
+}
 
-  const midnightCT = new Date(nowCT);
-  midnightCT.setHours(24, 0, 0, 0); // next midnight
+function getCountdownFrom(now, target) {
+  const diffMs = Math.max(target - now, 0);
+  return {
+    hours: Math.floor(diffMs / (1000 * 60 * 60)),
+    minutes: Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60)),
+    seconds: Math.floor((diffMs % (1000 * 60)) / 1000),
+  };
+}
 
-  const diffMs = Math.max(midnightCT - nowCT, 0);
 
-  const hours = Math.floor(diffMs / (1000 * 60 * 60));
-  const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-  const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
-
-  return { hours, minutes, seconds };
+function isFinalCampaignDay(campaignDay) {
+  return campaignDay && campaignDay.day === campaignDay.total;
 }
 
 
 export default function GameScreen() {
   const navigate = useNavigate();
+  const { user, isAuthenticated, loading } = useAuth();
+
   const [campaignId, setCampaignId] = useState(null);
   const [guesses, setGuesses] = useState(EMPTY_GRID);
   const [results, setResults] = useState(Array(6).fill(null));
@@ -42,7 +57,9 @@ export default function GameScreen() {
   const [gameOver, setGameOver] = useState(false);
   const [letterStatus, setLetterStatus] = useState({});
   const [campaignDay, setCampaignDay] = useState(null);
-  const [countdown, setCountdown] = useState(getTimeUntilMidnightCT());
+  const [cutoffCountdown, setCutoffCountdown] = useState(getTimeUntilCutoffCT());
+  const [midnightCountdown, setMidnightCountdown] = useState(getTimeUntilMidnightCT());
+  const [campaignEnded, setCampaignEnded] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
   const [animating, setAnimating] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
@@ -53,10 +70,18 @@ export default function GameScreen() {
   const [fadingBackIn, setFadingBackIn] = useState(false);
   const [showTroopModal, setShowTroopModal] = useState(false);
   const [troopsEarned, setTroopsEarned] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [loadingLeaderboard, setLoadingLeaderboard] = useState(true);
   
-
   useEffect(() => {
+    if (!loading && !isAuthenticated) {
+      navigate('/login');
+    }
+  }, [isAuthenticated, loading, navigate]);
+  
+  
+  useEffect(() => {
+    if (loading) return;
+
     const storedId = localStorage.getItem("campaign_id");
     if (!storedId) {
       navigate("/home");
@@ -67,7 +92,7 @@ export default function GameScreen() {
     setCampaignId(id);
 
     const resetAndFetch = async () => {
-      setLoading(true);
+      setLoadingLeaderboard(true);
       setGuesses(EMPTY_GRID);
       setResults(Array(6).fill(null));
       setCurrentRow(0);
@@ -80,14 +105,20 @@ export default function GameScreen() {
       const [dayRes, stateRes] = await Promise.all([
         fetch("http://localhost:8000/api/campaign/progress", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
           body: JSON.stringify({ campaign_id: id }),
         }),
         fetch("http://localhost:8000/api/game/state", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ user_id: parseInt(localStorage.getItem("user_id")), campaign_id: id }),
-        }),
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          body: JSON.stringify({ campaign_id: id }), // no need for user_id anymore
+        }),              
       ]);
 
       const campaignDay = await dayRes.json();
@@ -113,11 +144,11 @@ export default function GameScreen() {
     const nextCol = guessRow.findIndex((l) => l === "");
     setCurrentCol(nextCol === -1 ? 5 : nextCol);
 
-      setLoading(false);
+      setLoadingLeaderboard(false);
     };
 
     resetAndFetch();
-  }, [navigate]);
+  }, [user, loading, navigate]);
 
   
   useEffect(() => {
@@ -127,15 +158,75 @@ export default function GameScreen() {
   }, []);
   
 
-  //function to get the time until midnight CT
+  const checkIfCampaignShouldEnd = useCallback(async () => {
+    const res = await fetch("http://localhost:8000/api/campaign/finished_today", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+      body: JSON.stringify({ campaign_id: campaignId }),
+    });
+  
+    const data = await res.json();
+    if (data.ended) {
+      localStorage.setItem("campaign_ended", "true");
+      setCampaignEnded(true);
+    }
+  }, [campaignId]);
+
   useEffect(() => {
-    const interval = setInterval(() => {
-      const newCountdown = getTimeUntilMidnightCT();
-      if (newCountdown.hours === 0 && newCountdown.minutes === 0 && newCountdown.seconds === 0) window.location.reload();
-      setCountdown(newCountdown);
+    const interval = setInterval(async () => {
+      const isFinalDay = isFinalCampaignDay(campaignDay);
+  
+      const newCutoffCountdown = getTimeUntilCutoffCT();
+      const newMidnightCountdown = getTimeUntilMidnightCT();
+  
+      if (isFinalDay && !campaignEnded) {
+        await checkIfCampaignShouldEnd(); // 🔥 Check early-end eligibility
+      }
+      
+      if (
+        isFinalDay &&
+        newCutoffCountdown.hours === 0 &&
+        newCutoffCountdown.minutes === 0 &&
+        newCutoffCountdown.seconds === 0 &&
+        !campaignEnded
+      ) {
+        setCampaignEnded(true);
+      }
+  
+      if (
+        newMidnightCountdown.hours === 0 &&
+        newMidnightCountdown.minutes === 0 &&
+        newMidnightCountdown.seconds === 0
+      ) {
+        if (isFinalDay) {
+          try {
+            await fetch("http://localhost:8000/api/campaign/end", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+              },
+              body: JSON.stringify({ campaign_id: campaignId }),
+            });
+          } catch (err) {
+            console.error("Failed to end campaign:", err);
+          }
+
+        }
+        window.location.reload();
+      }
+  
+      setCutoffCountdown(newCutoffCountdown);
+      setMidnightCountdown(newMidnightCountdown);
     }, 1000);
+  
     return () => clearInterval(interval);
-  }, []);
+  }, [campaignDay, campaignId, campaignEnded, checkIfCampaignShouldEnd]);
+  
+  
   
   
   const screenRef = useRef();  
@@ -150,21 +241,23 @@ export default function GameScreen() {
     if (currentRow >= 6 || gameOver) return;
   
     const guess = guesses[currentRow].join("");
-    const user_id = parseInt(localStorage.getItem("user_id"));
     const campaign_id = parseInt(localStorage.getItem("campaign_id"));
-  
+    const user_id = user?.user_id;
+
     if (!user_id || !campaign_id || guess.length !== 5) {
-      console.warn("Missing user_id, campaign_id, or incomplete guess");
+      console.warn("Missing user info, campaign ID, or guess too short");
       return;
-    }
-  
+    }    
     try {
       const res = await fetch("http://localhost:8000/api/guess", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ word: guess, user_id, campaign_id }),
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify({ word: guess, campaign_id }),
       });
-  
+      
       if (!res.ok) {
         const error = await res.json();
         if (error.detail === "Invalid word") {
@@ -237,8 +330,9 @@ export default function GameScreen() {
   };  
 
   
+  
   const handleKeyPress = (key) => {
-    if (gameOver) return;
+    if (gameOver || campaignEnded) return;
   
     // Clear error on any input
     if (errorMsg) setErrorMsg(null);
@@ -357,9 +451,17 @@ export default function GameScreen() {
             >
               <FontAwesomeIcon icon={faLandmark} />
             </button>
-            <Header campaignDay={campaignDay} countdown={countdown} onToggleLeaderboard={handleShowLeaderboard} />
+            <Header
+              campaignDay={campaignDay}
+              cutoffCountdown={cutoffCountdown}
+              midnightCountdown={midnightCountdown}
+              isFinalDay={isFinalCampaignDay(campaignDay)}
+              campaignEnded={campaignEnded}
+              onToggleLeaderboard={handleShowLeaderboard}
+            />
+
             {errorMsg && <div className="error-msg">{errorMsg}</div>}
-            {!loading && (
+            {!loadingLeaderboard && (
               <>
                 <WordGrid guesses={guesses} results={results} currentRow={currentRow} currentCol={currentCol} />
                 <Keyboard onKeyPress={handleKeyPress} letterStatus={letterStatus} />

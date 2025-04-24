@@ -3,7 +3,14 @@ import React from 'react';
 import '../styles/Header.css';
 import InviteShareButton from './InviteShareButton';
 
-export default function Header({ campaignDay, countdown, onToggleLeaderboard }) {
+export default function Header({
+  campaignDay,
+  cutoffCountdown,
+  midnightCountdown,
+  isFinalDay,
+  campaignEnded,
+  onToggleLeaderboard
+}) {
   return (
     <div className="header-container">
   <div className="header-row">
@@ -15,10 +22,15 @@ export default function Header({ campaignDay, countdown, onToggleLeaderboard }) 
           Day {campaignDay.day} of {campaignDay.total} • Campaign: <strong>{campaignDay.name}</strong>
         </p>
       )}
-
-      <p className="countdown-timer">
-        ⏳ Next word in: {countdown.hours}h {countdown.minutes}m {countdown.seconds}s
-      </p>
+        {campaignEnded ? (
+  <p className="countdown-timer">
+    🏁 Campaign ended — new campaign begins in: {midnightCountdown.hours}h {midnightCountdown.minutes}m {midnightCountdown.seconds}s
+  </p>
+) : (
+  <p className="countdown-timer">
+    ⏳ {isFinalDay ? "Campaign ends in" : "Next word in"}: {cutoffCountdown.hours}h {cutoffCountdown.minutes}m {cutoffCountdown.seconds}s
+  </p>
+)}
 
       {/* ⚔ Both buttons grouped here */}
       <div className="header-buttons">
