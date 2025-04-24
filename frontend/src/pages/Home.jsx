@@ -61,7 +61,6 @@ export default function Home() {
     const data = await res.json();
     if (res.ok) {
       localStorage.setItem('campaign_id', data.campaign_id);
-      alert(`Invite code: ${data.invite_code}`);
       navigate('/game');
     } else {
       alert(data.detail || 'Create failed');

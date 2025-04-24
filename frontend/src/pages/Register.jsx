@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons';
 import '../styles/Register.css';
@@ -8,6 +8,9 @@ export default function Register() {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
 
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const redirectTo = searchParams.get("redirectTo") || "/home";
 
   const [form, setForm] = useState({
     email: '',
@@ -33,14 +36,28 @@ export default function Register() {
 
     if (res.ok) {
       setMessage('✅ Registered! Redirecting to login...');
-      setTimeout(() => {
-        navigate('/login');
-      }, 1500); // Delay for user to see success
+        setTimeout(() => {
+          navigate(`/login?redirectTo=${encodeURIComponent(redirectTo)}`);
+        }, 1500);        
     } else {
       setMessage(data.detail || 'Registration failed');
     }
   };
 
+  const formatPhoneInput = (value) => {
+    const cleaned = value.replace(/\D/g, '').slice(0, 10);
+    const match = cleaned.match(/^(\d{0,3})(\d{0,3})(\d{0,4})$/);
+  
+    if (!match) return value;
+  
+    const [, area, middle, last] = match;
+    if (area && middle && last) return `(${area}) ${middle}-${last}`;
+    if (area && middle) return `(${area}) ${middle}`;
+    if (area) return `(${area}`;
+    return '';
+  };
+  
+  
   return (
     <div className="login-page">
       <div className="form-container">
@@ -66,9 +83,13 @@ export default function Register() {
           />
           <input
             name="phone"
-            placeholder="Phone"
-            value={form.phone}
-            onChange={handleChange}
+            placeholder="(###) ###-####"
+            value={formatPhoneInput(form.phone)}
+            onChange={(e) => {
+              const cleaned = e.target.value.replace(/\D/g, '').slice(0, 10); // Only digits, max 10
+              setForm((prev) => ({ ...prev, phone: cleaned }));
+            }}
+            maxLength={14}
           />
           <input
             name="email"

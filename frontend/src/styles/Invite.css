@@ -1,0 +1,96 @@
+/* Root Invite Screen */
+.invite-screen {
+  height: 100vh;
+  width: 100vw;
+  background-image: url('../assets/parchment_texture.png'); 
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 5vh 5vw;
+  font-family: 'Cinzel', serif;
+  box-sizing: border-box;
+}
+
+/* Invite Box */
+.invite-box {
+  background: rgba(0, 0, 0, 0.7);
+  padding: 5vh 5vw;
+  border-radius: 20px;
+  color: #fef4e6;
+  text-align: center;
+  max-width: 500px;
+  width: 100%;
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+  box-sizing: border-box;
+}
+
+.invite-box h1 {
+  font-size: 2.2rem;
+  margin-bottom: 1rem;
+}
+
+.campaign-name {
+  font-size: 1.1rem;
+  margin-bottom: 1rem;
+}
+
+/* Buttons */
+.invite-buttons {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-top: 20px;
+}
+
+.invite-buttons button {
+  padding: 12px 20px;
+  border: none;
+  border-radius: 10px;
+  background: #d4af7f;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+  flex: 1 1 45%;
+  max-width: 180px;
+}
+
+.invite-buttons button:hover {
+  transform: scale(1.05);
+}
+
+.accept-btn,
+.decline-btn {
+  background: #5a3d2b;
+  color: white;
+}
+
+.error-msg {
+  color: #ff7b7b;
+  margin-top: 10px;
+  font-size: 0.95rem;
+}
+
+/* 📱 Responsive Adjustments */
+@media (max-width: 500px) {
+  .invite-box h1 {
+    font-size: 1.8rem;
+  }
+
+  .campaign-name {
+    font-size: 1rem;
+  }
+
+  .invite-buttons {
+    gap: 10px;
+  }
+
+  .invite-buttons button {
+    width: 100%;
+    font-size: 1rem;
+  }
+}

@@ -59,13 +59,23 @@ def login_user(email, password):
 def create_campaign(name, user_id):
     code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
     today = datetime.now().strftime("%Y-%m-%d")
+
     with get_db() as conn:
-        conn.execute("INSERT INTO campaigns (name, owner_id, invite_code, start_date) VALUES (?, ?, ?, ?)",
-                     (name, user_id, code, today))
+        conn.execute("""
+            INSERT INTO campaigns (name, owner_id, invite_code, start_date)
+            VALUES (?, ?, ?, ?)
+        """, (name, user_id, code, today))
+
         camp_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+
         conn.execute("INSERT INTO campaign_members (user_id, campaign_id) VALUES (?, ?)", (user_id, camp_id))
         conn.execute("UPDATE users SET campaigns = campaigns + 1 WHERE id = ?", (user_id,))
-        return {"campaign_id": camp_id, "invite_code": code}
+
+    # 💡 Initialize words for the new campaign
+    initialize_campaign_words(camp_id, 5)  # or make this configurable later
+
+    return {"campaign_id": camp_id, "invite_code": code}
+
 
 def join_campaign(invite_code, user_id):
     with get_db() as conn:
@@ -89,11 +99,35 @@ def join_campaign(invite_code, user_id):
 
         conn.execute(
             "INSERT INTO campaign_members (user_id, campaign_id) VALUES (?, ?)",
-        conn.execute("UPDATE users SET campaigns = campaigns + 1 WHERE id = ?", (user_id,))
             (user_id, campaign_id)
         )
+
+        conn.execute(
+            "UPDATE users SET campaigns = campaigns + 1 WHERE id = ?",
+            (user_id,)
+        )
+
         return {"message": "Joined campaign", "campaign_id": campaign_id}
 
+def join_campaign_by_id(campaign_id, user_id):
+    with get_db() as conn:
+        already_in = conn.execute(
+            "SELECT 1 FROM campaign_members WHERE user_id = ? AND campaign_id = ?",
+            (user_id, campaign_id)
+        ).fetchone()
+
+        if already_in:
+            return {"message": "Already joined"}
+
+        conn.execute(
+            "INSERT INTO campaign_members (user_id, campaign_id) VALUES (?, ?)",
+            (user_id, campaign_id)
+        )
+        conn.execute(
+            "UPDATE users SET campaigns = campaigns + 1 WHERE id = ?",
+            (user_id,)
+        )
+        return {"message": "Joined campaign", "campaign_id": campaign_id}
 
 
 def get_user_campaigns(user_id: int):
@@ -167,28 +201,50 @@ def load_valid_words():
 
 VALID_WORDS = load_valid_words()
 
+def load_playable_words():
+    base_dir = os.path.dirname(__file__)
+    wordlist_path = os.path.join(base_dir, "data", "playablewordlist.txt")
+    with open(wordlist_path, "r") as f:
+        return [line.strip().lower() for line in f if line.strip()]
 
+def initialize_campaign_words(campaign_id: int, num_days: int):
+    words = load_playable_words()
+    if len(words) < num_days:
+        raise HTTPException(status_code=400, detail="Not enough words in wordlist")
 
-#word list and the daily word function
-WORDLIST = ["apple", "stone", "ghost", "liver", "brave", "quest", "flame", "crown", "witch", "armor"]
+    selected_words = random.sample(words, num_days)
+
+    with get_db() as conn:
+        for day, word in enumerate(selected_words, start=1):
+            conn.execute(
+                "INSERT INTO campaign_words (campaign_id, day, word) VALUES (?, ?, ?)",
+                (campaign_id, day, word)
+            )
 
 def get_daily_word(campaign_id: int):
+    today = datetime.now(ZoneInfo("America/Chicago")).date()
+
     with get_db() as conn:
         row = conn.execute(
             "SELECT start_date FROM campaigns WHERE id = ?",
             (campaign_id,)
         ).fetchone()
-    
-    if not row:
-        raise HTTPException(status_code=404, detail="Campaign not found")
+        if not row:
+            raise HTTPException(status_code=404, detail="Campaign not found")
 
-    start_date = datetime.strptime(row[0], "%Y-%m-%d").date()
-    today = datetime.now(ZoneInfo("America/Chicago")).date()
-    delta_days = (today - start_date).days
+        start_date = datetime.strptime(row[0], "%Y-%m-%d").date()
+        delta_days = (today - start_date).days
+        day = delta_days + 1  # Day 1-based
 
-    index = delta_days % len(WORDLIST)
-    return WORDLIST[index]
+        word_row = conn.execute(
+            "SELECT word FROM campaign_words WHERE campaign_id = ? AND day = ?",
+            (campaign_id, day)
+        ).fetchone()
 
+    if not word_row:
+        raise HTTPException(status_code=404, detail="No word assigned for today")
+
+    return word_row[0]
 
 
 def validate_guess(word: str, user_id: int, campaign_id: int):
@@ -223,6 +279,22 @@ def validate_guess(word: str, user_id: int, campaign_id: int):
 
     correct = all(r == 'correct' for r in result)
     today = datetime.now(ZoneInfo("America/Chicago")).strftime("%Y-%m-%d")
+        # Check if it's past 8 PM on the final day
+    with get_db() as conn:
+        start_row = conn.execute("SELECT start_date FROM campaigns WHERE id = ?", (campaign_id,)).fetchone()
+        if not start_row:
+            raise HTTPException(status_code=404, detail="Campaign not found")
+
+        start_date = datetime.strptime(start_row[0], "%Y-%m-%d").date()
+        today_date = datetime.now(ZoneInfo("America/Chicago")).date()
+        delta_days = (today_date - start_date).days
+
+        is_final_day = (delta_days + 1) == 5  # Final day is day 5
+        now_ct = datetime.now(ZoneInfo("America/Chicago"))
+        cutoff_time = now_ct.replace(hour=20, minute=0, second=0, microsecond=0)
+
+        if is_final_day and now_ct >= cutoff_time:
+            raise HTTPException(status_code=403, detail="Campaign ended for the day. No more guesses allowed after 8 PM.")
 
     with get_db() as conn:
         # Fetch existing progress
@@ -437,7 +509,9 @@ def handle_campaign_end(campaign_id: int):
         conn.execute("DELETE FROM campaign_guess_states WHERE campaign_id = ?", (campaign_id,))
         conn.execute("DELETE FROM campaign_daily_progress WHERE campaign_id = ?", (campaign_id,))
         conn.execute("UPDATE campaign_members SET score = 0 WHERE campaign_id = ?", (campaign_id,))
-
+        conn.execute("DELETE FROM campaign_words WHERE campaign_id = ?", (campaign_id,))
+        # Reinitialize for a new cycle of 5 days (or allow dynamic later)
+        initialize_campaign_words(campaign_id, 5)
         return {"status": "campaign reset", "new_start_date": today}
 
 
@@ -456,3 +530,55 @@ def has_campaign_finished_for_day(campaign_id: int):
         """, (campaign_id, today)).fetchone()[0]
 
         return finished_today >= total_members
+
+def delete_campaign(campaign_id: int, requester_id: int):
+    with get_db() as conn:
+        owner_check = conn.execute("SELECT owner_id FROM campaigns WHERE id = ?", (campaign_id,)).fetchone()
+        if not owner_check or owner_check[0] != requester_id:
+            raise HTTPException(status_code=403, detail="Only the campaign owner can delete this campaign")
+
+        conn.execute("DELETE FROM campaigns WHERE id = ?", (campaign_id,))
+        conn.execute("DELETE FROM campaign_members WHERE campaign_id = ?", (campaign_id,))
+        conn.execute("DELETE FROM campaign_guesses WHERE campaign_id = ?", (campaign_id,))
+        conn.execute("DELETE FROM campaign_guess_states WHERE campaign_id = ?", (campaign_id,))
+        conn.execute("DELETE FROM campaign_daily_progress WHERE campaign_id = ?", (campaign_id,))
+        conn.execute("DELETE FROM campaign_words WHERE campaign_id = ?", (campaign_id,)) 
+        return {"status": "deleted"}
+
+
+def kick_player_from_campaign(campaign_id: int, target_user_id: int, requester_id: int):
+    with get_db() as conn:
+        owner_check = conn.execute("SELECT owner_id FROM campaigns WHERE id = ?", (campaign_id,)).fetchone()
+        if not owner_check or owner_check[0] != requester_id:
+            raise HTTPException(status_code=403, detail="Only the campaign owner can kick players")
+
+        conn.execute("DELETE FROM campaign_members WHERE campaign_id = ? AND user_id = ?", (campaign_id, target_user_id))
+        return {"status": "kicked"}
+
+def get_campaigns_by_owner(owner_id: int):
+    with get_db() as conn:
+        rows = conn.execute("""
+            SELECT id, name FROM campaigns WHERE owner_id = ?
+        """, (owner_id,)).fetchall()
+
+    return [{"id": row[0], "name": row[1]} for row in rows]
+
+def get_campaign_members(campaign_id: int, requester_id: int):
+    with get_db() as conn:
+        owner = conn.execute(
+            "SELECT owner_id FROM campaigns WHERE id = ?", 
+            (campaign_id,)
+        ).fetchone()
+
+        if not owner or owner[0] != requester_id:
+            raise HTTPException(status_code=403, detail="You are not the owner of this campaign")
+
+        rows = conn.execute("""
+            SELECT u.id, u.first_name || ' ' || u.last_name
+            FROM campaign_members cm
+            JOIN users u ON cm.user_id = u.id
+            WHERE cm.campaign_id = ? AND u.id != ?
+        """, (campaign_id, requester_id)).fetchall()
+
+        return [{"user_id": r[0], "name": r[1]} for r in rows]
+

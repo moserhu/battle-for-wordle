@@ -80,6 +80,7 @@ export default function GameScreen() {
   
   
   useEffect(() => {
+    localStorage.removeItem("campaign_ended"); 
     if (loading) return;
 
     const storedId = localStorage.getItem("campaign_id");
@@ -126,6 +127,8 @@ export default function GameScreen() {
       console.log("Fetched game state:", progress);
       setCampaignDay(campaignDay);
       localStorage.setItem("invite_code", campaignDay.invite_code);
+      localStorage.setItem("campaign_name", campaignDay.name);
+
 
       const validGuesses = Array.isArray(progress.guesses) && progress.guesses.length === 6
   ? progress.guesses.map(row => Array.isArray(row) && row.length === 5 ? row : Array(5).fill("")) 
@@ -182,9 +185,10 @@ export default function GameScreen() {
       const newCutoffCountdown = getTimeUntilCutoffCT();
       const newMidnightCountdown = getTimeUntilMidnightCT();
   
-      if (isFinalDay && !campaignEnded) {
-        await checkIfCampaignShouldEnd(); // 🔥 Check early-end eligibility
+      if (isFinalDay && !campaignEnded ) {
+        await checkIfCampaignShouldEnd();
       }
+      
       
       if (
         isFinalDay &&
@@ -201,6 +205,7 @@ export default function GameScreen() {
         newMidnightCountdown.minutes === 0 &&
         newMidnightCountdown.seconds === 0
       ) {
+        localStorage.removeItem("campaign_ended"); // 🔥 Add this
         if (isFinalDay) {
           try {
             await fetch("http://localhost:8000/api/campaign/end", {
@@ -214,10 +219,10 @@ export default function GameScreen() {
           } catch (err) {
             console.error("Failed to end campaign:", err);
           }
-
         }
         window.location.reload();
       }
+      
   
       setCutoffCountdown(newCutoffCountdown);
       setMidnightCountdown(newMidnightCountdown);
@@ -295,7 +300,7 @@ export default function GameScreen() {
       if (data.result.every(r => r === "correct")) {
         setGameOver(true);
       
-        const troops = [12, 8, 6, 4, 3, 1][currentRow];  
+        const troops = [12, 8, 6, 4, 3, 1][currentRow];
       
         if (currentRow <= 2) {
           confetti({
@@ -304,11 +309,18 @@ export default function GameScreen() {
             origin: { y: 0.6 },
           });
         }
-    
+      
         setTroopsEarned(troops); 
         setShowTroopModal(true);
+      
+        // 🧠 Check for campaign end eligibility if it's the final day
+        if (isFinalCampaignDay(campaignDay)) {
+          await checkIfCampaignShouldEnd();
+        }
+      
         return;
       }
+      
       
       
       if (currentRow + 1 === 6) {
@@ -445,9 +457,10 @@ export default function GameScreen() {
               onClick={() => {
                 localStorage.removeItem("campaign_id");
                 localStorage.removeItem("invite_code");
-                setCampaignId(null);
+                localStorage.removeItem("campaign_ended"); 
+                localStorage.removeItem("campaign_name");
                 navigate("/home");
-              }}
+              }}              
             >
               <FontAwesomeIcon icon={faLandmark} />
             </button>
@@ -495,6 +508,8 @@ export default function GameScreen() {
               className="home-button"
               onClick={() => {
                 localStorage.removeItem("campaign_id");
+                localStorage.removeItem("campaign_ended"); 
+                localStorage.removeItem("campaign_name");
                 setCampaignId(null);
                 setGuesses(EMPTY_GRID);
                 navigate("/home");

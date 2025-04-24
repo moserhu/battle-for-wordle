@@ -1,10 +1,12 @@
 // src/pages/LoginPage.jsx
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons';
 import { useAuth } from '../auth/AuthProvider';
 import '../styles/Login.css';
+
+
 
 export default function Login() {
   const navigate = useNavigate();
@@ -14,6 +16,10 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
 
   const { login } = useAuth();
+
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const redirectTo = searchParams.get("redirectTo") || "/home";
 
   const handleLogin = async () => {
     const res = await fetch('http://localhost:8000/api/login', {
@@ -25,13 +31,13 @@ export default function Login() {
     const data = await res.json();
   
     if (res.ok) {
-      login(data.user, data.access_token); // <- this is the correct format now
-      navigate('/home');
-    }
-     else {
+      login(data.user, data.access_token);
+      navigate(redirectTo);  // 👈 use redirect param
+    } else {
       setError(data.detail || 'Login failed');
     }
   };
+  
   
 
   return (
@@ -61,8 +67,11 @@ export default function Login() {
           </div>
           <button onClick={handleLogin}>Login</button>
           <p className="small-link">
-          Don’t have an account? <Link to="/register">Register</Link>
-        </p>
+            Don’t have an account?{" "}
+          <Link to={`/register?redirectTo=${encodeURIComponent(redirectTo)}`}>
+           Register
+          </Link>
+            </p>
         </div>
       </div>
     </div>

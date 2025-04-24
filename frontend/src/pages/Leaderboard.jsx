@@ -86,7 +86,22 @@ export default function Leaderboard({ onBack }) {
         <h1>👑 Declared Ruler</h1>
         <h2>{declaredWinner.username}</h2>
         <p>🏅 Troops: {declaredWinner.score}</p>
-        <button className="back-button" onClick={onBack}> Back to Battle</button>
+  
+        <div className="loser-rankings">
+          <h3>Subject Rankings</h3>
+          <ol>
+            {data
+              .filter(player => player.username !== declaredWinner.username)
+              .sort((a, b) => b.score - a.score)
+              .map((player, i) => (
+                <li key={i}>
+                  {player.username} — {player.score} troops
+                </li>
+              ))}
+          </ol>
+        </div>
+  
+        <button className="back-button" onClick={onBack}>Back to Battle</button>
       </div>
     </div>
   ) : (

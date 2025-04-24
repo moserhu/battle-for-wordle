@@ -19,6 +19,12 @@ export default function AccountScreen() {
   const [originalUser, setOriginalUser] = useState({});
   const [message, setMessage] = useState('');
   const [editing, setEditing] = useState(false);
+  const [campaignsOwned, setCampaignsOwned] = useState([]);
+  const [showCampaignModal, setShowCampaignModal] = useState(false);
+  const [confirmDeleteName, setConfirmDeleteName] = useState('');
+  const [selectedCampaign, setSelectedCampaign] = useState(null);
+  const [kickList, setKickList] = useState([]);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const navigate = useNavigate();
   const { user: authUser, token, isAuthenticated, loading } = useAuth();
@@ -51,6 +57,25 @@ export default function AccountScreen() {
     }
   }, [loading, token]);
 
+  const fetchOwnedCampaigns = React.useCallback(async () => {
+    const res = await fetch("http://localhost:8000/api/campaigns/owned", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+    if (res.ok) {
+      setCampaignsOwned(data);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    if (token && authUser?.user_id) {
+      fetchOwnedCampaigns();
+    }
+  }, [authUser?.user_id, fetchOwnedCampaigns, token]);
+  
+  
+
+
   if (loading) return null;
 
   const handleChange = (e) => {
@@ -79,6 +104,16 @@ export default function AccountScreen() {
 
   const hasChanges = JSON.stringify(user) !== JSON.stringify(originalUser);
 
+  const formatPhoneNumber = (phone) => {
+    const cleaned = ('' + phone).replace(/\D/g, '');
+    if (cleaned.length === 10) {
+      const match = cleaned.match(/^(\d{3})(\d{3})(\d{4})$/);
+      return match ? `(${match[1]}) ${match[2]}-${match[3]}` : phone;
+    }
+    return phone; // fallback for non-standard lengths
+  };
+  
+
   return (
     <div className="account-wrapper">
       <div className="account-screen">
@@ -91,7 +126,7 @@ export default function AccountScreen() {
               <p><strong>Email:</strong> {user.email}</p>
               <p><strong>First Name:</strong> {user.first_name}</p>
               <p><strong>Last Name:</strong> {user.last_name}</p>
-              <p><strong>Phone:</strong> {user.phone}</p>
+              <p><strong>Phone:</strong> {formatPhoneNumber(user.phone)}</p>
               <button onClick={() => setEditing(true)} className="edit-btn">Make Changes</button>
             </>
           ) : (
@@ -124,6 +159,105 @@ export default function AccountScreen() {
             <p>Victories: {user.campaign_wins}</p>
             <p>Losses: {user.campaign_losses}</p>
           </div>
+          <button className='management-btn' onClick={() => { setShowCampaignModal(true); }}>
+  🛠️ Campaign Management
+</button>
+
+{showCampaignModal && (
+  <div className="modal-overlay">
+    <div className="modal-content">
+      <h3>Your Campaigns</h3>
+      {campaignsOwned.length === 0 ? <p>No owned campaigns.</p> : campaignsOwned.map((camp) => (
+        <div key={camp.id} className="campaign-entry">
+        <strong>{camp.name}</strong>
+          <div className="campaign-actions">
+          <button onClick={() => {
+              setSelectedCampaign(camp);
+              setConfirmingDelete(true);
+            }}>Delete</button>
+            <button onClick={async () => {
+              const res = await fetch("http://localhost:8000/api/campaign/members", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ campaign_id: camp.id }),
+              });
+              const data = await res.json();
+  if (res.ok) {
+    setKickList(data);
+    setSelectedCampaign(camp);
+    setConfirmingDelete(false); // ✅ make sure this is false if switching
+  }
+            }}>Kick Players</button>
+          </div>
+        </div>
+      ))}
+
+      {/* Delete confirmation */}
+      {selectedCampaign && confirmingDelete && (
+        <>
+          <p>Type <strong>{selectedCampaign.name}</strong> to confirm deletion:</p>
+          <input value={confirmDeleteName} onChange={(e) => setConfirmDeleteName(e.target.value)} />
+          <button
+            onClick={async () => {
+              if (confirmDeleteName !== selectedCampaign.name) return;
+              const res = await fetch("http://localhost:8000/api/campaign/delete", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ campaign_id: selectedCampaign.id }),
+              });
+              if (res.ok) {
+                alert("Deleted!");
+                setSelectedCampaign(null);
+                setConfirmDeleteName('');
+                setKickList([]);
+                fetchOwnedCampaigns(); // ✅ re-fetch with correct source
+              }
+            }}
+          >Confirm Delete</button>
+        </>
+      )}
+
+      {/* Kick list */}
+      {kickList.length > 0 && (
+  <div className="kick-list">
+    <h4>Kick players from {selectedCampaign.name}</h4>
+    {kickList.map((player) => (
+      <div key={player.user_id || player.name}>
+        {player.name}
+        <button onClick={async () => {
+          await fetch("http://localhost:8000/api/campaign/kick", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              campaign_id: selectedCampaign.id,
+              user_id: player.user_id,
+            }),
+          });
+          setKickList(kickList.filter((p) => p.user_id !== player.user_id));
+        }}>🥾</button>
+      </div>
+    ))}
+  </div>
+)}
+
+
+      <button onClick={() => {
+        setShowCampaignModal(false);
+        setSelectedCampaign(null);
+        setKickList([]);
+      }}>Close</button>
+    </div>
+  </div>
+)}
         </div>
       </div>
     </div>

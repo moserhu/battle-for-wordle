@@ -1,19 +1,21 @@
 // src/auth/RedirectIfAuthenticated.jsx
 import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from './AuthProvider';
 
 export default function RedirectIfAuthenticated({ children }) {
   const { isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const redirectTo = searchParams.get("redirectTo");
 
   useEffect(() => {
     if (!loading && isAuthenticated) {
-      navigate('/home');
+      navigate(redirectTo || '/home', { replace: true });
     }
-  }, [loading, isAuthenticated, navigate]);
+  }, [loading, isAuthenticated, navigate, redirectTo]);
 
-  // While loading (e.g., fetching token), don't render or redirect yet
   if (loading) return null;
 
   return children;

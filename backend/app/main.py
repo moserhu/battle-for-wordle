@@ -5,7 +5,7 @@ from app.models import CampaignOnly
 from fastapi import Depends
 from app.auth import get_current_user
 from app.auth import create_access_token
-from app.models import UserOnly, UpdateUserInfo
+from app.models import UserOnly, UpdateUserInfo, CampaignAndUserOnly
 
 app = FastAPI()
 
@@ -54,6 +54,10 @@ def create_campaign(camp: models.NewCampaign, current_user: dict = Depends(get_c
 def join_campaign(data: models.JoinCampaign, current_user: dict = Depends(get_current_user)):
     return crud.join_campaign(data.invite_code, current_user["user_id"])
 
+@app.post("/api/campaign/join_by_id")
+def join_campaign_by_id(data: dict, current_user: dict = Depends(get_current_user)):
+    return crud.join_campaign_by_id(data["campaign_id"], current_user["user_id"])
+
 @app.post("/api/campaign/progress")
 def get_campaign_progress(data: CampaignOnly):
     return crud.get_campaign_progress(data.campaign_id)
@@ -81,3 +85,20 @@ def update_user(data: UpdateUserInfo, current_user: dict = Depends(get_current_u
 @app.post("/api/campaign/finished_today")
 def check_finished_today(data: CampaignOnly):
     return {"ended": crud.has_campaign_finished_for_day(data.campaign_id)}
+
+@app.post("/api/campaign/delete")
+def delete_campaign(data: CampaignOnly, current_user: dict = Depends(get_current_user)):
+    return crud.delete_campaign(data.campaign_id, current_user["user_id"])
+
+@app.post("/api/campaign/kick")
+def kick_player(data: CampaignAndUserOnly, current_user: dict = Depends(get_current_user)):
+    return crud.kick_player_from_campaign(data.campaign_id, data.user_id, current_user["user_id"])
+
+@app.get("/api/campaigns/owned")
+def get_owned_campaigns(current_user: dict = Depends(get_current_user)):
+    return crud.get_campaigns_by_owner(current_user["user_id"])
+
+@app.post("/api/campaign/members")
+def get_campaign_members(data: CampaignOnly, current_user: dict = Depends(get_current_user)):
+    return crud.get_campaign_members(data.campaign_id, current_user["user_id"])
+

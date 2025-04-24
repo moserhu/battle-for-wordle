@@ -28,8 +28,11 @@ export default function Header({
   </p>
 ) : (
   <p className="countdown-timer">
-    ⏳ {isFinalDay ? "Campaign ends in" : "Next word in"}: {cutoffCountdown.hours}h {cutoffCountdown.minutes}m {cutoffCountdown.seconds}s
-  </p>
+  ⏳ {isFinalDay ? "Campaign ends in" : "Next word in"}:{" "}
+  {isFinalDay ? cutoffCountdown.hours : midnightCountdown.hours}h{" "}
+  {isFinalDay ? cutoffCountdown.minutes : midnightCountdown.minutes}m{" "}
+  {isFinalDay ? cutoffCountdown.seconds : midnightCountdown.seconds}s
+</p>
 )}
 
       {/* ⚔ Both buttons grouped here */}

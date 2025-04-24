@@ -3,7 +3,12 @@ import "../styles/InviteShare.css";
 
 export default function InviteShareButton() {
   const [showModal, setShowModal] = useState(false);
-  const inviteCode = localStorage.getItem("invite_code"); // or pass as prop
+
+
+  const inviteCode = localStorage.getItem("invite_code"); 
+  const campaignId = localStorage.getItem("campaign_id");
+  const campaignName = localStorage.getItem("campaign_name") || "Campaign";
+  const smartInviteURL = `http://localhost:3000/invite?campaign_id=${campaignId}&campaign_name=${encodeURIComponent(campaignName)}`;
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(inviteCode);
@@ -15,9 +20,8 @@ export default function InviteShareButton() {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: "Join My Campaign",
-          text: `Use this invite code to join: ${inviteCode}`,
-          url: "http://192.168.1.174:3000/home", 
+          title: `Join the Frey "${campaignName}"`,
+          url: smartInviteURL,
         });
       } catch (error) {
         console.error("Sharing failed", error);
@@ -26,6 +30,7 @@ export default function InviteShareButton() {
       alert("Sharing not supported on this device");
     }
   };
+  
 
   return (
     <>

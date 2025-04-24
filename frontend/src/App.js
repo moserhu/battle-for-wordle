@@ -8,6 +8,7 @@ import AccountScreen from './pages/AccountScreen';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import MainLandingPage from './pages/MainLandingPage';
+import Invite from './pages/Invite';
 import { AuthProvider } from './auth/AuthProvider';
 import RedirectIfAuthenticated from './auth/RedirectIfAuthenticated';
 
@@ -16,6 +17,7 @@ function App() {
     <Router>
       <AuthProvider>
         <Routes>
+        <Route path="/invite" element={<Invite />} />
           <Route path="/home" element={<Home />} />
           <Route path="/game" element={<GameScreen />} />
           <Route path="/account" element={<AccountScreen />} />

@@ -65,3 +65,13 @@ def init_db():
                 PRIMARY KEY (user_id, campaign_id, date)
             )
         """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS campaign_words (
+                campaign_id INTEGER NOT NULL,
+                day INTEGER NOT NULL,
+                word TEXT NOT NULL,
+                PRIMARY KEY (campaign_id, day),
+                FOREIGN KEY (campaign_id) REFERENCES campaigns(id)
+            )
+        """)
+
