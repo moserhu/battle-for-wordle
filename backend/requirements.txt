@@ -1,0 +1,7 @@
+# This file is used to install the required packages for the backend
+uvicorn
+fastapi
+python-dotenv
+python-jose
+pydantic
+bcrypt

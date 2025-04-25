@@ -12,6 +12,7 @@ import confetti from 'canvas-confetti';
 import { useAuth } from '../auth/AuthProvider';
 import { HslColorPicker } from "react-colorful";
 
+const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:8000";
 
 const EMPTY_GRID = Array.from({ length: 6 }, () => Array(5).fill(""));
 
@@ -112,7 +113,7 @@ export default function GameScreen() {
       setTroopsEarned(0);
 
       const [dayRes, stateRes] = await Promise.all([
-        fetch("http://localhost:8000/api/campaign/progress", {
+        fetch(`${API_BASE}/api/campaign/progress`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -120,7 +121,7 @@ export default function GameScreen() {
           },
           body: JSON.stringify({ campaign_id: id }),
         }),
-        fetch("http://localhost:8000/api/game/state", {
+        fetch(`${API_BASE}/api/game/state`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -133,7 +134,7 @@ export default function GameScreen() {
       const campaignDay = await dayRes.json();
       const progress = await stateRes.json();
       setCampaignDay(campaignDay);
-      const memberRes = await fetch("http://localhost:8000/api/campaign/self_member", {
+      const memberRes = await fetch(`${API_BASE}/api/campaign/self_member`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -181,7 +182,7 @@ export default function GameScreen() {
   
 
   const checkIfCampaignShouldEnd = useCallback(async () => {
-    const res = await fetch("http://localhost:8000/api/campaign/finished_today", {
+    const res = await fetch(`${API_BASE}/api/campaign/finished_today`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -224,10 +225,10 @@ export default function GameScreen() {
         newMidnightCountdown.minutes === 0 &&
         newMidnightCountdown.seconds === 0
       ) {
-        localStorage.removeItem("campaign_ended"); // 🔥 Add this
+        localStorage.removeItem("campaign_ended"); 
         if (isFinalDay) {
           try {
-            await fetch("http://localhost:8000/api/campaign/end", {
+            await fetch(`${API_BASE}/api/campaign/end`, {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
@@ -273,7 +274,7 @@ export default function GameScreen() {
       return;
     }    
     try {
-      const res = await fetch("http://localhost:8000/api/guess", {
+      const res = await fetch(`${API_BASE}/api/guess`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -637,7 +638,7 @@ export default function GameScreen() {
         <button
           className="troop-btn"
           onClick={async () => {
-            const res = await fetch("http://localhost:8000/api/campaign/update_member", {
+            const res = await fetch(`${API_BASE}/api/campaign/update_member`, {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",

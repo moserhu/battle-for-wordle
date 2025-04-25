@@ -3,6 +3,8 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import '../styles/Invite.css';
 
+const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:8000";
+
 export default function Invite() {
   const [searchParams] = useSearchParams();
   const campaignId = searchParams.get("campaign_id");
@@ -22,34 +24,39 @@ export default function Invite() {
   const handleJoin = async () => {
     setJoining(true);
     setError("");
-
+  
     try {
-        const res = await fetch("http://localhost:8000/api/campaign/join_by_id", {
-            method: "POST",
+      const res = await fetch(`${API_BASE}/api/campaign/join_by_id`, {
+        method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
         body: JSON.stringify({ campaign_id: parseInt(campaignId) }),
       });
-
+  
+      const data = await res.json();
+  
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.detail || "Failed to join");
+        const message = typeof data.detail === "string" 
+          ? data.detail 
+          : JSON.stringify(data.detail);
+        throw new Error(message || "Failed to join campaign");
       }
-
+  
       // Save campaign to localStorage
-      const { invite_code } = await res.json();
+      const { invite_code } = data;
       localStorage.setItem("campaign_id", campaignId);
       localStorage.setItem("campaign_name", campaignName);
       localStorage.setItem("invite_code", invite_code);
-
+  
       navigate("/game");
     } catch (err) {
       setError(err.message);
       setJoining(false);
     }
   };
+  
 
   const handleDecline = () => {
     navigate("/home");

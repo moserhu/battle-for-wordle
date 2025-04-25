@@ -4,6 +4,8 @@ import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import throneBackground from '../assets/throne_background.png'; // adjust path if needed
 import '../styles/LeaderBoard.css'; 
 
+const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:8000";
+
 ChartJS.register(ArcElement, Tooltip, Legend);
 
 export default function Leaderboard({ onBack }) {
@@ -14,7 +16,7 @@ export default function Leaderboard({ onBack }) {
 
   useEffect(() => {
     const fetchLeaderboard = async () => {
-      const res = await fetch("http://localhost:8000/api/leaderboard", {
+      const res = await fetch(`${API_BASE}/api/leaderboard`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ campaign_id }),
@@ -59,7 +61,7 @@ export default function Leaderboard({ onBack }) {
   const chartOptions = {
     plugins: {
       legend: {
-        display: false,  // 🔇 hide the default legend
+        display: false, 
       },
     },
   };
@@ -94,6 +96,7 @@ export default function Leaderboard({ onBack }) {
     </div>
   ) : (
     <div className="leaderboard-container">
+        <div className="leaderboard-content">
       <div className="leaderboard-pie">
         <Pie data={chartData} options={chartOptions} />
       </div>
@@ -124,6 +127,7 @@ export default function Leaderboard({ onBack }) {
         <button className="back-button" onClick={onBack}>
           Back to Battle
         </button>
+      </div>
       </div>
     </div>
   );  

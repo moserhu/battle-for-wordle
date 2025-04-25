@@ -17,8 +17,9 @@ class NewCampaign(BaseModel):
 
 class JoinCampaign(BaseModel):
     invite_code: str
-    display_name: str
-    color: str
+
+class CampaignIDOnly(BaseModel):
+    campaign_id: int
 
 class CampaignOnly(BaseModel):
     campaign_id: int

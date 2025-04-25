@@ -3,7 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import '../styles/AccountScreen.css';
 
+const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:8000";
+
 export default function AccountScreen() {
+  
   const [user, setUser] = useState({
     first_name: '',
     last_name: '',
@@ -37,7 +40,7 @@ export default function AccountScreen() {
 
   useEffect(() => {
     const fetchUser = async () => {
-      const res = await fetch('http://localhost:8000/api/user/info', {
+      const res = await fetch(`${API_BASE}/api/user/info`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -58,7 +61,7 @@ export default function AccountScreen() {
   }, [loading, token]);
 
   const fetchOwnedCampaigns = React.useCallback(async () => {
-    const res = await fetch("http://localhost:8000/api/campaigns/owned", {
+    const res = await fetch(`${API_BASE}/api/campaigns/owned`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const data = await res.json();
@@ -83,7 +86,7 @@ export default function AccountScreen() {
   };
 
   const handleSave = async () => {
-    const res = await fetch('http://localhost:8000/api/user/update', {
+    const res = await fetch(`${API_BASE}/api/user/update`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -176,7 +179,7 @@ export default function AccountScreen() {
               setConfirmingDelete(true);
             }}>Delete</button>
             <button onClick={async () => {
-              const res = await fetch("http://localhost:8000/api/campaign/members", {
+              const res = await fetch(`${API_BASE}/api/campaign/members`, {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",
@@ -203,7 +206,7 @@ export default function AccountScreen() {
           <button
             onClick={async () => {
               if (confirmDeleteName !== selectedCampaign.name) return;
-              const res = await fetch("http://localhost:8000/api/campaign/delete", {
+              const res = await fetch(`${API_BASE}/api/campaign/delete`, {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",
@@ -231,7 +234,7 @@ export default function AccountScreen() {
       <div key={player.user_id || player.name}>
         {player.name}
         <button onClick={async () => {
-          await fetch("http://localhost:8000/api/campaign/kick", {
+          await fetch(`${API_BASE}/api/campaign/kick`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",

@@ -4,6 +4,8 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons';
 import '../styles/Register.css';
 
+const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:8000";
+
 export default function Register() {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
@@ -26,7 +28,7 @@ export default function Register() {
   };
 
   const handleRegister = async () => {
-    const res = await fetch('http://localhost:8000/api/register', {
+    const res = await fetch(`${API_BASE}/api/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(form),

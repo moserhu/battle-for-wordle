@@ -5,6 +5,8 @@ import { faUserCircle, faSignOutAlt } from '@fortawesome/free-solid-svg-icons';
 import { useAuth } from '../auth/AuthProvider';
 import '../styles/Home.css';
 
+const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:8000";
+
 export default function Home() {
   const navigate = useNavigate();
   const [campaigns, setCampaigns] = useState([]);
@@ -26,7 +28,7 @@ export default function Home() {
     const fetchCampaigns = async () => {
       if (!user?.user_id) return;
   
-      const res = await fetch('http://localhost:8000/api/user/campaigns', {
+      const res = await fetch(`${API_BASE}/api/user/campaigns`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -50,7 +52,7 @@ export default function Home() {
   
 
   const handleCreate = async () => {
-    const res = await fetch('http://localhost:8000/api/campaign/create', {
+    const res = await fetch(`${API_BASE}/api/campaign/create`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -73,7 +75,7 @@ export default function Home() {
   
 
   const handleJoin = async () => {
-    const res = await fetch('http://localhost:8000/api/campaign/join', {
+    const res = await fetch(`${API_BASE}/api/campaign/join`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

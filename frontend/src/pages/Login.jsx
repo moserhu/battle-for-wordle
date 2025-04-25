@@ -6,7 +6,7 @@ import { faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons';
 import { useAuth } from '../auth/AuthProvider';
 import '../styles/Login.css';
 
-
+const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:8000";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -22,7 +22,7 @@ export default function Login() {
   const redirectTo = searchParams.get("redirectTo") || "/home";
 
   const handleLogin = async () => {
-    const res = await fetch('http://localhost:8000/api/login', {
+    const res = await fetch(`${API_BASE}/api/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),

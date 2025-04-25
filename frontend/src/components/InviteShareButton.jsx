@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import "../styles/InviteShare.css";
 
+const FRONTEND_URL = process.env.REACT_APP_FRONTEND_URL || "http://localhost:3000";
+
 export default function InviteShareButton() {
   const [showModal, setShowModal] = useState(false);
 
@@ -8,7 +10,7 @@ export default function InviteShareButton() {
   const inviteCode = localStorage.getItem("invite_code"); 
   const campaignId = localStorage.getItem("campaign_id");
   const campaignName = localStorage.getItem("campaign_name") || "Campaign";
-  const smartInviteURL = `http://localhost:3000/invite?campaign_id=${campaignId}&campaign_name=${encodeURIComponent(campaignName)}`;
+  const smartInviteURL = `${FRONTEND_URL}/invite?campaign_id=${campaignId}&campaign_name=${encodeURIComponent(campaignName)}`;
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(inviteCode);

@@ -9,13 +9,21 @@ from app.models import UserOnly, UpdateUserInfo, CampaignAndUserOnly
 
 app = FastAPI()
 
+from fastapi.middleware.cors import CORSMiddleware
+
+origins = [
+    "http://localhost:3000",       # 👈 local dev
+    "https://battleforwordle.com"   # 👈 prod
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=origins,        # 👈 use list instead of single string
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 @app.post("/api/word/reveal")
 def reveal_word(data: models.CampaignOnly):
@@ -52,11 +60,11 @@ def create_campaign(camp: models.NewCampaign, current_user: dict = Depends(get_c
 
 @app.post("/api/campaign/join")
 def join_campaign(data: models.JoinCampaign, current_user: dict = Depends(get_current_user)):
-    return crud.join_campaign(data.invite_code, current_user["user_id"], data.display_name, data.color)
+    return crud.join_campaign(data.invite_code, current_user["user_id"])
 
 @app.post("/api/campaign/join_by_id")
-def join_campaign_by_id(data: models.CampaignAndUserOnly, current_user: dict = Depends(get_current_user)):
-    return crud.join_campaign_by_id(data.campaign_id, current_user["user_id"], data.display_name, data.color)
+def join_campaign_by_id(data: models.CampaignIDOnly, current_user: dict = Depends(get_current_user)):
+    return crud.join_campaign_by_id(data.campaign_id, current_user["user_id"])
 
 @app.post("/api/campaign/progress")
 def get_campaign_progress(data: CampaignOnly):
