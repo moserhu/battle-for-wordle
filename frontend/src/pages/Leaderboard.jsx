@@ -38,23 +38,11 @@ export default function Leaderboard({ onBack }) {
 
   const scores = data.map((entry) => entry.score);
   const names = data.map((entry) => entry.username);
-  const colorPalette = [
-    '#ffd700', // gold
-    '#c0c0c0', // silver
-    '#cd7f32', // bronze
-    '#4caf50',
-    '#2196f3',
-    '#9c27b0',
-    '#ff5722',
-    '#00bcd4',
-    '#795548',
-    '#607d8b',
-  ];
   
-  const colorMap = data.reduce((acc, entry, index) => {
-    acc[entry.username] = colorPalette[index % colorPalette.length];
+  const colorMap = data.reduce((acc, entry) => {
+    acc[entry.username] = entry.color || '#999';
     return acc;
-  }, {});
+  }, {});  
   
   const chartData = {
     labels: names,

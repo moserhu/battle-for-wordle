@@ -10,6 +10,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faLandmark } from "@fortawesome/free-solid-svg-icons";
 import confetti from 'canvas-confetti';
 import { useAuth } from '../auth/AuthProvider';
+import { HslColorPicker } from "react-colorful";
 
 
 const EMPTY_GRID = Array.from({ length: 6 }, () => Array(5).fill(""));
@@ -71,7 +72,14 @@ export default function GameScreen() {
   const [showTroopModal, setShowTroopModal] = useState(false);
   const [troopsEarned, setTroopsEarned] = useState(0);
   const [loadingLeaderboard, setLoadingLeaderboard] = useState(true);
-  
+  const [playerDisplayName, setPlayerDisplayName] = useState("");
+  const [playerColor, setPlayerColor] = useState("#ffffff");
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [newDisplayName, setNewDisplayName] = useState(playerDisplayName);
+  const [newColor, setNewColor] = useState(playerColor);
+  const [showWheel, setShowWheel] = useState(false);
+  const [pickerColor, setPickerColor] = useState({ h: 0, s: 1, l: 0.5 });
+
   useEffect(() => {
     if (!loading && !isAuthenticated) {
       navigate('/login');
@@ -124,8 +132,19 @@ export default function GameScreen() {
 
       const campaignDay = await dayRes.json();
       const progress = await stateRes.json();
-      console.log("Fetched game state:", progress);
       setCampaignDay(campaignDay);
+      const memberRes = await fetch("http://localhost:8000/api/campaign/self_member", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify({ campaign_id: id }),
+      });
+      const self = await memberRes.json();
+      setPlayerDisplayName(self.display_name || user.first_name);
+      setPlayerColor(self.color || "#ffffff");
+      
       localStorage.setItem("invite_code", campaignDay.invite_code);
       localStorage.setItem("campaign_name", campaignDay.name);
 
@@ -435,17 +454,57 @@ export default function GameScreen() {
     setTimeout(() => setFadingBackIn(false), 500); // match fade duration
   };
 
-  useEffect(() => {
-    console.log("RENDERED:", { campaignId, guesses });
-    console.log("localStorage keys:", Object.keys(localStorage));
-    Object.keys(localStorage).forEach(key => {
-      if (key.startsWith("wordle_state_")) {
-        console.log(`${key}:`, localStorage.getItem(key));
-      }
-    });
-  }, [guesses, campaignId]);
+  function hslToCssString(hsl) {
+    const h = Math.round(hsl.h);
+    const s = Math.round(hsl.s); 
+    const l = Math.round(hsl.l); 
+    return `hsl(${h}, ${s}%, ${l}%)`;
+  }
   
-    
+  
+  function cssStringToHSL(cssColor) {
+    // Create a dummy div to resolve computed color
+    const dummy = document.createElement("div");
+    dummy.style.color = cssColor;
+    document.body.appendChild(dummy);
+  
+    const computed = getComputedStyle(dummy).color; // Always returns rgb()
+    document.body.removeChild(dummy);
+  
+    const [r, g, b] = computed
+      .match(/\d+/g)
+      .map(Number)
+      .map((val) => val / 255);
+  
+    const max = Math.max(r, g, b),
+          min = Math.min(r, g, b);
+    let h, s, l = (max + min) / 2;
+  
+    if (max === min) {
+      h = s = 0; // achromatic
+    } else {
+      const d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+  
+      switch (max) {
+        case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+        case g: h = (b - r) / d + 2; break;
+        case b: h = (r - g) / d + 4; break;
+        default: h = 0; // Default case to handle unexpected values
+      }
+  
+      h *= 60;
+    }
+  
+    return {
+      h: Math.round(h),
+      s: parseFloat(s.toFixed(3)),
+      l: parseFloat(l.toFixed(3)),
+    };
+  }
+  
+  
+  
   return (
     <div className="screenshot-container" ref={screenRef}>
       {/* Game UI Layer */}
@@ -471,8 +530,15 @@ export default function GameScreen() {
               isFinalDay={isFinalCampaignDay(campaignDay)}
               campaignEnded={campaignEnded}
               onToggleLeaderboard={handleShowLeaderboard}
-            />
-
+              playerDisplayName={playerDisplayName}
+              playerColor={playerColor}
+              onEditClick={() => {
+            setNewDisplayName(playerDisplayName);
+            setNewColor(playerColor);
+            setPickerColor(cssStringToHSL(playerColor)); // ← Move here
+            setShowEditModal(true);
+              }}
+              />
             {errorMsg && <div className="error-msg">{errorMsg}</div>}
             {!loadingLeaderboard && (
               <>
@@ -537,6 +603,74 @@ export default function GameScreen() {
             </div>
           </div>
         )}
+        {/* Edit Display Name Modal */}
+        {showEditModal && (
+  <div className="modal-overlay">
+    <div className="modal">
+      <h2>Edit Your Identity</h2>
+      <label>Display Name</label>
+      <input
+        type="text"
+        value={newDisplayName}
+        onChange={(e) => setNewDisplayName(e.target.value)}
+      />
+      <label>Color</label>
+      <div className="color-picker-wrapper">
+    <div
+      className="current-color-preview"
+      style={{ backgroundColor: hslToCssString(pickerColor) }}
+      onClick={() => setShowWheel(!showWheel)}
+          />
+    {showWheel && (
+      <div className="wheel-container">
+              <HslColorPicker
+              color={pickerColor}
+              onChange={(color) => {
+             setPickerColor(color);                  
+           setNewColor(hslToCssString(color));     
+                }}
+              />
+      </div>
+    )}
+  </div>
+      <div className="modal-buttons">
+        <button
+          className="troop-btn"
+          onClick={async () => {
+            const res = await fetch("http://localhost:8000/api/campaign/update_member", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+              },
+              body: JSON.stringify({
+                campaign_id: campaignId,
+                user_id: user.user_id,
+                display_name: newDisplayName,
+                color: newColor,
+              }),
+            });
+            if (res.ok) {
+              setPlayerDisplayName(newDisplayName);
+              setPlayerColor(newColor);
+              setShowEditModal(false);
+            } else {
+              alert("Update failed");
+            }
+          }}
+        >
+          Save
+        </button>
+        <button
+          className="troop-btn close-btn"
+          onClick={() => setShowEditModal(false)}
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+)}
       </div>
     </div>
   );

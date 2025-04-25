@@ -13,11 +13,12 @@ class UserLogin(BaseModel):
 
 class NewCampaign(BaseModel):
     name: str
-    user_id: int
+    cycle_length: int
 
 class JoinCampaign(BaseModel):
     invite_code: str
-    user_id: int
+    display_name: str
+    color: str
 
 class CampaignOnly(BaseModel):
     campaign_id: int
@@ -35,6 +36,8 @@ class UserOnly(BaseModel):
 class CampaignAndUserOnly(BaseModel):
     user_id: int
     campaign_id: int
+    display_name: str
+    color: str
 
 class UpdateUserInfo(BaseModel):
     user_id: int

@@ -56,25 +56,39 @@ def login_user(email, password):
 
 
 
-def create_campaign(name, user_id):
+def create_campaign(name, user_id, cycle_length):
     code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
     today = datetime.now().strftime("%Y-%m-%d")
 
     with get_db() as conn:
         conn.execute("""
-            INSERT INTO campaigns (name, owner_id, invite_code, start_date)
-            VALUES (?, ?, ?, ?)
-        """, (name, user_id, code, today))
+            INSERT INTO campaigns (name, owner_id, invite_code, start_date, cycle_length)
+            VALUES (?, ?, ?, ?, ?)
+        """, (name, user_id, code, today, cycle_length))
 
         camp_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
 
-        conn.execute("INSERT INTO campaign_members (user_id, campaign_id) VALUES (?, ?)", (user_id, camp_id))
+        # Fetch the user's first name for default display name
+        user_row = conn.execute("SELECT first_name FROM users WHERE id = ?", (user_id,)).fetchone()
+        if not user_row:
+            raise HTTPException(status_code=404, detail="User not found")
+        default_name = user_row[0]
+
+        # Default color for campaign creator
+        default_color = "#ffd700"
+
+        conn.execute("""
+            INSERT INTO campaign_members (user_id, campaign_id, display_name, color)
+            VALUES (?, ?, ?, ?)
+        """, (user_id, camp_id, default_name, default_color))
+
         conn.execute("UPDATE users SET campaigns = campaigns + 1 WHERE id = ?", (user_id,))
 
-    # 💡 Initialize words for the new campaign
-    initialize_campaign_words(camp_id, 5)  # or make this configurable later
+    initialize_campaign_words(camp_id, cycle_length)
 
     return {"campaign_id": camp_id, "invite_code": code}
+
+
 
 
 def join_campaign(invite_code, user_id):
@@ -97,37 +111,72 @@ def join_campaign(invite_code, user_id):
         if already_in:
             return {"message": "Already joined"}
 
-        conn.execute(
-            "INSERT INTO campaign_members (user_id, campaign_id) VALUES (?, ?)",
-            (user_id, campaign_id)
-        )
+        # Get user's first name
+        user_row = conn.execute("SELECT first_name FROM users WHERE id = ?", (user_id,)).fetchone()
+        if not user_row:
+            raise HTTPException(status_code=404, detail="User not found")
 
-        conn.execute(
-            "UPDATE users SET campaigns = campaigns + 1 WHERE id = ?",
-            (user_id,)
-        )
+        default_name = user_row[0]
+
+        # Get an unused color
+        all_colors = ['#ffd700', '#c0c0c0', '#cd7f32', '#4caf50', '#2196f3',
+                      '#9c27b0', '#ff5722', '#00bcd4', '#795548', '#607d8b']
+        used_colors = conn.execute(
+            "SELECT color FROM campaign_members WHERE campaign_id = ?", (campaign_id,)
+        ).fetchall()
+        used_colors = {row[0] for row in used_colors if row[0]}
+        available_color = next((c for c in all_colors if c not in used_colors), '#000000')
+
+        # Insert member with display name and color
+        conn.execute("""
+            INSERT INTO campaign_members (user_id, campaign_id, display_name, color)
+            VALUES (?, ?, ?, ?)
+        """, (user_id, campaign_id, default_name, available_color))
+
+        conn.execute("UPDATE users SET campaigns = campaigns + 1 WHERE id = ?", (user_id,))
 
         return {"message": "Joined campaign", "campaign_id": campaign_id}
 
+
+
 def join_campaign_by_id(campaign_id, user_id):
     with get_db() as conn:
+        # Check if already a member
         already_in = conn.execute(
             "SELECT 1 FROM campaign_members WHERE user_id = ? AND campaign_id = ?",
             (user_id, campaign_id)
         ).fetchone()
-
         if already_in:
             return {"message": "Already joined"}
 
-        conn.execute(
-            "INSERT INTO campaign_members (user_id, campaign_id) VALUES (?, ?)",
-            (user_id, campaign_id)
-        )
-        conn.execute(
-            "UPDATE users SET campaigns = campaigns + 1 WHERE id = ?",
-            (user_id,)
-        )
+        # Fetch user's default name
+        user_row = conn.execute("SELECT first_name FROM users WHERE id = ?", (user_id,)).fetchone()
+        if not user_row:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        default_name = user_row[0]
+
+        # Color assignment: use a rotating palette and skip used colors
+        all_colors = ['#ffd700', '#c0c0c0', '#cd7f32', '#4caf50', '#2196f3',
+                      '#9c27b0', '#ff5722', '#00bcd4', '#795548', '#607d8b']
+
+        used_colors = conn.execute(
+            "SELECT color FROM campaign_members WHERE campaign_id = ?", (campaign_id,)
+        ).fetchall()
+        used_colors = {row[0] for row in used_colors if row[0]}
+
+        available_color = next((c for c in all_colors if c not in used_colors), '#000000')
+
+        # Insert with defaults
+        conn.execute("""
+            INSERT INTO campaign_members (user_id, campaign_id, display_name, color)
+            VALUES (?, ?, ?, ?)
+        """, (user_id, campaign_id, default_name, available_color))
+
+        conn.execute("UPDATE users SET campaigns = campaigns + 1 WHERE id = ?", (user_id,))
         return {"message": "Joined campaign", "campaign_id": campaign_id}
+
+
 
 
 def get_user_campaigns(user_id: int):
@@ -400,58 +449,65 @@ def validate_guess(word: str, user_id: int, campaign_id: int):
 def get_campaign_day(campaign_id: int):
     with get_db() as conn:
         row = conn.execute(
-            "SELECT start_date FROM campaigns WHERE id = ?",
+            "SELECT start_date, cycle_length FROM campaigns WHERE id = ?",
             (campaign_id,)
         ).fetchone()
     
     if not row:
         raise HTTPException(status_code=404, detail="Campaign not found")
 
-    start_date = datetime.strptime(row[0], "%Y-%m-%d").date()
+    start_date_str, cycle_length = row
+    start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
     today = datetime.now(ZoneInfo("America/Chicago")).date()
     delta = (today - start_date).days
 
-    return {"day": delta + 1, "total": 5}  
+    return {"day": delta + 1, "total": cycle_length}
+
 
 
 def get_campaign_progress(campaign_id: int):
     with get_db() as conn:
         row = conn.execute(
-            "SELECT name, start_date, invite_code FROM campaigns WHERE id = ?",
+            "SELECT name, start_date, invite_code, cycle_length FROM campaigns WHERE id = ?",
             (campaign_id,)
         ).fetchone()
 
     if not row:
         raise HTTPException(status_code=404, detail="Campaign not found")
 
-    name, start_date_str, invite_code = row
+    name, start_date_str, invite_code, cycle_length = row
     start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
     today = datetime.now(ZoneInfo("America/Chicago")).date()
     delta = (today - start_date).days
 
     return {
         "name": name,
-        "day": min(delta + 1, 5),
-        "total": 5,
+        "day": min(delta + 1, cycle_length),
+        "total": cycle_length,
         "invite_code": invite_code
     }
-
-
 
 def get_leaderboard(campaign_id: int):
     with get_db() as conn:
         rows = conn.execute(
             """
-            SELECT u.first_name, cm.score
+            SELECT cm.display_name, cm.color, cm.score
             FROM campaign_members cm
-            JOIN users u ON cm.user_id = u.id
             WHERE cm.campaign_id = ?
             ORDER BY cm.score DESC
             """,
             (campaign_id,)
         ).fetchall()
 
-    return [{"username": row[0], "score": row[1]} for row in rows]
+    return [
+        {
+            "username": row[0],
+            "color": row[1],
+            "score": row[2]
+        }
+        for row in rows
+    ]
+
 
 
 
@@ -582,3 +638,28 @@ def get_campaign_members(campaign_id: int, requester_id: int):
 
         return [{"user_id": r[0], "name": r[1]} for r in rows]
 
+def get_self_member(campaign_id: int, user_id: int):
+    with get_db() as conn:
+        row = conn.execute("""
+            SELECT display_name, color
+            FROM campaign_members
+            WHERE campaign_id = ? AND user_id = ?
+        """, (campaign_id, user_id)).fetchone()
+
+        if not row:
+            raise HTTPException(status_code=404, detail="Membership not found")
+
+        return {"display_name": row[0], "color": row[1]}
+
+def update_campaign_member(campaign_id: int, user_id: int, display_name: str, color: str):
+    with get_db() as conn:
+        result = conn.execute("""
+            UPDATE campaign_members
+            SET display_name = ?, color = ?
+            WHERE user_id = ? AND campaign_id = ?
+        """, (display_name, color, user_id, campaign_id))
+
+        if result.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Campaign membership not found")
+
+        return {"status": "updated", "display_name": display_name, "color": color}

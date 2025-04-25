@@ -48,15 +48,15 @@ def login(user: models.UserLogin):
 
 @app.post("/api/campaign/create")
 def create_campaign(camp: models.NewCampaign, current_user: dict = Depends(get_current_user)):
-    return crud.create_campaign(camp.name, current_user["user_id"])
+    return crud.create_campaign(camp.name, current_user["user_id"], camp.cycle_length)
 
 @app.post("/api/campaign/join")
 def join_campaign(data: models.JoinCampaign, current_user: dict = Depends(get_current_user)):
-    return crud.join_campaign(data.invite_code, current_user["user_id"])
+    return crud.join_campaign(data.invite_code, current_user["user_id"], data.display_name, data.color)
 
 @app.post("/api/campaign/join_by_id")
-def join_campaign_by_id(data: dict, current_user: dict = Depends(get_current_user)):
-    return crud.join_campaign_by_id(data["campaign_id"], current_user["user_id"])
+def join_campaign_by_id(data: models.CampaignAndUserOnly, current_user: dict = Depends(get_current_user)):
+    return crud.join_campaign_by_id(data.campaign_id, current_user["user_id"], data.display_name, data.color)
 
 @app.post("/api/campaign/progress")
 def get_campaign_progress(data: CampaignOnly):
@@ -101,4 +101,12 @@ def get_owned_campaigns(current_user: dict = Depends(get_current_user)):
 @app.post("/api/campaign/members")
 def get_campaign_members(data: CampaignOnly, current_user: dict = Depends(get_current_user)):
     return crud.get_campaign_members(data.campaign_id, current_user["user_id"])
+
+@app.post("/api/campaign/self_member")
+def get_self_member(data: models.CampaignOnly, current_user: dict = Depends(get_current_user)):
+    return crud.get_self_member(data.campaign_id, current_user["user_id"])
+
+@app.post("/api/campaign/update_member")
+def update_campaign_member(data: models.CampaignAndUserOnly, current_user: dict = Depends(get_current_user)):
+    return crud.update_campaign_member(data.campaign_id, current_user["user_id"], data.display_name, data.color)
 

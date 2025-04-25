@@ -4,7 +4,7 @@ def init_db():
     with sqlite3.connect("game.db") as conn:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS users (
-                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
                 first_name TEXT,
                 last_name TEXT,
                 email TEXT UNIQUE,
@@ -23,7 +23,8 @@ def init_db():
                 name TEXT,
                 owner_id INTEGER,
                 invite_code TEXT UNIQUE,
-                start_date TEXT
+                start_date TEXT,
+                cycle_length INTEGER DEFAULT 5
             )
         """)
         conn.execute("""
@@ -31,6 +32,8 @@ def init_db():
                 campaign_id INTEGER,
                 user_id INTEGER,
                 score INTEGER DEFAULT 0,
+                display_name TEXT,
+                color TEXT DEFAULT '#d4af7f',
                 PRIMARY KEY (campaign_id, user_id)
             )
         """)
@@ -48,8 +51,8 @@ def init_db():
                 campaign_id INTEGER NOT NULL,
                 user_id INTEGER NOT NULL,
                 date TEXT NOT NULL,
-                completed INTEGER, -- 1 = done (won/lost), 0 = in progress
-                 PRIMARY KEY (campaign_id, user_id, date)
+                completed INTEGER,
+                PRIMARY KEY (campaign_id, user_id, date)
             )
         """)
         conn.execute("""
@@ -74,4 +77,5 @@ def init_db():
                 FOREIGN KEY (campaign_id) REFERENCES campaigns(id)
             )
         """)
+
 

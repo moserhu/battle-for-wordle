@@ -12,6 +12,7 @@ export default function Home() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [inviteCode, setInviteCode] = useState('');
   const [campaignName, setCampaignName] = useState('');
+  const [cycleLength, setCycleLength] = useState(5); 
 
   const { user, token, logout, isAuthenticated, loading } = useAuth();
 
@@ -55,9 +56,12 @@ export default function Home() {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
       },
-      body: JSON.stringify({ name: campaignName, user_id: user.user_id })
+      body: JSON.stringify({
+        name: campaignName,
+        cycle_length: parseInt(cycleLength)
+      })
     });
-    
+  
     const data = await res.json();
     if (res.ok) {
       localStorage.setItem('campaign_id', data.campaign_id);
@@ -66,6 +70,7 @@ export default function Home() {
       alert(data.detail || 'Create failed');
     }
   };
+  
 
   const handleJoin = async () => {
     const res = await fetch('http://localhost:8000/api/campaign/join', {
@@ -157,20 +162,34 @@ export default function Home() {
           </div>
         )}
   
-        {showCreateModal && (
-          <div className="modal">
-            <h3>Create Campaign</h3>
-            <input
-              value={campaignName}
-              onChange={(e) => setCampaignName(e.target.value)}
-              placeholder="Campaign Name"
-            />
-            <div>
-              <button onClick={handleCreate}>Create</button>
-              <button onClick={() => setShowCreateModal(false)}>Cancel</button>
-            </div>
-          </div>
-        )}
+  {showCreateModal && (
+  <div className="modal">
+    <h3>Create Campaign</h3>
+    
+    <label htmlFor="campaignName">Campaign Name</label>
+    <input
+      id="campaignName"
+      value={campaignName}
+      onChange={(e) => setCampaignName(e.target.value)}
+    />
+
+    <label htmlFor="cycleLength">Number of Days</label>
+    <input
+      id="cycleLength"
+      type="number"
+      min="1"
+      max="30"
+      value={cycleLength}
+      onChange={(e) => setCycleLength(e.target.value)}
+    />
+
+    <div>
+      <button onClick={handleCreate}>Create</button>
+      <button onClick={() => setShowCreateModal(false)}>Cancel</button>
+    </div>
+  </div>
+)}
+
       </div>
     </div>
   );

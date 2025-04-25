@@ -7,7 +7,7 @@ export default function Invite() {
   const [searchParams] = useSearchParams();
   const campaignId = searchParams.get("campaign_id");
   const campaignName = searchParams.get("campaign_name");
-  const { isAuthenticated, user, loading } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
   const [joining, setJoining] = useState(false);
   const [error, setError] = useState("");
