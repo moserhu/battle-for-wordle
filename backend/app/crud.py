@@ -58,7 +58,7 @@ def login_user(email, password):
 
 def create_campaign(name, user_id, cycle_length):
     code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
-    today = datetime.now().strftime("%Y-%m-%d")
+    today = datetime.now(ZoneInfo("America/Chicago")).strftime("%Y-%m-%d")
 
     with get_db() as conn:
         conn.execute("""
@@ -180,19 +180,20 @@ def join_campaign_by_id(campaign_id, user_id):
 
 
 def get_user_campaigns(user_id: int):
+    today = datetime.now(ZoneInfo("America/Chicago")).strftime("%Y-%m-%d")
     with get_db() as conn:
         rows = conn.execute("""
     SELECT c.id, c.name,
         EXISTS (
             SELECT 1 FROM campaign_daily_progress dp
             WHERE dp.user_id = ? AND dp.campaign_id = c.id
-              AND dp.date = DATE('now', 'localtime')
+              AND dp.date = ?
               AND dp.completed = 1
         ) as is_finished
     FROM campaigns c
     JOIN campaign_members cm ON cm.campaign_id = c.id
     WHERE cm.user_id = ?
-""", (user_id, user_id)).fetchall()
+""", (user_id, today, user_id)).fetchall()
 
     return [
         {
@@ -202,6 +203,7 @@ def get_user_campaigns(user_id: int):
         }
         for row in rows
     ]
+
 
 def get_user_info(user_id: int):
     with get_db() as conn:

@@ -33,10 +33,8 @@ export default function Home() {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ user_id: user?.user_id })
-      });
-  
+        }
+      });      
       const data = await res.json();
       if (res.ok) {
         setCampaigns(data);

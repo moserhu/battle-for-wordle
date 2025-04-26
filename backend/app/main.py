@@ -9,21 +9,13 @@ from app.models import UserOnly, UpdateUserInfo, CampaignAndUserOnly
 
 app = FastAPI()
 
-from fastapi.middleware.cors import CORSMiddleware
-
-origins = [
-    "http://localhost:3000",       # 👈 local dev
-    "https://battleforwordle.com"   # 👈 prod
-]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,        # 👈 use list instead of single string
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=["https://battleforwordle.com"],
+    allow_methods=["GET", "POST", "OPTIONS"],   
+    allow_headers=["Authorization", "Content-Type"]
 )
-
 
 @app.post("/api/word/reveal")
 def reveal_word(data: models.CampaignOnly):
