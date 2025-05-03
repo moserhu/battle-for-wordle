@@ -10,11 +10,11 @@ export default function Keyboard({ onKeyPress, letterStatus }) {
 
   const getKeyClass = (key) => {
     const status = letterStatus?.[key.toLowerCase()];
-    if (status === 'correct') return 'keyboard-key correct';
-    if (status === 'present') return 'keyboard-key present';
-    if (status === 'absent') return 'keyboard-key absent';
-    return 'keyboard-key';
-  };
+    if (status === 'correct') return 'correct';
+    if (status === 'present') return 'present';
+    if (status === 'absent') return 'absent';
+    return '';
+  };  
 
   return (
     <div className="keyboard-container">

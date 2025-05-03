@@ -48,10 +48,11 @@
   
   
   /* Coloring */
-  .keyboard-key.correct { background-color: #538d4e; }
-  .keyboard-key.present { background-color: #b59f3b; }
-  .keyboard-key.absent  { background-color: #3a3a3c; }
+  .keyboard-container .keyboard-key.correct { background-color: #538d4e; }
+  .keyboard-container .keyboard-key.present { background-color: #b59f3b; }
+  .keyboard-container .keyboard-key.absent  { background-color: #222229cb; }
   
+
   /* Responsive tweaks for mobile */
   @media (max-width: 500px) {
     .keyboard-key {
