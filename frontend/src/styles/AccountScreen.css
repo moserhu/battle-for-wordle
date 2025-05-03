@@ -217,6 +217,9 @@
 .campaign-entry strong {
   font-size: 1.1rem;
   color: #f4e9d8;
+  text-transform: none;
+  font-family: 'Courier New', monospace; /* or choose a clean sans font like Roboto */
+  letter-spacing: 0.5px;
 }
 
 .campaign-actions {
@@ -241,6 +244,13 @@
   color: #fff1d6;
 }
 
+.campaign-name-highlight {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 1.05rem;
+  color: #ffd27f;
+  letter-spacing: 0.4px;
+}
+
 .modal-content input {
   width: 100%;
   padding: 0.6rem;
@@ -250,7 +260,8 @@
   font-size: 1rem;
   border: 1px solid #8b6f47;
   border-radius: 6px;
-  font-family: 'Cinzel', serif;
+  font-family: 'Roboto Mono', monospace;  /* 👈 Set font here */
+  letter-spacing: 0.3px;
 }
 
 .modal-content button {

@@ -34,7 +34,8 @@ def init_db():
                 score INTEGER DEFAULT 0,
                 display_name TEXT,
                 color TEXT DEFAULT '#d4af7f',
-                PRIMARY KEY (campaign_id, user_id)
+                PRIMARY KEY (campaign_id, user_id),
+                FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE
             )
         """)
         conn.execute("""
@@ -43,7 +44,8 @@ def init_db():
                 campaign_id INTEGER NOT NULL,
                 user_id INTEGER NOT NULL,
                 word TEXT NOT NULL,
-                date TEXT NOT NULL
+                date TEXT NOT NULL,
+                FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE
             )
         """)
         conn.execute("""
@@ -52,7 +54,8 @@ def init_db():
                 user_id INTEGER NOT NULL,
                 date TEXT NOT NULL,
                 completed INTEGER,
-                PRIMARY KEY (campaign_id, user_id, date)
+                PRIMARY KEY (campaign_id, user_id, date),
+                FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE
             )
         """)
         conn.execute("""
@@ -65,7 +68,8 @@ def init_db():
                 letter_status TEXT NOT NULL,
                 current_row INTEGER NOT NULL,
                 game_over INTEGER NOT NULL,
-                PRIMARY KEY (user_id, campaign_id, date)
+                PRIMARY KEY (user_id, campaign_id, date),
+                FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE
             )
         """)
         conn.execute("""
@@ -74,8 +78,6 @@ def init_db():
                 day INTEGER NOT NULL,
                 word TEXT NOT NULL,
                 PRIMARY KEY (campaign_id, day),
-                FOREIGN KEY (campaign_id) REFERENCES campaigns(id)
+                FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE
             )
         """)
-
-

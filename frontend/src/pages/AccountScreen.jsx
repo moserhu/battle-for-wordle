@@ -201,11 +201,16 @@ export default function AccountScreen() {
       {/* Delete confirmation */}
       {selectedCampaign && confirmingDelete && (
         <>
-          <p>Type <strong>{selectedCampaign.name}</strong> to confirm deletion:</p>
-          <input value={confirmDeleteName} onChange={(e) => setConfirmDeleteName(e.target.value)} />
+          <p>
+            Type <strong className="campaign-name-highlight">{selectedCampaign.name}</strong> to confirm deletion <em>(case-insensitive)</em>:
+          </p>
+          <input
+            value={confirmDeleteName}
+            onChange={(e) => setConfirmDeleteName(e.target.value)}
+          />
           <button
+            disabled={confirmDeleteName.trim().toLowerCase() !== selectedCampaign.name.toLowerCase()}
             onClick={async () => {
-              if (confirmDeleteName !== selectedCampaign.name) return;
               const res = await fetch(`${API_BASE}/api/campaign/delete`, {
                 method: "POST",
                 headers: {
@@ -219,10 +224,12 @@ export default function AccountScreen() {
                 setSelectedCampaign(null);
                 setConfirmDeleteName('');
                 setKickList([]);
-                fetchOwnedCampaigns(); // ✅ re-fetch with correct source
+                fetchOwnedCampaigns();
               }
             }}
-          >Confirm Delete</button>
+          >
+            Confirm Delete
+          </button>
         </>
       )}
 

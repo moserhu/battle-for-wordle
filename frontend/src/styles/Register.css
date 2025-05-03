@@ -27,8 +27,12 @@
     border: 1px solid #555;
     border-radius: 5px;
     font-size: 16px;
-    font-family: inherit;
+    font-family: 'Arial', sans-serif;
+    text-transform: none;
+    font-variant: normal;
+    letter-spacing: normal;
   }
+  
   
   .register-form input::placeholder {
     color: #ccc;
