@@ -20,7 +20,10 @@ load_dotenv()
 DB = os.getenv("DB_PATH")
 
 def get_db():
-    return sqlite3.connect(DB)
+    conn = sqlite3.connect(DB)
+    conn.execute("PRAGMA foreign_keys = ON")  # 🔥 CRITICAL
+    return conn
+
 
 
 def register_user(first_name, last_name, email, phone, password):
