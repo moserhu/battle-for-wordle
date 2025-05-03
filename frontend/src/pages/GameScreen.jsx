@@ -255,7 +255,7 @@ export default function GameScreen() {
   
   
   const screenRef = useRef();  
-  
+
   function generateBattleShareText(guesses, results, campaignDay) {
     const board = guesses
       .map((guess, rowIndex) => {
@@ -263,16 +263,24 @@ export default function GameScreen() {
         return results[rowIndex].map(r => {
           if (r === "correct") return "🟢";  // dark green
           if (r === "present") return "🟧";  // orange
-          return "⬛";                       // absent (unchanged)
+          return "⬛";
         }).join("");
       })
       .filter(Boolean)
       .join("\n");
   
-    return `🏰 Battle for Wordle\n📅 Day ${campaignDay?.day} of ${campaignDay?.total}\n\n${board}`;
+    const nameLine = campaignDay?.name ? `🏰 Battle for Wordle: ${campaignDay.name}\n` : "🏰 Battle for Wordle\n";
+    const dayLine = `📅 Day ${campaignDay?.day} of ${campaignDay?.total}`;
+  
+    const solvedRow = results.findIndex(r => r?.every(cell => cell === "correct"));
+    const didSolve = solvedRow !== -1;
+  
+    const resultLine = didSolve
+      ? `📝 Solved in ${solvedRow + 1}/6`
+      : `❌ Failed - Dissapointment to their King`;
+  
+    return `${nameLine}${dayLine}\n${resultLine}\n\n${board}`;
   }
-  
-  
   
 
 //function to submit the guess
