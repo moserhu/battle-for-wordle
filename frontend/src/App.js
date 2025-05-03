@@ -11,18 +11,43 @@ import MainLandingPage from './pages/MainLandingPage';
 import Invite from './pages/Invite';
 import { AuthProvider } from './auth/AuthProvider';
 import RedirectIfAuthenticated from './auth/RedirectIfAuthenticated';
+import RequireAuth from './auth/RequireAuth'; // ✅ Import protection wrapper
 
 function App() {
   return (
     <Router>
       <AuthProvider>
         <Routes>
-        <Route path="/invite" element={<Invite />} />
-          <Route path="/home" element={<Home />} />
-          <Route path="/game" element={<GameScreen />} />
-          <Route path="/account" element={<AccountScreen />} />
+          {/* Public invite route */}
+          <Route path="/invite" element={<Invite />} />
 
-          {/* Public routes with redirect if already logged in */}
+          {/* ✅ Protected Routes */}
+          <Route
+            path="/home"
+            element={
+              <RequireAuth>
+                <Home />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/game"
+            element={
+              <RequireAuth>
+                <GameScreen />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/account"
+            element={
+              <RequireAuth>
+                <AccountScreen />
+              </RequireAuth>
+            }
+          />
+
+          {/* 🔓 Public Routes with redirect if already logged in */}
           <Route
             path="/"
             element={
@@ -52,6 +77,5 @@ function App() {
     </Router>
   );
 }
-
 
 export default App;

@@ -276,12 +276,12 @@ export default function GameScreen() {
     const didSolve = solvedRow !== -1;
   
     const resultLine = didSolve
-      ? `📝 Solved in ${solvedRow + 1}/6`
+      ? `⚔️ Solved in ${solvedRow + 1}/6`
       : `❌ Failed - Disappointment to their King`;
   
-    const homeLink = `\n⚔️ Do Your Part: https://battleforwordle.com/home`;
+    const homeLink = `Do your part at https://battleforwordle.com/home ⚔️`;
   
-    return `${nameLine}\n${dayLine}\n${resultLine}\n\n${board}\n${homeLink}`;
+    return `${nameLine}\n${dayLine}\n${resultLine}\n\n${board}\n\n${homeLink}`;
   }
   
   
@@ -572,11 +572,15 @@ export default function GameScreen() {
                 <button className="troop-btn" onClick={() => {
                   const shareText = generateBattleShareText(guesses, results, campaignDay); 
                   if (navigator.share) {
-                    navigator.share({ text: shareText });
+                    navigator.share({ text: shareText }).catch((err) => {
+                      if (err.name !== "AbortError") {
+                        console.error("Share failed:", err);
+                      }
+                    });
                   } else {
                     navigator.clipboard.writeText(shareText);
                     alert("📋 Copied result to clipboard!");
-                  }
+                  }                  
                 }}>
                   📤 Share Your Result
                 </button>

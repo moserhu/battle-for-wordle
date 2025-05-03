@@ -103,26 +103,30 @@ export default function Leaderboard({ onBack }) {
       <div className="leaderboard-panel">
         <h2>🏆 Leaderboard</h2>
         <table>
-          <thead>
-            <tr>
-              <th>Player</th>
-              <th>Troops</th>
+        <thead>
+          <tr>
+            <th>Player</th>
+            <th>Troops</th>
+            <th>Battled?</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data.map((entry, i) => (
+            <tr key={i}>
+              <td className="player-cell">
+                <div
+                  className="color-swatch"
+                  style={{ backgroundColor: colorMap[entry.username] }}
+                ></div>
+                {entry.username}
+              </td>
+              <td>{entry.score}</td>
+              <td style={{ textAlign: "center" }}>
+                {entry.played_today ? "✅" : "❌"}
+              </td>
             </tr>
-          </thead>
-          <tbody>
-            {data.map((entry, i) => (
-              <tr key={i}>
-                <td className="player-cell">
-                  <div
-                    className="color-swatch"
-                    style={{ backgroundColor: colorMap[entry.username] }}
-                  ></div>
-                  {entry.username}
-                </td>
-                <td>{entry.score}</td>
-              </tr>
-            ))}
-          </tbody>
+          ))}
+        </tbody>
         </table>
         <button className="back-button" onClick={onBack}>
           Back to Battle

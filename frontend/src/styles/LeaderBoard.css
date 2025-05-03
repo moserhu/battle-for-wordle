@@ -17,6 +17,12 @@
   overflow-x: hidden; /* ⬅️ block sideways scroll */
 }
 
+.leaderboard-panel table td {
+  vertical-align: middle;
+  font-size: 1.2rem;
+}
+
+
 
 @keyframes fadeInBackground {
   to {

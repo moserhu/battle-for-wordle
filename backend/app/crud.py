@@ -493,28 +493,36 @@ def get_campaign_progress(campaign_id: int):
     }
 
 def get_leaderboard(campaign_id: int):
+    today = datetime.now(ZoneInfo("America/Chicago")).strftime("%Y-%m-%d")
+
     with get_db() as conn:
         rows = conn.execute(
             """
-            SELECT cm.display_name, cm.color, cm.score
+            SELECT 
+                cm.display_name,
+                cm.color,
+                cm.score,
+                COALESCE(dp.completed, 0) as played_today
             FROM campaign_members cm
+            LEFT JOIN campaign_daily_progress dp 
+              ON cm.user_id = dp.user_id 
+              AND cm.campaign_id = dp.campaign_id 
+              AND dp.date = ?
             WHERE cm.campaign_id = ?
             ORDER BY cm.score DESC
             """,
-            (campaign_id,)
+            (today, campaign_id)
         ).fetchall()
 
     return [
         {
             "username": row[0],
             "color": row[1],
-            "score": row[2]
+            "score": row[2],
+            "played_today": bool(row[3])
         }
         for row in rows
     ]
-
-
-
 
 def get_saved_progress(user_id: int, campaign_id: int):
     today = datetime.now(ZoneInfo("America/Chicago")).strftime("%Y-%m-%d")
