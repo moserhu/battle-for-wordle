@@ -36,6 +36,8 @@
   position: relative;
   z-index: 2;
   box-sizing: border-box;
+  margin-bottom: 2.5rem;
+
 }
 
 /* === TEXT & BUTTONS === */
@@ -314,6 +316,13 @@
   }
 }
 
+.share-button-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 1.5rem;
+  margin-bottom: 1.5rem;
+  z-index: 10;
+}
 
 
 /* === RESPONSIVE BREAKPOINTS === */

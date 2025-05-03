@@ -1,4 +1,5 @@
 import React from 'react';
+import '../styles/Keyboard.css';
 
 export default function Keyboard({ onKeyPress, letterStatus }) {
   const keys = [
@@ -7,27 +8,26 @@ export default function Keyboard({ onKeyPress, letterStatus }) {
     ['Enter', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', '⌫'],
   ];
 
-  const getKeyStyle = (key) => {
+  const getKeyClass = (key) => {
     const status = letterStatus?.[key.toLowerCase()];
-    if (status === 'correct') return { backgroundColor: '#538d4e', color: 'white' }; // green
-    if (status === 'present') return { backgroundColor: '#b59f3b', color: 'white' }; // yellow
-    if (status === 'absent') return { backgroundColor: '#3a3a3c', color: 'white' };  // dark gray
-    return { backgroundColor: '#666', color: 'white' }; // default
+    if (status === 'correct') return 'keyboard-key correct';
+    if (status === 'present') return 'keyboard-key present';
+    if (status === 'absent') return 'keyboard-key absent';
+    return 'keyboard-key';
   };
 
   return (
-    <div>
+    <div className="keyboard-container">
       {keys.map((row, i) => (
-        <div key={i} className="keyboard-row" style={{ display: 'flex', justifyContent: 'center', gap: '6px', marginTop: '8px' }}>
+        <div key={i} className="keyboard-row">
           {row.map((key) => (
             <button
-              key={key}
-              className="keyboard-key"
-              style={{ ...getKeyStyle(key), padding: '12px', border: 'none', borderRadius: '4px' }}
-              onClick={() => onKeyPress(key)}
-            >
-              {key}
-            </button>
+            key={key}
+            className={`keyboard-key ${key === 'Enter' ? 'enter-key' : ''} ${key === '⌫' ? 'delete-key' : ''} ${getKeyClass(key)}`}
+            onClick={() => onKeyPress(key)}
+          >
+            {key}
+          </button>          
           ))}
         </div>
       ))}

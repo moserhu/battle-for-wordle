@@ -256,6 +256,22 @@ export default function GameScreen() {
   
   const screenRef = useRef();  
   
+  function generateBattleShareText(guesses, results, campaignDay) {
+    const board = guesses
+      .map((guess, rowIndex) => {
+        if (!results[rowIndex]) return "";
+        return results[rowIndex].map(r => {
+          if (r === "correct") return "🟢";  // dark green
+          if (r === "present") return "🟧";  // orange
+          return "⬛";                       // absent (unchanged)
+        }).join("");
+      })
+      .filter(Boolean)
+      .join("\n");
+  
+    return `🏰 Battle for Wordle\n📅 Day ${campaignDay?.day} of ${campaignDay?.total}\n\n${board}`;
+  }
+  
   
   
 
@@ -540,6 +556,21 @@ export default function GameScreen() {
             setShowEditModal(true);
               }}
               />
+              {gameOver && !showTroopModal && (
+              <div className="share-button-container">
+                <button className="troop-btn" onClick={() => {
+                  const shareText = generateBattleShareText(guesses, results, campaignDay); 
+                  if (navigator.share) {
+                    navigator.share({ text: shareText });
+                  } else {
+                    navigator.clipboard.writeText(shareText);
+                    alert("📋 Copied result to clipboard!");
+                  }
+                }}>
+                  📤 Share Your Result
+                </button>
+              </div>
+            )}
             {errorMsg && <div className="error-msg">{errorMsg}</div>}
             {!loadingLeaderboard && (
               <>
@@ -595,6 +626,20 @@ export default function GameScreen() {
               <h2>🎖 Victory!</h2>
               <p>You gained <strong>{troopsEarned}</strong> troops.</p>
               <div className="modal-buttons">
+              <button
+                className="troop-btn"
+                onClick={() => {
+                  const shareText = generateBattleShareText(guesses, results, campaignDay);
+                  if (navigator.share) {
+                    navigator.share({ text: shareText });
+                  } else {
+                    navigator.clipboard.writeText(shareText);
+                    alert("📋 Copied result to clipboard!");
+                  }
+                }}
+              >
+                📤 Share
+              </button>
                 <button className="troop-btn close-btn" onClick={() => setShowTroopModal(false)}>❌ Close</button>
                 <button className="troop-btn leaderboard-btn" onClick={() => {
                   setShowTroopModal(false);
