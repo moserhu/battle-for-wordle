@@ -20,7 +20,7 @@ load_dotenv()
 DB = os.getenv("DB_PATH")
 
 def get_db():
-    conn = sqlite3.connect(DB)
+    conn = sqlite3.connect(DB, timeout=10.0) 
     conn.execute("PRAGMA foreign_keys = ON")  # 🔥 CRITICAL
     return conn
 
@@ -261,19 +261,19 @@ def load_playable_words():
     with open(wordlist_path, "r") as f:
         return [line.strip().lower() for line in f if line.strip()]
 
-def initialize_campaign_words(campaign_id: int, num_days: int):
+def initialize_campaign_words(campaign_id: int, num_days: int, conn):
     words = load_playable_words()
     if len(words) < num_days:
         raise HTTPException(status_code=400, detail="Not enough words in wordlist")
 
     selected_words = random.sample(words, num_days)
 
-    with get_db() as conn:
-        for day, word in enumerate(selected_words, start=1):
-            conn.execute(
-                "INSERT INTO campaign_words (campaign_id, day, word) VALUES (?, ?, ?)",
-                (campaign_id, day, word)
-            )
+    for day, word in enumerate(selected_words, start=1):
+        conn.execute(
+            "INSERT INTO campaign_words (campaign_id, day, word) VALUES (?, ?, ?)",
+            (campaign_id, day, word)
+        )
+
 
 def get_daily_word(campaign_id: int):
     today = datetime.now(ZoneInfo("America/Chicago")).date()
@@ -579,8 +579,9 @@ def handle_campaign_end(campaign_id: int):
         conn.execute("DELETE FROM campaign_daily_progress WHERE campaign_id = ?", (campaign_id,))
         conn.execute("UPDATE campaign_members SET score = 0 WHERE campaign_id = ?", (campaign_id,))
         conn.execute("DELETE FROM campaign_words WHERE campaign_id = ?", (campaign_id,))
-        # Reinitialize for a new cycle of 5 days (or allow dynamic later)
-        initialize_campaign_words(campaign_id, 5)
+        # Reinitialize for a new cycle of # days 
+        cycle_length = conn.execute("SELECT cycle_length FROM campaigns WHERE id = ?", (campaign_id,)).fetchone()[0]
+        initialize_campaign_words(campaign_id, cycle_length, conn)
         return {"status": "campaign reset", "new_start_date": today}
 
 
