@@ -46,8 +46,7 @@ export default function Home() {
     }
   }, [user, token, loading]);
   
-  if (loading) return null; // <-- move this AFTER the hooks
-  
+  if (loading) return null; 
 
   const handleCreate = async () => {
     const res = await fetch(`${API_BASE}/api/campaign/create`, {
@@ -118,26 +117,36 @@ export default function Home() {
             {campaigns.length > 0 && (
               <table className="campaign-table">
                 <thead>
-                  <tr>
-                    <th>Campaign</th>
-                    <th>Completed</th>
-                    <th></th>
-                  </tr>
+                <tr>
+                  <th>Campaign</th>
+                  <th>Completed</th>
+                  <th colSpan={2}>Actions</th>
+                </tr>
                 </thead>
                 <tbody>
                   {campaigns.map((camp) => (
                     <tr key={camp.campaign_id}>
                       <td>{camp.name}</td>
                       <td>{camp.is_finished ? '✅' : '❌'}</td>
-                      <td>
-                        <button
-                          onClick={() => {
-                            localStorage.setItem('campaign_id', camp.campaign_id);
-                            navigate('/game');
-                          }}
-                        >
-                          Play
-                        </button>
+                      <td colSpan={2}>
+                        <div className="campaign-buttons">
+                          <button
+                            onClick={() => {
+                              localStorage.setItem('campaign_id', camp.campaign_id);
+                              navigate(`/leaderboard/${camp.campaign_id}`);
+                            }}
+                          >
+                            Leaderboard
+                          </button>
+                          <button
+                            onClick={() => {
+                              localStorage.setItem('campaign_id', camp.campaign_id);
+                              navigate('/game');
+                            }}
+                          >
+                            Play
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}

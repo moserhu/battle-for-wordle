@@ -319,9 +319,21 @@
 .share-button-container {
   display: flex;
   justify-content: center;
-  margin-top: 1.5rem;
   margin-bottom: 1.5rem;
   z-index: 10;
+}
+
+.share-btn {
+  padding: 0.6rem 1.2rem;
+  background: linear-gradient(145deg, #b84c2c, #59210e);
+  border: 2px solid #c2a370;
+  border-radius: 8px;
+  color: #fef4e6;
+  font-family: 'Cinzel', serif;
+  font-size: 1.1rem;
+  cursor: pointer;
+  box-shadow: 2px 2px 6px rgba(0, 0, 0, 0.5);
+  transition: transform 0.2s ease-in-out, background 0.3s;
 }
 
 

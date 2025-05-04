@@ -3,7 +3,7 @@
   text-align: center;
   font-family: 'Cinzel', serif;
   color: #f4e9d8;
-  margin-bottom: 1%;
+  margin-bottom: 1rem;
   padding: 0 1rem;
   box-sizing: border-box;
 }
@@ -39,7 +39,6 @@
 
 /* Leaderboard Button */
 .leaderboard-toggle-btn {
-  margin-top: 1rem;
   padding: 0.6rem 1.2rem;
   background: linear-gradient(145deg, #3b2e2a, #5a453e);
   border: 2px solid #c2a370;
@@ -133,14 +132,11 @@
   .header-buttons {
     flex-direction: column;
     align-items: center;
-    gap: 0.5rem; /* reduce vertical spacing */
-    margin-top: 0.75rem;
   }
 
   .header-buttons button,
   .header-buttons .invite-share-button {
     width: 100%;
     max-width: 250px;
-    margin: 0; /* remove extra margin if any got inherited */
   }
 }

@@ -1,9 +1,9 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import '../styles/Header.css';
 import InviteShareButton from './InviteShareButton';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPen } from '@fortawesome/free-solid-svg-icons';
-
 
 export default function Header({
   campaignDay,
@@ -11,16 +11,18 @@ export default function Header({
   midnightCountdown,
   isFinalDay,
   campaignEnded,
-  onToggleLeaderboard,
   playerDisplayName,
   playerColor,
-  onEditClick, // 🆕 added prop
+  onEditClick,
 }) {
+  const navigate = useNavigate();
+  const campaignId = localStorage.getItem("campaign_id");
+
   return (
     <div className="header-container">
       <div className="header-row">
         <div className="header-left">
-          {/* 🧙 Player display name + color dot */}
+          {/* Player Info */}
           {playerDisplayName && (
             <div className="player-info-badge">
               <span className="color-dot" style={{ backgroundColor: playerColor }}></span>
@@ -31,12 +33,14 @@ export default function Header({
             </div>
           )}
 
+          {/* Campaign Info */}
           {campaignDay && (
             <p className="campaign-info">
               Day {campaignDay.day} of {campaignDay.total} • Campaign: <strong>{campaignDay.name}</strong>
             </p>
           )}
 
+          {/* Countdown */}
           {campaignEnded ? (
             <p className="countdown-timer">
               🏁 Campaign ended — new campaign begins in: {midnightCountdown.hours}h {midnightCountdown.minutes}m {midnightCountdown.seconds}s
@@ -50,9 +54,13 @@ export default function Header({
             </p>
           )}
 
+          {/* Buttons */}
           <div className="header-buttons">
             <InviteShareButton />
-            <button className="leaderboard-toggle-btn" onClick={onToggleLeaderboard}>
+            <button
+              className="leaderboard-toggle-btn"
+              onClick={() => navigate(`/leaderboard/${campaignId}`)}
+            >
               View Leaderboard
             </button>
           </div>

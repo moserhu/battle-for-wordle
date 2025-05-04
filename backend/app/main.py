@@ -42,7 +42,6 @@ def register(user: models.UserRegister):
         user.password
     )
 
-
 @app.post("/api/login")
 def login(user: models.UserLogin):
     user_data = crud.login_user(user.email, user.password)

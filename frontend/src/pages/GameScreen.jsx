@@ -1,9 +1,7 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import html2canvas from 'html2canvas';
+import React, { useState, useEffect, useCallback } from 'react';
 import Header from '../components/Header';
 import WordGrid from '../components/WordGrid';
 import Keyboard from '../components/Keyboard';
-import Leaderboard from '../pages/Leaderboard';
 import { useNavigate } from 'react-router-dom';
 import '../styles/GameScreen.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -63,16 +61,8 @@ export default function GameScreen() {
   const [midnightCountdown, setMidnightCountdown] = useState(getTimeUntilMidnightCT());
   const [campaignEnded, setCampaignEnded] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
-  const [animating, setAnimating] = useState(false);
-  const [showLeaderboard, setShowLeaderboard] = useState(false);
-  const [screenshotLeft, setScreenshotLeft] = useState(null);
-  const [screenshotRight, setScreenshotRight] = useState(null);
-  const [imageHalfWidth, setImageHalfWidth] = useState(0);
-  const [screenWidth, setScreenWidth] = useState(window.innerWidth);
-  const [fadingBackIn, setFadingBackIn] = useState(false);
   const [showTroopModal, setShowTroopModal] = useState(false);
   const [troopsEarned, setTroopsEarned] = useState(0);
-  const [loadingLeaderboard, setLoadingLeaderboard] = useState(true);
   const [playerDisplayName, setPlayerDisplayName] = useState("");
   const [playerColor, setPlayerColor] = useState("#ffffff");
   const [showEditModal, setShowEditModal] = useState(false);
@@ -102,7 +92,6 @@ export default function GameScreen() {
     setCampaignId(id);
 
     const resetAndFetch = async () => {
-      setLoadingLeaderboard(true);
       setGuesses(EMPTY_GRID);
       setResults(Array(6).fill(null));
       setCurrentRow(0);
@@ -167,20 +156,11 @@ export default function GameScreen() {
     const nextCol = guessRow.findIndex((l) => l === "");
     setCurrentCol(nextCol === -1 ? 5 : nextCol);
 
-      setLoadingLeaderboard(false);
     };
 
     resetAndFetch();
   }, [user, loading, navigate]);
-
   
-  useEffect(() => {
-    const updateWidth = () => setScreenWidth(window.innerWidth);
-    window.addEventListener('resize', updateWidth);
-    return () => window.removeEventListener('resize', updateWidth);
-  }, []);
-  
-
   const checkIfCampaignShouldEnd = useCallback(async () => {
     const res = await fetch(`${API_BASE}/api/campaign/finished_today`, {
       method: "POST",
@@ -251,11 +231,6 @@ export default function GameScreen() {
     return () => clearInterval(interval);
   }, [campaignDay, campaignId, campaignEnded, checkIfCampaignShouldEnd]);
   
-  
-  
-  
-  const screenRef = useRef();  
-
   function generateBattleShareText(guesses, results, campaignDay) {
     const board = guesses
       .map((guess, rowIndex) => {
@@ -417,78 +392,12 @@ export default function GameScreen() {
     }
   };
 
-
-  
-  const handleShowLeaderboard = async () => {
-
-  
-    const splitScreenshot = (dataUrl) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvasWidth = img.width;
-        const canvasHeight = img.height;
-    
-        const leftCanvas = document.createElement("canvas");
-        const rightCanvas = document.createElement("canvas");
-    
-        leftCanvas.width = canvasWidth / 2;
-        leftCanvas.height = canvasHeight;
-        rightCanvas.width = canvasWidth / 2;
-        rightCanvas.height = canvasHeight;
-    
-        const leftCtx = leftCanvas.getContext("2d");
-        const rightCtx = rightCanvas.getContext("2d");
-    
-        leftCtx.drawImage(img, 0, 0, canvasWidth / 2, canvasHeight, 0, 0, canvasWidth / 2, canvasHeight);
-        rightCtx.drawImage(img, canvasWidth / 2, 0, canvasWidth / 2, canvasHeight, 0, 0, canvasWidth / 2, canvasHeight);
-    
-        setScreenshotLeft(leftCanvas.toDataURL());
-        setScreenshotRight(rightCanvas.toDataURL());
-    
-        // 🎯 Use real screen width to position them correctly
-        const realDOMWidth = screenRef.current.offsetWidth;
-        setImageHalfWidth(realDOMWidth / 2);
-        
-
-        requestAnimationFrame(() => setAnimating(true));
-   
-          setShowLeaderboard(true);
-          setAnimating(true);
-     
-      };
-   
-      img.src = dataUrl;
-    };
-    
-      
-    const canvas = await html2canvas(screenRef.current, {
-      useCORS: true,
-      backgroundColor: null,
-      scale: window.devicePixelRatio || 1,
-      
-    });
-    const fullScreenshot = canvas.toDataURL("image/png");
-    splitScreenshot(fullScreenshot);
-
-
-  };
-  
-  const handleBackToGame = () => {
-    setShowLeaderboard(false);
-    setScreenshotLeft(null);
-    setScreenshotRight(null);
-    setAnimating(false);
-    setFadingBackIn(true);
-    setTimeout(() => setFadingBackIn(false), 500); // match fade duration
-  };
-
   function hslToCssString(hsl) {
     const h = Math.round(hsl.h);
     const s = Math.round(hsl.s); 
     const l = Math.round(hsl.l); 
     return `hsl(${h}, ${s}%, ${l}%)`;
   }
-  
   
   function cssStringToHSL(cssColor) {
     // Create a dummy div to resolve computed color
@@ -532,45 +441,44 @@ export default function GameScreen() {
   }
   
   
-  
   return (
-    <div className="screenshot-container" ref={screenRef}>
-      {/* Game UI Layer */}
-      <div className="game-wrapper">
-        <div className={`game-content ${fadingBackIn ? "fade-in" : ""} ${animating || (showLeaderboard && !fadingBackIn) ? "hidden" : ""}`}>
-          <div className="game-inner">
-            <button
-              className="home-button"
-              onClick={() => {
-                localStorage.removeItem("campaign_id");
-                localStorage.removeItem("invite_code");
-                localStorage.removeItem("campaign_ended"); 
-                localStorage.removeItem("campaign_name");
-                navigate("/home");
-              }}              
-            >
-              <FontAwesomeIcon icon={faLandmark} />
-            </button>
-            <Header
-              campaignDay={campaignDay}
-              cutoffCountdown={cutoffCountdown}
-              midnightCountdown={midnightCountdown}
-              isFinalDay={isFinalCampaignDay(campaignDay)}
-              campaignEnded={campaignEnded}
-              onToggleLeaderboard={handleShowLeaderboard}
-              playerDisplayName={playerDisplayName}
-              playerColor={playerColor}
-              onEditClick={() => {
-            setNewDisplayName(playerDisplayName);
-            setNewColor(playerColor);
-            setPickerColor(cssStringToHSL(playerColor)); // ← Move here
-            setShowEditModal(true);
-              }}
-              />
-              {gameOver && !showTroopModal && (
-              <div className="share-button-container">
-                <button className="troop-btn" onClick={() => {
-                  const shareText = generateBattleShareText(guesses, results, campaignDay); 
+    <div className="game-wrapper">
+      <div className="game-content">
+        <div className="game-inner">
+          <button
+            className="home-button"
+            onClick={() => {
+              localStorage.removeItem("campaign_id");
+              localStorage.removeItem("invite_code");
+              localStorage.removeItem("campaign_ended");
+              localStorage.removeItem("campaign_name");
+              navigate("/home");
+            }}
+          >
+            <FontAwesomeIcon icon={faLandmark} />
+          </button>
+  
+          <Header
+            campaignDay={campaignDay}
+            cutoffCountdown={cutoffCountdown}
+            midnightCountdown={midnightCountdown}
+            isFinalDay={isFinalCampaignDay(campaignDay)}
+            campaignEnded={campaignEnded}
+            playerDisplayName={playerDisplayName}
+            playerColor={playerColor}
+            onEditClick={() => {
+              setNewDisplayName(playerDisplayName);
+              setNewColor(playerColor);
+              setPickerColor(cssStringToHSL(playerColor));
+              setShowEditModal(true);
+            }}
+          />
+    {gameOver && !showTroopModal && (
+            <div className="share-button-container">
+              <button
+                className="share-btn"
+                onClick={() => {
+                  const shareText = generateBattleShareText(guesses, results, campaignDay);
                   if (navigator.share) {
                     navigator.share({ text: shareText }).catch((err) => {
                       if (err.name !== "AbortError") {
@@ -580,67 +488,33 @@ export default function GameScreen() {
                   } else {
                     navigator.clipboard.writeText(shareText);
                     alert("📋 Copied result to clipboard!");
-                  }                  
-                }}>
-                  📤 Share Your Result
-                </button>
-              </div>
-            )}
-            {errorMsg && <div className="error-msg">{errorMsg}</div>}
-            {!loadingLeaderboard && (
-              <>
-                <WordGrid guesses={guesses} results={results} currentRow={currentRow} currentCol={currentCol} />
-                <Keyboard onKeyPress={handleKeyPress} letterStatus={letterStatus} />
-              </>
-            )}
-          </div>
+                  }
+                }}
+              >
+                📤 Share Your Result
+              </button>
+            </div>
+          )}
+          {/* Re-inserted core game components */}
+          <WordGrid
+            guesses={guesses}
+            results={results}
+            currentRow={currentRow}
+            currentCol={currentCol}
+          />
+          <Keyboard letterStatus={letterStatus} onKeyPress={handleKeyPress} />
+  
+          {errorMsg && <div className="error-msg">{errorMsg}</div>}
         </div>
+      </div>
   
-        {/* Screenshot Background */}
-        {(screenshotLeft && screenshotRight) && (
-          <div className="screenshot-overlay">
-            <img
-              src={screenshotLeft}
-              alt="Left Half"
-              className={`split-half left ${animating ? 'slide-left' : ''}`}
-              style={{ left: `${screenWidth / 2 - imageHalfWidth}px` }}
-            />
-            <img
-              src={screenshotRight}
-              alt="Right Half"
-              className={`split-half right ${animating ? 'slide-right' : ''}`}
-              style={{ left: `${screenWidth / 2}px` }}
-            />
-          </div>
-        )}
-  
-        {/* Leaderboard */}
-        {showLeaderboard && (
-          <div className="leaderboard-wrapper">
-            <button
-              className="home-button"
-              onClick={() => {
-                localStorage.removeItem("campaign_id");
-                localStorage.removeItem("campaign_ended"); 
-                localStorage.removeItem("campaign_name");
-                setCampaignId(null);
-                setGuesses(EMPTY_GRID);
-                navigate("/home");
-              }}
-            >
-              <FontAwesomeIcon icon={faLandmark} />
-            </button>
-            <Leaderboard onBack={handleBackToGame} />
-          </div>
-        )}
-  
-        {/* Troop Modal */}
-        {showTroopModal && (
-          <div className="troop-modal-overlay">
-            <div className="troop-modal">
-              <h2>🎖 Victory!</h2>
-              <p>You gained <strong>{troopsEarned}</strong> troops.</p>
-              <div className="modal-buttons">
+      {/* Troop Modal */}
+      {showTroopModal && (
+        <div className="troop-modal-overlay">
+          <div className="troop-modal">
+            <h2>🎖 Victory!</h2>
+            <p>You gained <strong>{troopsEarned}</strong> troops.</p>
+            <div className="modal-buttons">
               <button
                 className="troop-btn"
                 onClick={() => {
@@ -655,86 +529,90 @@ export default function GameScreen() {
               >
                 📤 Share
               </button>
-                <button className="troop-btn close-btn" onClick={() => setShowTroopModal(false)}>❌ Close</button>
-                <button className="troop-btn leaderboard-btn" onClick={() => {
+              <button className="troop-btn close-btn" onClick={() => setShowTroopModal(false)}>❌ Close</button>
+              <button
+                className="troop-btn leaderboard-btn"
+                onClick={() => {
                   setShowTroopModal(false);
-                  handleShowLeaderboard();
-                }}>🏰 Go to Leaderboard</button>
-              </div>
+                  navigate(`/leaderboard/${campaignId}`);
+                }}
+              >
+                🏰 Go to Leaderboard
+              </button>
             </div>
           </div>
-        )}
-        {/* Edit Display Name Modal */}
-        {showEditModal && (
-  <div className="modal-overlay">
-    <div className="modal">
-      <h2>Edit Your Identity</h2>
-      <label>Display Name</label>
-      <input
-        type="text"
-        value={newDisplayName}
-        onChange={(e) => setNewDisplayName(e.target.value)}
-      />
-      <label>Color</label>
-      <div className="color-picker-wrapper">
-    <div
-      className="current-color-preview"
-      style={{ backgroundColor: hslToCssString(pickerColor) }}
-      onClick={() => setShowWheel(!showWheel)}
-          />
-    {showWheel && (
-      <div className="wheel-container">
-              <HslColorPicker
-              color={pickerColor}
-              onChange={(color) => {
-             setPickerColor(color);                  
-           setNewColor(hslToCssString(color));     
-                }}
+        </div>
+      )}
+  
+      {/* Edit Display Name Modal */}
+      {showEditModal && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <h2>Edit Your Identity</h2>
+            <label>Display Name</label>
+            <input
+              type="text"
+              value={newDisplayName}
+              onChange={(e) => setNewDisplayName(e.target.value)}
+            />
+            <label>Color</label>
+            <div className="color-picker-wrapper">
+              <div
+                className="current-color-preview"
+                style={{ backgroundColor: hslToCssString(pickerColor) }}
+                onClick={() => setShowWheel(!showWheel)}
               />
-      </div>
-    )}
-  </div>
-      <div className="modal-buttons">
-        <button
-          className="troop-btn"
-          onClick={async () => {
-            const res = await fetch(`${API_BASE}/api/campaign/update_member`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${localStorage.getItem("token")}`,
-              },
-              body: JSON.stringify({
-                campaign_id: campaignId,
-                user_id: user.user_id,
-                display_name: newDisplayName,
-                color: newColor,
-              }),
-            });
-            if (res.ok) {
-              setPlayerDisplayName(newDisplayName);
-              setPlayerColor(newColor);
-              setShowEditModal(false);
-            } else {
-              alert("Update failed");
-            }
-          }}
-        >
-          Save
-        </button>
-        <button
-          className="troop-btn close-btn"
-          onClick={() => setShowEditModal(false)}
-        >
-          Cancel
-        </button>
-      </div>
-    </div>
-  </div>
-)}
-      </div>
+              {showWheel && (
+                <div className="wheel-container">
+                  <HslColorPicker
+                    color={pickerColor}
+                    onChange={(color) => {
+                      setPickerColor(color);
+                      setNewColor(hslToCssString(color));
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+            <div className="modal-buttons">
+              <button
+                className="troop-btn"
+                onClick={async () => {
+                  const res = await fetch(`${API_BASE}/api/campaign/update_member`, {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                      Authorization: `Bearer ${localStorage.getItem("token")}`,
+                    },
+                    body: JSON.stringify({
+                      campaign_id: campaignId,
+                      user_id: user.user_id,
+                      display_name: newDisplayName,
+                      color: newColor,
+                    }),
+                  });
+                  if (res.ok) {
+                    setPlayerDisplayName(newDisplayName);
+                    setPlayerColor(newColor);
+                    setShowEditModal(false);
+                  } else {
+                    alert("Update failed");
+                  }
+                }}
+              >
+                Save
+              </button>
+              <button
+                className="troop-btn close-btn"
+                onClick={() => setShowEditModal(false)}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
   
 }
-

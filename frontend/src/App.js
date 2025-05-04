@@ -9,6 +9,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import MainLandingPage from './pages/MainLandingPage';
 import Invite from './pages/Invite';
+import Leaderboard from './pages/Leaderboard';
 import { AuthProvider } from './auth/AuthProvider';
 import RedirectIfAuthenticated from './auth/RedirectIfAuthenticated';
 import RequireAuth from './auth/RequireAuth'; // ✅ Import protection wrapper
@@ -35,6 +36,14 @@ function App() {
             element={
               <RequireAuth>
                 <GameScreen />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/leaderboard/:campaignHash"
+            element={
+              <RequireAuth>
+                <Leaderboard />
               </RequireAuth>
             }
           />

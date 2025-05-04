@@ -1,8 +1,7 @@
 .leaderboard-container {
   position: relative;
-  min-height: 100vh; /* changed from height: 100vh */
+  min-height: 100vh;
   width: 100vw;
-  background-image: url('../assets/B4W_BG.png');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -12,9 +11,20 @@
   flex-wrap: wrap;
   gap: 5vw;
   padding: 5vh 0;
-  animation: fadeInBackground 2s ease-in-out forwards;
-  opacity: 0;
-  overflow-x: hidden; /* ⬅️ block sideways scroll */
+  overflow-x: hidden;
+}
+
+.leaderboard-background {
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  min-height: 100vh;
+  width: 100vw;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;   /* ⬅️ Needed so children stack correctly */
+  z-index: 0;     
 }
 
 .leaderboard-panel table td {
@@ -22,11 +32,58 @@
   font-size: 1.2rem;
 }
 
+.loading-screen {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
 
 
-@keyframes fadeInBackground {
-  to {
-    opacity: 1;
+.swords-animation {
+  position: relative;
+  width: 150px;
+  height: 150px;
+}
+
+.sword {
+  width: 100px;
+  height: auto;
+  position: absolute;
+  top: 0;
+}
+
+.left-sword {
+  left: 0;
+  transform: rotate(260deg);
+  animation: clash-left 0.6s infinite ease-in-out alternate;
+}
+
+.right-sword {
+  right: 0;
+  transform: rotate(-135deg);
+  animation: clash-right 0.6s infinite ease-in-out alternate;
+}
+
+
+@keyframes clash-left {
+  0% {
+    transform: translateX(0) rotate(260deg);
+  }
+  100% {
+    transform: translateX(20px) rotate(280deg);
+  }
+}
+
+@keyframes clash-right {
+  0% {
+    transform: translateX(0) rotate(-135deg);
+  }
+  100% {
+    transform: translateX(-20px) rotate(-155deg);
   }
 }
 
@@ -69,7 +126,23 @@
   align-items: center;
   gap: 10px;
   color: #fff4e6;
-  word-break: break-word;
+  white-space: nowrap;      
+  text-overflow: ellipsis;    
+}
+
+.center-cell {
+  text-align: center;
+  vertical-align: middle;
+}
+
+.leaderboard-panel td,
+.leaderboard-panel th {
+  white-space: nowrap;
+}
+
+.leaderboard-panel td:nth-child(2),
+.leaderboard-panel th:nth-child(2) {
+  text-align: center !important;
 }
 
 .color-swatch {
@@ -198,6 +271,25 @@
   max-width: 900px; /* optional */
 }
 
+.home-button {
+  position: absolute;
+  top: 2%;
+  right: 5%;
+  font-size: 2rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: white;
+  z-index: 1000;
+  transition: transform 0.2s;
+  min-width: 44px;
+  min-height: 44px;
+  touch-action: manipulation;
+}
+
+.home-button:hover {
+  transform: scale(1.2);
+}
 
 
 /* 📱 Responsive layout for small screens */
