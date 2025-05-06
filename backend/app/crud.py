@@ -87,9 +87,10 @@ def create_campaign(name, user_id, cycle_length):
 
         conn.execute("UPDATE users SET campaigns = campaigns + 1 WHERE id = ?", (user_id,))
 
-    initialize_campaign_words(camp_id, cycle_length)
+        initialize_campaign_words(camp_id, cycle_length, conn)
 
     return {"campaign_id": camp_id, "invite_code": code}
+
 
 
 
