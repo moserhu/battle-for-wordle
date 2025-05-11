@@ -116,5 +116,9 @@ def update_campaign_member(data: models.CampaignAndUserOnly, current_user: dict 
 def activate_double_down(data: CampaignOnly, current_user: dict = Depends(get_current_user)):
     return crud.activate_double_down(current_user["user_id"], data.campaign_id)
 
+@app.post("/api/user/acknowledge_update")
+def acknowledge_update(current_user: dict = Depends(get_current_user)):
+    return crud.acknowledge_update(current_user["user_id"])
+
 from app.scheduler import start_scheduler
 start_scheduler()

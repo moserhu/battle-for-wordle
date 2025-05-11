@@ -218,7 +218,7 @@ def get_user_info(user_id: int):
         row = conn.execute("""
             SELECT first_name, last_name, phone, email,
                    campaigns, total_guesses, correct_guesses,
-                   campaign_wins, campaign_losses
+                   campaign_wins, campaign_losses, clicked_update
             FROM users WHERE id = ?
         """, (user_id,)).fetchone()
 
@@ -235,6 +235,7 @@ def get_user_info(user_id: int):
             "correct_guesses": row[6],
             "campaign_wins": row[7],
             "campaign_losses": row[8],
+            "clicked_update": row[9]
         }
 
 def update_user_info(user_id: int, first_name: str, last_name: str, phone: str):
@@ -251,6 +252,12 @@ def update_user_info(user_id: int, first_name: str, last_name: str, phone: str):
                 raise HTTPException(status_code=400, detail="Phone number already registered")
             raise HTTPException(status_code=400, detail="Failed to update user info")
 
+def acknowledge_update(user_id: int):
+    with get_db() as conn:
+        conn.execute("""
+            UPDATE users SET clicked_update = 1 WHERE id = ?
+        """, (user_id,))
+    return {"status": "acknowledged"}
 
 def load_valid_words():
     base_dir = os.path.dirname(__file__)

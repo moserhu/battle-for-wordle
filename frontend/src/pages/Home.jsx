@@ -18,6 +18,7 @@ export default function Home() {
   const [inviteCode, setInviteCode] = useState('');
   const [campaignName, setCampaignName] = useState('');
   const [cycleLength, setCycleLength] = useState(5); 
+  const [hasSeenUpdate, setHasSeenUpdate] = useState(true); // default to true until fetched
 
   const { user, token, logout, isAuthenticated, loading } = useAuth();
 
@@ -48,6 +49,26 @@ export default function Home() {
       fetchCampaigns();
     }
   }, [user, token, loading]);
+  
+  useEffect(() => {
+    const fetchUserInfo = async () => {
+      if (!token || !user) return;
+  
+      const res = await fetch(`${API_BASE}/api/user/info`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+  
+      const data = await res.json();
+      if (res.ok) {
+        setHasSeenUpdate(data.clicked_update === 1);
+      }
+    };
+  
+    fetchUserInfo();
+  }, [token, user]);
   
   if (loading) return null; 
 
@@ -97,9 +118,23 @@ export default function Home() {
     <div className="home-wrapper">
       {user && (
           <div className="top-buttons">
-            <button className="update-button" onClick={() => setShowUpdateModal(true)}>
-              <FontAwesomeIcon icon={faExclamationCircle} />
-            </button>
+          <button
+            className={`update-button ${!hasSeenUpdate ? 'pulse' : ''}`}
+            onClick={async () => {
+              setShowUpdateModal(true);
+              if (!hasSeenUpdate) {
+                await fetch(`${API_BASE}/api/user/acknowledge_update`, {
+                  method: "POST",
+                  headers: {
+                    Authorization: `Bearer ${token}`,
+                  },
+                });
+                setHasSeenUpdate(true);
+              }
+            }}
+          >
+            <FontAwesomeIcon icon={faExclamationCircle} />
+          </button>
             <button className="account-button" onClick={() => navigate('/account')}>
               <FontAwesomeIcon icon={faUserCircle} />
             </button>

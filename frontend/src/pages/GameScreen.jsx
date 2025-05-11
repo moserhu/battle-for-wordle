@@ -3,10 +3,12 @@ import Header from '../components/Header';
 import WordGrid from '../components/WordGrid';
 import Keyboard from '../components/Keyboard';
 import DoubleDownModal from "../components/DoubleDownModal";
+import UpdateLog from '../components/UpdateLog';
 import { useNavigate } from 'react-router-dom';
 import '../styles/GameScreen.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faLandmark } from "@fortawesome/free-solid-svg-icons";
+import { faExclamationCircle } from '@fortawesome/free-solid-svg-icons';
 import confetti from 'canvas-confetti';
 import { useAuth } from '../auth/AuthProvider';
 import { HslColorPicker } from "react-colorful";
@@ -74,6 +76,8 @@ export default function GameScreen() {
   const [showDoubleDownModal, setShowDoubleDownModal] = useState(false);
   const [showFailureModal, setShowFailureModal] = useState(false);
   const [failedWord, setFailedWord] = useState("");
+  const [hasSeenUpdate, setHasSeenUpdate] = useState(true);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [doubleDownStatus, setDoubleDownStatus] = useState({
     activated: false,
     usedThisWeek: false
@@ -85,6 +89,22 @@ export default function GameScreen() {
     }
   }, [isAuthenticated, loading, navigate]);
   
+  useEffect(() => {
+    const fetchUserInfo = async () => {
+      const res = await fetch(`${API_BASE}/api/user/info`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setHasSeenUpdate(data.clicked_update === 1);
+      }
+    };
+  
+    if (!loading && isAuthenticated) fetchUserInfo();
+  }, [loading, isAuthenticated]);
   
   useEffect(() => {
     localStorage.removeItem("campaign_ended"); 
@@ -490,7 +510,23 @@ export default function GameScreen() {
           >
             <FontAwesomeIcon icon={faLandmark} />
           </button>
-  
+          <button
+            className={`update-button-game ${!hasSeenUpdate ? 'pulse' : ''}`}
+            onClick={async () => {
+              setShowUpdateModal(true);
+              if (!hasSeenUpdate) {
+                await fetch(`${API_BASE}/api/user/acknowledge_update`, {
+                  method: "POST",
+                  headers: {
+                    Authorization: `Bearer ${localStorage.getItem("token")}`,
+                  },
+                });
+                setHasSeenUpdate(true);
+              }
+            }}
+          >
+            <FontAwesomeIcon icon={faExclamationCircle} />
+          </button>
           <Header
             campaignDay={campaignDay}
             cutoffCountdown={cutoffCountdown}
@@ -711,6 +747,16 @@ export default function GameScreen() {
           }}
           onDecline={() => setShowDoubleDownModal(false)}
         />
+        {showUpdateModal && (
+            <>
+              <div className="modal-overlay" onClick={() => setShowUpdateModal(false)} />
+              <div className="modal">
+                <h3>Recent Updates</h3>
+                <UpdateLog />
+                <button className="troop-btn close-btn" onClick={() => setShowUpdateModal(false)}>Close</button>
+              </div>
+            </>
+          )}
     </div>
   );
   
