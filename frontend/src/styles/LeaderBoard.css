@@ -109,25 +109,29 @@
 }
 
 .leaderboard-panel table {
-  width: 100%;
   border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
   font-size: 1.1rem;
+  transform: translateZ(0); /* 🔥 triggers hardware layout on iOS */
+}
+
+.leaderboard-panel tr {
+  border-bottom: 1px solid rgba(163, 132, 87, 0.8);
 }
 
 .leaderboard-panel th,
 .leaderboard-panel td {
-  padding: 10px;
-  border-bottom: 1px solid #a38457;
-  text-align: left;
+  border: none;
+  padding: 12px 10px;
+  line-height: 1.3;
 }
 
 .player-cell {
-  display: flex;
+  display: inline-flex; /* 🔄 was inline-flex */
   align-items: center;
-  gap: 10px;
-  color: #fff4e6;
-  white-space: nowrap;      
-  text-overflow: ellipsis;    
+  gap: 0.5rem;
+  max-width: 100%;
 }
 
 .center-cell {
@@ -138,6 +142,7 @@
 .leaderboard-panel td,
 .leaderboard-panel th {
   white-space: nowrap;
+  overflow: hidden;
 }
 
 .leaderboard-panel td:nth-child(2),
@@ -327,3 +332,5 @@
     padding: 8px 14px;
   }
 }
+
+

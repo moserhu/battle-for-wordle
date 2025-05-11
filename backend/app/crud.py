@@ -613,6 +613,39 @@ def get_saved_progress(user_id: int, campaign_id: int):
     today = datetime.now(ZoneInfo("America/Chicago")).strftime("%Y-%m-%d")
 
     with get_db() as conn:
+        # Check if Double Down was activated on a previous day but not completed
+        row = conn.execute("""
+            SELECT double_down_activated, double_down_date
+            FROM campaign_members
+            WHERE user_id = ? AND campaign_id = ?
+        """, (user_id, campaign_id)).fetchone()
+
+        if row and row[0] == 1 and row[1] and row[1] < today:
+            # Check if player completed the game on that day
+            completed = conn.execute("""
+                SELECT completed FROM campaign_daily_progress
+                WHERE user_id = ? AND campaign_id = ? AND date = ?
+            """, (user_id, campaign_id, row[1])).fetchone()
+
+            if not completed or not completed[0]:
+                # Apply troop penalty and mark Double Down as used
+                current_score = conn.execute("""
+                    SELECT score FROM campaign_members
+                    WHERE user_id = ? AND campaign_id = ?
+                """, (user_id, campaign_id)).fetchone()[0] or 0
+
+                penalty = current_score // 2
+
+                conn.execute("""
+                    UPDATE campaign_members
+                    SET score = MAX(score - ?, 0),
+                        double_down_activated = 0,
+                        double_down_used_week = 1,
+                        double_down_date = ?
+                    WHERE user_id = ? AND campaign_id = ?
+                """, (penalty, today, user_id, campaign_id))
+
+        # Fetch today's saved progress
         row = conn.execute("""
             SELECT guesses, results, letter_status, current_row, game_over
             FROM campaign_guess_states
