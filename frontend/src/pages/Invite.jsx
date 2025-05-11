@@ -41,8 +41,11 @@ export default function Invite() {
         const message = typeof data.detail === "string" 
           ? data.detail 
           : JSON.stringify(data.detail);
-        throw new Error(message || "Failed to join campaign");
-      }
+          if (res.status === 410) {
+            throw new Error("❌ This invite has expired. Ask the campaign owner to send a new one.");
+          }
+          throw new Error(message || "Failed to join campaign");
+        }
   
       // Save campaign to localStorage
       const { invite_code } = data;

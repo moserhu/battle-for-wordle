@@ -91,10 +91,6 @@ def create_campaign(name, user_id, cycle_length):
 
     return {"campaign_id": camp_id, "invite_code": code}
 
-
-
-
-
 def join_campaign(invite_code, user_id):
     with get_db() as conn:
         campaign = conn.execute(
@@ -142,10 +138,27 @@ def join_campaign(invite_code, user_id):
         return {"message": "Joined campaign", "campaign_id": campaign_id}
 
 
-
 def join_campaign_by_id(campaign_id, user_id):
     with get_db() as conn:
-        # Check if already a member
+        # 🔒 Check for campaign expiration
+        row = conn.execute("""
+            SELECT start_date, cycle_length
+            FROM campaigns
+            WHERE id = ?
+        """, (campaign_id,)).fetchone()
+
+        if not row:
+            raise HTTPException(status_code=404, detail="Campaign not found")
+
+        start_date_str, cycle_length = row
+        start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
+        expire_date = start_date + timedelta(days=cycle_length)
+        today = datetime.now(ZoneInfo("America/Chicago")).date()
+
+        if today >= expire_date:
+            raise HTTPException(status_code=410, detail="Invite expired")
+
+        # ✅ Already in check
         already_in = conn.execute(
             "SELECT 1 FROM campaign_members WHERE user_id = ? AND campaign_id = ?",
             (user_id, campaign_id)
@@ -153,14 +166,14 @@ def join_campaign_by_id(campaign_id, user_id):
         if already_in:
             return {"message": "Already joined"}
 
-        # Fetch user's default name
+        # 🔧 Get user first name
         user_row = conn.execute("SELECT first_name FROM users WHERE id = ?", (user_id,)).fetchone()
         if not user_row:
             raise HTTPException(status_code=404, detail="User not found")
 
         default_name = user_row[0]
 
-        # Color assignment: use a rotating palette and skip used colors
+        # 🎨 Assign color
         all_colors = ['#ffd700', '#c0c0c0', '#cd7f32', '#4caf50', '#2196f3',
                       '#9c27b0', '#ff5722', '#00bcd4', '#795548', '#607d8b']
 
@@ -168,10 +181,9 @@ def join_campaign_by_id(campaign_id, user_id):
             "SELECT color FROM campaign_members WHERE campaign_id = ?", (campaign_id,)
         ).fetchall()
         used_colors = {row[0] for row in used_colors if row[0]}
-
         available_color = next((c for c in all_colors if c not in used_colors), '#000000')
 
-        # Insert with defaults
+        # 📝 Insert member
         conn.execute("""
             INSERT INTO campaign_members (user_id, campaign_id, display_name, color)
             VALUES (?, ?, ?, ?)
