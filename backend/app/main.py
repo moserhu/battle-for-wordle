@@ -112,5 +112,9 @@ def get_self_member(data: models.CampaignOnly, current_user: dict = Depends(get_
 def update_campaign_member(data: models.CampaignAndUserOnly, current_user: dict = Depends(get_current_user)):
     return crud.update_campaign_member(data.campaign_id, current_user["user_id"], data.display_name, data.color)
 
+@app.post("/api/double_down")
+def activate_double_down(data: CampaignOnly, current_user: dict = Depends(get_current_user)):
+    return crud.activate_double_down(current_user["user_id"], data.campaign_id)
+
 from app.scheduler import start_scheduler
 start_scheduler()

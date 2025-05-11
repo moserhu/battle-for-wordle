@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Header from '../components/Header';
 import WordGrid from '../components/WordGrid';
 import Keyboard from '../components/Keyboard';
+import DoubleDownModal from "../components/DoubleDownModal";
 import { useNavigate } from 'react-router-dom';
 import '../styles/GameScreen.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -70,7 +71,14 @@ export default function GameScreen() {
   const [newColor, setNewColor] = useState(playerColor);
   const [showWheel, setShowWheel] = useState(false);
   const [pickerColor, setPickerColor] = useState({ h: 0, s: 1, l: 0.5 });
-
+  const [showDoubleDownModal, setShowDoubleDownModal] = useState(false);
+  const [showFailureModal, setShowFailureModal] = useState(false);
+  const [failedWord, setFailedWord] = useState("");
+  const [doubleDownStatus, setDoubleDownStatus] = useState({
+    activated: false,
+    usedThisWeek: false
+  });
+  
   useEffect(() => {
     if (!loading && !isAuthenticated) {
       navigate('/login');
@@ -131,6 +139,27 @@ export default function GameScreen() {
         },
         body: JSON.stringify({ campaign_id: id }),
       });
+      const doubleDownRes = await fetch(`${API_BASE}/api/campaign/self_member`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify({ campaign_id: id }),
+      });
+      const doubleDownData = await doubleDownRes.json();
+      setDoubleDownStatus({
+        activated: doubleDownData.double_down_activated === 1,
+        usedThisWeek: doubleDownData.double_down_used_week === 1
+      });
+      if (
+        doubleDownData.double_down_activated === 1 &&
+        !doubleDownData.double_down_used_week &&
+        (progress.current_row === 0 || typeof progress.current_row !== "number")
+      ) {
+        setShowDoubleDownModal(true);
+      }
+      
       const self = await memberRes.json();
       setPlayerDisplayName(self.display_name || user.first_name);
       setPlayerColor(self.color || "#ffffff");
@@ -322,8 +351,9 @@ export default function GameScreen() {
       if (data.result.every(r => r === "correct")) {
         setGameOver(true);
       
-        const troops = [12, 8, 6, 4, 3, 1][currentRow];
-      
+        let baseTroops = [150, 100, 60, 40, 30, 10][currentRow];
+        const awardedTroops = doubleDownStatus.activated && currentRow <= 2 ? baseTroops * 2 : baseTroops;
+
         if (currentRow <= 2) {
           confetti({
             particleCount: 150,
@@ -332,7 +362,7 @@ export default function GameScreen() {
           });
         }
       
-        setTroopsEarned(troops); 
+        setTroopsEarned(awardedTroops); 
         setShowTroopModal(true);
       
         // 🧠 Check for campaign end eligibility if it's the final day
@@ -343,18 +373,21 @@ export default function GameScreen() {
         return;
       }
       
-      
-      
-      if (currentRow + 1 === 6) {
+      const maxAttempts = doubleDownStatus.activated ? 3 : 6;
+      if (currentRow + 1 === maxAttempts) {
         setGameOver(true);
-        setTimeout(() => {
-          alert(`❌ Game Over! The word was "${data.word.toUpperCase()}"`);
-        }, 200);
+        setFailedWord(data.word.toUpperCase());
+        setTimeout(() => setShowFailureModal(true), 300);
         return;
       }
+      
+      
   
       // Advance to next row
       setCurrentRow(currentRow + 1);
+      if (currentRow === 0 && !doubleDownStatus.activated) {
+        setTimeout(() => setShowDoubleDownModal(true), 400);
+      }      
       setCurrentCol(0);
     
     } catch (err) {
@@ -466,6 +499,8 @@ export default function GameScreen() {
             campaignEnded={campaignEnded}
             playerDisplayName={playerDisplayName}
             playerColor={playerColor}
+            doubleDownUsed={doubleDownStatus.usedThisWeek}
+            doubleDownActivated={doubleDownStatus.activated}
             onEditClick={() => {
               setNewDisplayName(playerDisplayName);
               setNewColor(playerColor);
@@ -501,7 +536,8 @@ export default function GameScreen() {
             results={results}
             currentRow={currentRow}
             currentCol={currentCol}
-          />
+            maxVisibleRows={doubleDownStatus.activated ? 3 : 6}
+            />
           <Keyboard letterStatus={letterStatus} onKeyPress={handleKeyPress} />
   
           {errorMsg && <div className="error-msg">{errorMsg}</div>}
@@ -513,7 +549,10 @@ export default function GameScreen() {
         <div className="troop-modal-overlay">
           <div className="troop-modal">
             <h2>🎖 Victory!</h2>
-            <p>You gained <strong>{troopsEarned}</strong> troops.</p>
+            <p>
+              You gained <strong>{troopsEarned}</strong> troops
+              {doubleDownStatus.activated && currentRow <= 2 && <span> with Double Down! ⚔️</span>}
+              </p>
             <div className="modal-buttons">
               <button
                 className="troop-btn"
@@ -612,6 +651,66 @@ export default function GameScreen() {
           </div>
         </div>
       )}
+      {/* Failure Modal */}
+      {showFailureModal && (
+          <div className="modal-overlay">
+            <div className="modal failure-modal">
+              <h2>💀 Thou Hast Failed!</h2>
+              <p>
+                The sacred word was: 
+                <strong className='secretWord'> {failedWord}</strong>
+              </p>
+              <p>
+                Alas, the kingdom shall remember thy defeat. Return stronger on the morrow!
+              </p>
+              <div className="modal-buttons">
+                <button className="troop-btn close-btn" onClick={() => setShowFailureModal(false)}>
+                   Accept Defeat
+                </button>
+                <button
+                  className="troop-btn leaderboard-btn"
+                  onClick={() => {
+                    setShowFailureModal(false);
+                    navigate(`/leaderboard/${campaignId}`);
+                  }}
+                >
+                   View Leaderboard
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        <DoubleDownModal
+          visible={showDoubleDownModal}
+          onAccept={async () => {
+            try {
+              const res = await fetch(`${API_BASE}/api/double_down`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${localStorage.getItem("token")}`,
+                },
+                body: JSON.stringify({ campaign_id: campaignId }),
+              });
+
+              if (!res.ok) {
+                const error = await res.json();
+                alert("⚠️ " + (error.detail || "Failed to activate Double Down"));
+                return;
+              }
+
+              setDoubleDownStatus({
+                activated: true,
+                usedThisWeek: false
+              });
+            setShowDoubleDownModal(false);
+            } catch (err) {
+              console.error("Double Down activation failed:", err);
+              alert("⚠️ Failed to activate Double Down");
+            }
+          }}
+          onDecline={() => setShowDoubleDownModal(false)}
+        />
     </div>
   );
   

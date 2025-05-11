@@ -1,0 +1,81 @@
+.dd-modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0,0,0,0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    padding: 1rem;
+    box-sizing: border-box;
+  }
+  
+  .dd-modal {
+    background-color: #1e1b18;
+    border: 2px solid #d4af7f;
+    border-radius: 12px;
+    padding: 2rem;
+    max-width: 460px;
+    width: 90%;
+    text-align: center;
+    font-family: 'Cinzel', serif;
+    color: #f4e9d8;
+    box-shadow: 0 0 30px rgba(0, 0, 0, 0.6);
+  }
+  
+  .dd-modal h2 {
+    font-size: 1.8rem;
+    margin-bottom: 1rem;
+  }
+  
+  .dd-modal p {
+    font-size: 1rem;
+    line-height: 1.5;
+    color: #e8dcc4;
+  }
+  
+  .dd-buttons {
+    margin-top: 1.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1rem;
+  }
+  
+  .dd-btn {
+    padding: 0.75rem 1.25rem;
+    font-weight: bold;
+    font-size: 1rem;
+    font-family: 'Cinzel', serif;
+    border: 2px solid #c2a370;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: transform 0.2s, background 0.3s;
+    min-width: 44px;
+    min-height: 44px;
+    box-shadow: 2px 2px 6px rgba(0, 0, 0, 0.5);
+  }
+  
+  .dd-btn.accept {
+    background: linear-gradient(145deg, #307030, #265926);
+    color: #fff4e6;
+  }
+  
+  .dd-btn.accept:hover {
+    background: #409040;
+    transform: scale(1.05);
+  }
+  
+  .dd-btn.decline {
+    background: linear-gradient(145deg, #5e3a3a, #7a4e4e);
+    color: #fff4e6;
+  }
+  
+  .dd-btn.decline:hover {
+    background: #a05353;
+    transform: scale(1.05);
+  }
+  

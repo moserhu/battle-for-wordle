@@ -180,34 +180,38 @@ def join_campaign_by_id(campaign_id, user_id):
         conn.execute("UPDATE users SET campaigns = campaigns + 1 WHERE id = ?", (user_id,))
         return {"message": "Joined campaign", "campaign_id": campaign_id}
 
-
-
-
 def get_user_campaigns(user_id: int):
     today = datetime.now(ZoneInfo("America/Chicago")).strftime("%Y-%m-%d")
     with get_db() as conn:
         rows = conn.execute("""
-    SELECT c.id, c.name,
-        EXISTS (
-            SELECT 1 FROM campaign_daily_progress dp
-            WHERE dp.user_id = ? AND dp.campaign_id = c.id
-              AND dp.date = ?
-              AND dp.completed = 1
-        ) as is_finished
-    FROM campaigns c
-    JOIN campaign_members cm ON cm.campaign_id = c.id
-    WHERE cm.user_id = ?
-""", (user_id, today, user_id)).fetchall()
+            SELECT 
+                c.id, 
+                c.name,
+                EXISTS (
+                    SELECT 1 FROM campaign_daily_progress dp
+                    WHERE dp.user_id = ? AND dp.campaign_id = c.id
+                      AND dp.date = ?
+                      AND dp.completed = 1
+                ) as is_finished,
+                cm.double_down_activated,
+                COALESCE(dp.completed, 0) as daily_completed
+            FROM campaigns c
+            JOIN campaign_members cm ON cm.campaign_id = c.id
+            LEFT JOIN campaign_daily_progress dp 
+                ON dp.user_id = cm.user_id AND dp.campaign_id = cm.campaign_id AND dp.date = ?
+            WHERE cm.user_id = ?
+        """, (user_id, today, today, user_id)).fetchall()
 
     return [
         {
             "campaign_id": row[0],
             "name": row[1],
-            "is_finished": bool(row[2])
+            "is_finished": bool(row[2]),  # legacy support
+            "double_down_activated": row[3],
+            "daily_completed": row[4],
         }
         for row in rows
     ]
-
 
 def get_user_info(user_id: int):
     with get_db() as conn:
@@ -301,15 +305,14 @@ def get_daily_word(campaign_id: int):
 
     return word_row[0]
 
-
 def validate_guess(word: str, user_id: int, campaign_id: int):
     points_by_row = {
-        0: 12,
-        1: 8,
-        2: 6,
-        3: 4,
-        4: 3,
-        5: 1
+        0: 150,
+        1: 100,
+        2: 60,
+        3: 40,
+        4: 30,
+        5: 10
     }
 
     if word.lower() not in VALID_WORDS:
@@ -334,8 +337,9 @@ def validate_guess(word: str, user_id: int, campaign_id: int):
 
     correct = all(r == 'correct' for r in result)
     today = datetime.now(ZoneInfo("America/Chicago")).strftime("%Y-%m-%d")
-        # Check if it's past 8 PM on the final day
+
     with get_db() as conn:
+        # Check if it's past 8 PM on final day
         start_row = conn.execute("SELECT start_date FROM campaigns WHERE id = ?", (campaign_id,)).fetchone()
         if not start_row:
             raise HTTPException(status_code=404, detail="Campaign not found")
@@ -343,16 +347,14 @@ def validate_guess(word: str, user_id: int, campaign_id: int):
         start_date = datetime.strptime(start_row[0], "%Y-%m-%d").date()
         today_date = datetime.now(ZoneInfo("America/Chicago")).date()
         delta_days = (today_date - start_date).days
-
-        is_final_day = (delta_days + 1) == 5  # Final day is day 5
+        is_final_day = (delta_days + 1) == 5
         now_ct = datetime.now(ZoneInfo("America/Chicago"))
         cutoff_time = now_ct.replace(hour=20, minute=0, second=0, microsecond=0)
 
         if is_final_day and now_ct >= cutoff_time:
             raise HTTPException(status_code=403, detail="Campaign ended for the day. No more guesses allowed after 8 PM.")
 
-    with get_db() as conn:
-        # Fetch existing progress
+        # Fetch progress
         row = conn.execute("""
             SELECT guesses, results, letter_status, current_row, game_over
             FROM campaign_guess_states
@@ -376,7 +378,8 @@ def validate_guess(word: str, user_id: int, campaign_id: int):
             raise HTTPException(status_code=403, detail="You've already played today")
 
         guesses[current_row] = list(guess)
-        # Increment total guess counter
+
+        # Increment total guesses
         conn.execute("""
             UPDATE users
             SET total_guesses = total_guesses + 1
@@ -395,7 +398,15 @@ def validate_guess(word: str, user_id: int, campaign_id: int):
             elif not current:
                 letter_status[letter] = "absent"
 
-        new_game_over = correct or current_row == 5
+        # Double Down logic
+        dd_row = conn.execute("""
+            SELECT double_down_activated
+            FROM campaign_members
+            WHERE user_id = ? AND campaign_id = ?
+        """, (user_id, campaign_id)).fetchone()
+        is_double_down = dd_row and dd_row[0] == 1
+        max_rows = 3 if is_double_down else 6
+        new_game_over = correct or current_row + 1 == max_rows
 
         if correct:
             conn.execute("""
@@ -405,19 +416,61 @@ def validate_guess(word: str, user_id: int, campaign_id: int):
             """, (user_id,))
 
             score_to_add = points_by_row.get(current_row, 0)
+
+            if is_double_down:
+                if current_row <= 2:
+                    score_to_add *= 2
+                    conn.execute("""
+                        UPDATE campaign_members
+                        SET score = score + ?,
+                            double_down_activated = 0,
+                            double_down_used_week = 1,
+                            double_down_date = ?
+                        WHERE user_id = ? AND campaign_id = ?
+                    """, (score_to_add, today, user_id, campaign_id))
+                else:
+                    current_score = conn.execute("""
+                        SELECT score FROM campaign_members
+                        WHERE user_id = ? AND campaign_id = ?
+                    """, (user_id, campaign_id)).fetchone()[0] or 0
+                    penalty = current_score // 2
+                    conn.execute("""
+                        UPDATE campaign_members
+                        SET score = MAX(score - ?, 0),
+                            double_down_activated = 0,
+                            double_down_used_week = 1,
+                            double_down_date = ?
+                        WHERE user_id = ? AND campaign_id = ?
+                    """, (penalty, today, user_id, campaign_id))
+            else:
+                conn.execute("""
+                    UPDATE campaign_members
+                    SET score = score + ?
+                    WHERE user_id = ? AND campaign_id = ?
+                """, (score_to_add, user_id, campaign_id))
+
+        elif new_game_over and is_double_down:
+            current_score = conn.execute("""
+                SELECT score FROM campaign_members
+                WHERE user_id = ? AND campaign_id = ?
+            """, (user_id, campaign_id)).fetchone()[0] or 0
+            penalty = current_score // 2
             conn.execute("""
                 UPDATE campaign_members
-                SET score = score + ?
+                SET score = MAX(score - ?, 0),
+                    double_down_activated = 0,
+                    double_down_used_week = 1,
+                    double_down_date = ?
                 WHERE user_id = ? AND campaign_id = ?
-            """, (score_to_add, user_id, campaign_id))
+            """, (penalty, today, user_id, campaign_id))
 
-        # Save guess to guesses table for history (optional)
+        # Save to guesses table
         conn.execute("""
-                INSERT INTO campaign_guesses (user_id, campaign_id, word, date)
-                VALUES (?, ?, ?, ?)
-            """, (user_id, campaign_id, guess, today))
+            INSERT INTO campaign_guesses (user_id, campaign_id, word, date)
+            VALUES (?, ?, ?, ?)
+        """, (user_id, campaign_id, guess, today))
 
-        # Save full state in daily_progress
+        # Save full state
         conn.execute("""
             INSERT OR REPLACE INTO campaign_guess_states (
                 user_id, campaign_id, date,
@@ -425,9 +478,9 @@ def validate_guess(word: str, user_id: int, campaign_id: int):
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             user_id, campaign_id, today,
-            json.dumps(guesses), 
+            json.dumps(guesses),
             json.dumps(results_data),
-            json.dumps(letter_status), 
+            json.dumps(letter_status),
             current_row + 1,
             int(new_game_over)
         ))
@@ -448,9 +501,33 @@ def validate_guess(word: str, user_id: int, campaign_id: int):
             "correct": correct,
             "word": secret
         }
-        
 
+def activate_double_down(user_id: int, campaign_id: int):
+    today = datetime.now(ZoneInfo("America/Chicago")).strftime("%Y-%m-%d")
+    with get_db() as conn:
+        row = conn.execute("""
+            SELECT double_down_used_week, double_down_activated
+            FROM campaign_members
+            WHERE user_id = ? AND campaign_id = ?
+        """, (user_id, campaign_id)).fetchone()
 
+        if not row:
+            raise HTTPException(status_code=404, detail="Campaign membership not found")
+
+        already_used, already_active = row
+        if already_used:
+            raise HTTPException(status_code=403, detail="Double Down already used this week")
+        if already_active:
+            raise HTTPException(status_code=403, detail="Double Down already active")
+
+        conn.execute("""
+            UPDATE campaign_members
+            SET double_down_activated = 1,
+                double_down_date = ?
+            WHERE user_id = ? AND campaign_id = ?
+        """, (today, user_id, campaign_id))
+
+    return {"status": "double down activated"}
 
 def get_campaign_day(campaign_id: int):
     with get_db() as conn:
@@ -579,7 +656,15 @@ def handle_campaign_end(campaign_id: int):
         conn.execute("DELETE FROM campaign_guess_states WHERE campaign_id = ?", (campaign_id,))
         conn.execute("DELETE FROM campaign_daily_progress WHERE campaign_id = ?", (campaign_id,))
         conn.execute("UPDATE campaign_members SET score = 0 WHERE campaign_id = ?", (campaign_id,))
+        conn.execute("""
+            UPDATE campaign_members
+            SET double_down_used_week = 0,
+                double_down_date = NULL
+            WHERE double_down_date IS NOT NULL
+              AND date(double_down_date) <= date(?, '-7 days')
+        """, (today,))
         conn.execute("DELETE FROM campaign_words WHERE campaign_id = ?", (campaign_id,))
+        
         # Reinitialize for a new cycle of # days 
         cycle_length = conn.execute("SELECT cycle_length FROM campaigns WHERE id = ?", (campaign_id,)).fetchone()[0]
         initialize_campaign_words(campaign_id, cycle_length, conn)
@@ -656,7 +741,7 @@ def get_campaign_members(campaign_id: int, requester_id: int):
 def get_self_member(campaign_id: int, user_id: int):
     with get_db() as conn:
         row = conn.execute("""
-            SELECT display_name, color
+            SELECT display_name, color, double_down_activated, double_down_used_week
             FROM campaign_members
             WHERE campaign_id = ? AND user_id = ?
         """, (campaign_id, user_id)).fetchone()
@@ -664,7 +749,12 @@ def get_self_member(campaign_id: int, user_id: int):
         if not row:
             raise HTTPException(status_code=404, detail="Membership not found")
 
-        return {"display_name": row[0], "color": row[1]}
+        return {
+            "display_name": row[0],
+            "color": row[1],
+            "double_down_activated": row[2],
+            "double_down_used_week": row[3]
+        }
 
 def update_campaign_member(campaign_id: int, user_id: int, display_name: str, color: str):
     with get_db() as conn:

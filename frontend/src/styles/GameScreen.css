@@ -336,7 +336,37 @@
   transition: transform 0.2s ease-in-out, background 0.3s;
 }
 
+.failure-modal {
+  background-color: #2c1e1e;
+  color: #fff;
+  border: 2px solid #8b0000;
+  padding: 20px;
+  border-radius: 12px;
+  max-width: 500px;
+  text-align: center;
+}
 
+.failure-modal h2 {
+  font-size: 1.8rem;
+  margin-bottom: 10px;
+}
+
+.failure-modal p {
+  margin: 10px 0;
+}
+
+.failure-modal .modal-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 20px;
+}
+
+.secretWord {
+  font-weight: bold;
+  color: #d4af37;
+  font-size: 1.2rem;
+}
 /* === RESPONSIVE BREAKPOINTS === */
 
 /* Mobile */

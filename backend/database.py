@@ -34,6 +34,9 @@ def init_db():
                 score INTEGER DEFAULT 0,
                 display_name TEXT,
                 color TEXT DEFAULT '#d4af7f',
+                double_down_used_week INTEGER DEFAULT 0,
+                double_down_activated INTEGER DEFAULT 0,
+                double_down_date TEXT,
                 PRIMARY KEY (campaign_id, user_id),
                 FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE
             )

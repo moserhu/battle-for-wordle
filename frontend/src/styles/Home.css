@@ -47,7 +47,7 @@
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     text-shadow:
-      1px 1px 0 #be1f1f,
+      1px 1px 0 hsl(0, 18%, 75%),
       2px 2px 4px rgba(0, 0, 0, 0.6),
       0 0 10px rgba(255, 215, 0, 0.3);
   }
@@ -58,7 +58,7 @@
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     text-shadow:
-      1px 1px 0 #be1f1f,
+      1px 1px 0 hsl(0, 18%, 75%),
       2px 2px 4px rgba(0, 0, 0, 0.6),
       0 0 10px rgba(255, 215, 0, 0.3);
   }
@@ -132,6 +132,19 @@
     font-size: 1.1rem;
   }
   
+  .double-down-icon.pulse {
+    display: inline-block;
+    animation: pulse 1.5s infinite;
+    font-size: 2rem;
+  }
+  
+  @keyframes pulse {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.25); opacity: 0.6; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  
+  
   .modal {
     position: fixed;
     top: 50%;
@@ -144,9 +157,21 @@
     padding: 30px;
     z-index: 1000;
     width: 90%;
-    max-width: 400px;
+    max-width: 500px;
     text-align: center;
     box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6); /* Transparent black */
+    z-index: 999; /* Just under the modal itself */
   }
   
   .modal input {
@@ -288,6 +313,48 @@
     align-items: center;
     gap: 6px;
   }
+}
+
+.update-button {
+  background-color: #8b6f47;
+  border: none;
+  color: #fff;
+  font-size: 1.6rem;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.update-button:hover {
+  background-color: #a38457;
+}
+
+.update-list {
+  list-style-type: none;
+  padding: 0;
+  margin-top: 15px;
+  text-align: left;
+}
+
+.update-list li {
+  margin: 8px 0;
+  font-family: 'EB Garamond', serif;
+  color: #f4e9d8;
+  font-size: 1.05rem;
+  text-shadow:
+    1px 1px 0 #000,
+    2px 2px 4px rgba(0, 0, 0, 0.6);
+}
+
+.update-title {
+  font-family: 'EB Garamond', serif;
+  font-size: 1.3rem;
+  color: #d4af37; /* gold-ish highlight */
+  text-shadow:
+    1px 1px 0 #000,
+    2px 2px 4px rgba(0, 0, 0, 0.6);
+  margin-bottom: 6px;
 }
 
 

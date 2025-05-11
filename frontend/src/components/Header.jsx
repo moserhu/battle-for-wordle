@@ -14,6 +14,8 @@ export default function Header({
   playerDisplayName,
   playerColor,
   onEditClick,
+  doubleDownUsed,
+  doubleDownActivated
 }) {
   const navigate = useNavigate();
   const campaignId = localStorage.getItem("campaign_id");
@@ -32,6 +34,17 @@ export default function Header({
               </button>
             </div>
           )}
+
+          {/* Double Down Status */}
+          <div className="double-down-status">
+            {doubleDownUsed ? (
+              <span className="dd-used">⚠️ Double Down Used</span>
+            ) : doubleDownActivated ? (
+              <span className="dd-active">⚔️ Double Down Active</span>
+            ) : (
+              <span className="dd-available">🛡️ Double Down Available</span>
+            )}
+          </div>
 
           {/* Campaign Info */}
           {campaignDay && (

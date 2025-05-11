@@ -2,7 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faUserCircle, faSignOutAlt } from '@fortawesome/free-solid-svg-icons';
+import { faExclamationCircle } from '@fortawesome/free-solid-svg-icons';
 import { useAuth } from '../auth/AuthProvider';
+import UpdateLog from '../components/UpdateLog';
 import '../styles/Home.css';
 
 const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:8000";
@@ -12,6 +14,7 @@ export default function Home() {
   const [campaigns, setCampaigns] = useState([]);
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [inviteCode, setInviteCode] = useState('');
   const [campaignName, setCampaignName] = useState('');
   const [cycleLength, setCycleLength] = useState(5); 
@@ -94,6 +97,9 @@ export default function Home() {
     <div className="home-wrapper">
       {user && (
           <div className="top-buttons">
+            <button className="update-button" onClick={() => setShowUpdateModal(true)}>
+              <FontAwesomeIcon icon={faExclamationCircle} />
+            </button>
             <button className="account-button" onClick={() => navigate('/account')}>
               <FontAwesomeIcon icon={faUserCircle} />
             </button>
@@ -127,7 +133,13 @@ export default function Home() {
                   {campaigns.map((camp) => (
                     <tr key={camp.campaign_id}>
                       <td>{camp.name}</td>
-                      <td>{camp.is_finished ? '✅' : '❌'}</td>
+                      <td>
+                        {camp.double_down_activated === 1 && camp.daily_completed === 0 ? (
+                          <span className="double-down-icon pulse">⚔️</span>
+                        ) : (
+                          camp.is_finished ? '✅' : '❌'
+                        )}
+                      </td>
                       <td colSpan={2}>
                         <div className="campaign-buttons">
                           <button
@@ -198,7 +210,16 @@ export default function Home() {
     </div>
   </div>
 )}
-
+      {showUpdateModal && (
+        <>
+          <div className="modal-overlay" onClick={() => setShowUpdateModal(false)} />
+          <div className="modal">
+            <h3>Recent Updates</h3>
+            <UpdateLog />
+            <button onClick={() => setShowUpdateModal(false)}>Close</button>
+          </div>
+        </>
+      )}
       </div>
     </div>
   );
