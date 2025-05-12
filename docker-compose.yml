@@ -1,22 +1,20 @@
 version: "3.9"
 
 services:
-  b4w-backend:
-    image: huntermo/b4w-backend:latest  # your pushed image name
+  backend:
+    build:
+      context: ./backend
     container_name: b4w-backend
     ports:
-      - "8002:8002"  # expose backend port
+      - "8002:8002"
     environment:
-      - VARIABLES
+      - DB_PATH=/app/game.db
     volumes:
-    - PATH to DB
-    restart: always
+      - ./backend:/app
 
-  b4w-frontend:
-    image: huntermo/b4w-frontend:latest  # your pushed image name
+  frontend:
+    build:
+      context: ./frontend
     container_name: b4w-frontend
     ports:
-      - "3002:3002"  # expose frontend port
-    environment:
-      - VARIABLES
-    restart: unless-stopped
+      - "3002:3002"
