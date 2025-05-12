@@ -6,7 +6,7 @@ services:
       context: ./backend
     container_name: b4w-backend
     ports:
-      - "8002:8002"
+      - "8000:8002"
     environment:
       SECRET_KEY: harleyisschmoobs
       ALGORITHM: HS256

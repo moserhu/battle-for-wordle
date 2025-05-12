@@ -11,8 +11,6 @@ RUN npm install
 # Copy the rest of the frontend code
 COPY . .
 
-COPY .env.production .env
-
 # Build the frontend
 RUN npm run build
 
