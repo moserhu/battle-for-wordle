@@ -4,6 +4,7 @@ import WordGrid from '../components/WordGrid';
 import Keyboard from '../components/Keyboard';
 import DoubleDownModal from "../components/DoubleDownModal";
 import UpdateLog from '../components/UpdateLog';
+import EditIdentityModal from "../components/EditIdentityModal";
 import { useNavigate } from 'react-router-dom';
 import '../styles/GameScreen.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -11,7 +12,6 @@ import { faLandmark } from "@fortawesome/free-solid-svg-icons";
 import { faExclamationCircle } from '@fortawesome/free-solid-svg-icons';
 import confetti from 'canvas-confetti';
 import { useAuth } from '../auth/AuthProvider';
-import { HslColorPicker } from "react-colorful";
 
 const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:8000";
 
@@ -69,10 +69,6 @@ export default function GameScreen() {
   const [playerDisplayName, setPlayerDisplayName] = useState("");
   const [playerColor, setPlayerColor] = useState("#ffffff");
   const [showEditModal, setShowEditModal] = useState(false);
-  const [newDisplayName, setNewDisplayName] = useState(playerDisplayName);
-  const [newColor, setNewColor] = useState(playerColor);
-  const [showWheel, setShowWheel] = useState(false);
-  const [pickerColor, setPickerColor] = useState({ h: 0, s: 1, l: 0.5 });
   const [showDoubleDownModal, setShowDoubleDownModal] = useState(false);
   const [showFailureModal, setShowFailureModal] = useState(false);
   const [failedWord, setFailedWord] = useState("");
@@ -445,54 +441,6 @@ export default function GameScreen() {
     }
   };
 
-  function hslToCssString(hsl) {
-    const h = Math.round(hsl.h);
-    const s = Math.round(hsl.s); 
-    const l = Math.round(hsl.l); 
-    return `hsl(${h}, ${s}%, ${l}%)`;
-  }
-  
-  function cssStringToHSL(cssColor) {
-    // Create a dummy div to resolve computed color
-    const dummy = document.createElement("div");
-    dummy.style.color = cssColor;
-    document.body.appendChild(dummy);
-  
-    const computed = getComputedStyle(dummy).color; // Always returns rgb()
-    document.body.removeChild(dummy);
-  
-    const [r, g, b] = computed
-      .match(/\d+/g)
-      .map(Number)
-      .map((val) => val / 255);
-  
-    const max = Math.max(r, g, b),
-          min = Math.min(r, g, b);
-    let h, s, l = (max + min) / 2;
-  
-    if (max === min) {
-      h = s = 0; // achromatic
-    } else {
-      const d = max - min;
-      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-  
-      switch (max) {
-        case r: h = (g - b) / d + (g < b ? 6 : 0); break;
-        case g: h = (b - r) / d + 2; break;
-        case b: h = (r - g) / d + 4; break;
-        default: h = 0; // Default case to handle unexpected values
-      }
-  
-      h *= 60;
-    }
-  
-    return {
-      h: Math.round(h),
-      s: parseFloat(s.toFixed(3)),
-      l: parseFloat(l.toFixed(3)),
-    };
-  }
-  
   
   return (
     <div className="game-wrapper">
@@ -538,9 +486,6 @@ export default function GameScreen() {
             doubleDownUsed={doubleDownStatus.usedThisWeek}
             doubleDownActivated={doubleDownStatus.activated}
             onEditClick={() => {
-              setNewDisplayName(playerDisplayName);
-              setNewColor(playerColor);
-              setPickerColor(cssStringToHSL(playerColor));
               setShowEditModal(true);
             }}
           />
@@ -620,73 +565,19 @@ export default function GameScreen() {
       )}
   
       {/* Edit Display Name Modal */}
-      {showEditModal && (
-        <div className="modal-overlay">
-          <div className="modal">
-            <h2>Edit Your Identity</h2>
-            <label>Display Name</label>
-            <input
-              type="text"
-              value={newDisplayName}
-              onChange={(e) => setNewDisplayName(e.target.value)}
-            />
-            <label>Color</label>
-            <div className="color-picker-wrapper">
-              <div
-                className="current-color-preview"
-                style={{ backgroundColor: hslToCssString(pickerColor) }}
-                onClick={() => setShowWheel(!showWheel)}
-              />
-              {showWheel && (
-                <div className="wheel-container">
-                  <HslColorPicker
-                    color={pickerColor}
-                    onChange={(color) => {
-                      setPickerColor(color);
-                      setNewColor(hslToCssString(color));
-                    }}
-                  />
-                </div>
-              )}
-            </div>
-            <div className="modal-buttons">
-              <button
-                className="troop-btn"
-                onClick={async () => {
-                  const res = await fetch(`${API_BASE}/api/campaign/update_member`, {
-                    method: "POST",
-                    headers: {
-                      "Content-Type": "application/json",
-                      Authorization: `Bearer ${localStorage.getItem("token")}`,
-                    },
-                    body: JSON.stringify({
-                      campaign_id: campaignId,
-                      user_id: user.user_id,
-                      display_name: newDisplayName,
-                      color: newColor,
-                    }),
-                  });
-                  if (res.ok) {
-                    setPlayerDisplayName(newDisplayName);
-                    setPlayerColor(newColor);
-                    setShowEditModal(false);
-                  } else {
-                    alert("Update failed");
-                  }
-                }}
-              >
-                Save
-              </button>
-              <button
-                className="troop-btn close-btn"
-                onClick={() => setShowEditModal(false)}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <EditIdentityModal
+          visible={showEditModal}
+          displayName={playerDisplayName}
+          color={playerColor}
+          campaignId={campaignId}
+          userId={user.user_id}
+          onClose={() => setShowEditModal(false)}
+          onSave={(newName, newColor) => {
+            setPlayerDisplayName(newName);
+            setPlayerColor(newColor);
+            setShowEditModal(false);
+          }}
+        />
       {/* Failure Modal */}
       {showFailureModal && (
           <div className="modal-overlay">
