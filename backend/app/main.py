@@ -7,6 +7,10 @@ from app.auth import get_current_user
 from app.auth import create_access_token
 from app.models import UserOnly, UpdateUserInfo, CampaignAndUserOnly
 
+from app.scheduler import start_scheduler
+from database import init_db
+
+
 app = FastAPI()
 
 app.add_middleware(
@@ -19,6 +23,11 @@ app.add_middleware(
     allow_methods=["GET", "POST", "OPTIONS"],   
     allow_headers=["Authorization", "Content-Type"]
 )
+
+@app.on_event("startup")
+async def startup_event():
+    start_scheduler()
+    init_db()
 
 @app.post("/api/word/reveal")
 def reveal_word(data: models.CampaignOnly):
@@ -119,6 +128,3 @@ def activate_double_down(data: CampaignOnly, current_user: dict = Depends(get_cu
 @app.post("/api/user/acknowledge_update")
 def acknowledge_update(current_user: dict = Depends(get_current_user)):
     return crud.acknowledge_update(current_user["user_id"])
-
-from app.scheduler import start_scheduler
-start_scheduler()
