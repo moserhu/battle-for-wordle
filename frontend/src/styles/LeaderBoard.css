@@ -12,6 +12,7 @@
   gap: 5vw;
   padding: 5vh 0;
   overflow-x: hidden;
+  margin-bottom: 2.5rem;
 }
 
 .leaderboard-background {
@@ -110,11 +111,12 @@
 
 .leaderboard-panel table {
   border-collapse: collapse;
-  table-layout: fixed;
   width: 100%;
   font-size: 1.1rem;
-  transform: translateZ(0); /* 🔥 triggers hardware layout on iOS */
+  table-layout: auto; /* ✅ Allow natural cell sizing */
+  transform: translateZ(0);
 }
+
 
 .leaderboard-panel tr {
   border-bottom: 1px solid rgba(163, 132, 87, 0.8);
@@ -128,10 +130,30 @@
 }
 
 .player-cell {
-  display: inline-flex; /* 🔄 was inline-flex */
+  display: flex;
+  flex-direction: column;       /* stack swatch above name */
   align-items: center;
+  justify-content: center;
+  text-align: center;
   gap: 0.5rem;
   max-width: 100%;
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  line-break: loose;
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+
+.player-name {
+  flex-shrink: 1;
+  min-width: 0;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  line-break: anywhere;         /* was: loose */
+  hyphens: auto;
 }
 
 .center-cell {
@@ -139,24 +161,27 @@
   vertical-align: middle;
 }
 
-.leaderboard-panel td,
-.leaderboard-panel th {
-  white-space: nowrap;
-  overflow: hidden;
-}
+  .leaderboard-panel td,
+  .leaderboard-panel th {
+    white-space: normal;    
+    overflow-wrap: break-word; 
+    word-break: break-word;
+  }
 
 .leaderboard-panel td:nth-child(2),
 .leaderboard-panel th:nth-child(2) {
   text-align: center !important;
 }
 
-.color-swatch {
-  width: 14px;
-  height: 14px;
-  border-radius: 3px;
-  border: 1px solid #000;
-  box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.4);
-}
+  .color-swatch {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    border: 1px solid #000;
+    box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.4);
+    margin-bottom: 2px;  /* ✅ space from name */
+  }
+  
 
 .back-button {
   margin-top: 24px;

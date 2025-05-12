@@ -37,7 +37,6 @@
   z-index: 2;
   box-sizing: border-box;
   margin-bottom: 2.5rem;
-
 }
 
 /* === TEXT & BUTTONS === */
@@ -155,68 +154,6 @@
   transform: scale(1.05);
 }
 
-/* === ANIMATION OVERLAY === */
-.screenshot-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  z-index: 999;
-  pointer-events: none;
-  overflow: hidden;
-}
-
-.split-half {
-  position: absolute;
-  top: 0;
-  height: 100vh;
-  width: auto;
-  image-rendering: pixelated;
-  object-fit: contain;
-  transform: translateX(0);
-  transition: transform 2s ease-out, opacity 2s ease-out;
-  will-change: transform, opacity;
-}
-
-.slide-left {
-  animation: slideLeft 3s ease-out forwards;
-}
-
-.slide-right {
-  animation: slideRight 3s ease-out forwards;
-}
-
-@keyframes slideLeft {
-  to {
-    transform: translateX(-300%);
-    opacity: 0;
-  }
-}
-
-@keyframes slideRight {
-  to {
-    transform: translateX(300%);
-    opacity: 0;
-  }
-}
-
-.game-content.fade-in {
-  animation: fadeIn 1s ease-in-out forwards;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-
-/* === EDIT MODAL === */
-/* Add this if missing */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -230,90 +167,6 @@
   z-index: 1000;
   padding: 1rem;
   box-sizing: border-box;
-}
-
-/* Target your edit modal */
-.modal {
-  background-color: #1e1b18;
-  border: 2px solid #8b6f47;
-  border-radius: 12px;
-  padding: 2rem;
-  max-width: 400px;
-  width: 90%;
-  text-align: center;
-  font-family: 'Cinzel', serif;
-  color: #f4e9d8;
-  box-shadow: 0 0 30px rgba(0, 0, 0, 0.6);
-}
-
-/* Ensure input styling looks consistent */
-.modal input[type="text"],
-.modal input[type="color"] {
-  width: 100%;
-  padding: 10px;
-  margin-top: 6px;
-  border-radius: 8px;
-  border: 1px solid #777;
-  background: #2b2b2b;
-  color: #fff;
-  font-size: 1rem;
-  box-sizing: border-box;
-}
-
-/* Fix color input line issue by increasing its height and adding border */
-.modal input[type="color"] {
-  height: 48px;
-  padding: 0;
-  border: 2px solid #ccc;
-  background: none;
-}
-
-.color-picker-wrapper {
-  position: relative;
-  margin-top: 10px;
-}
-
-.current-color-preview {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  border: 2px solid #d4af7f;
-  cursor: pointer;
-  box-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
-  margin: 0 auto;
-}
-
-.wheel-container {
-  position: absolute;
-  top: 50px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: #1e1b18;
-  padding: 1rem;
-  border-radius: 10px;
-  z-index: 2000;
-  box-shadow: 0 0 20px rgba(0,0,0,0.8);
-  width: max-content;
-}
-
-/* Optional: style react-colorful picker itself */
-.wheel-container .react-colorful {
-  width: 200px;
-  height: 200px;
-}
-
-
-
-/* Ensure it doesn't overflow on mobile */
-@media (max-width: 500px) {
-  .modal {
-    width: 95%;
-    padding: 1.5rem;
-  }
-
-  .modal input[type="color"] {
-    height: 44px;
-  }
 }
 
 .share-button-container {

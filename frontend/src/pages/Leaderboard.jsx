@@ -197,9 +197,9 @@ export default function Leaderboard() {
               <table>
                 <thead>
                   <tr>
-                    <th>Player</th>
-                    <th className="center-cell">Troops</th>
-                    <th>Battled?</th>
+                  <th><span style={{ whiteSpace: 'nowrap' }}>Players</span></th>
+                  <th><span style={{ whiteSpace: 'nowrap' }}>Troops</span></th>
+                  <th><span style={{ whiteSpace: 'nowrap' }}>Battled?</span></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -210,7 +210,7 @@ export default function Leaderboard() {
                           className="color-swatch"
                           style={{ backgroundColor: colorMap[entry.username] }}
                         ></div>
-                        {entry.username}
+                        <span className="player-name">{entry.username}</span>
                       </td>
                       <td className="center-cell">{entry.score}</td>
                       <td style={{ textAlign: "center" }}>
