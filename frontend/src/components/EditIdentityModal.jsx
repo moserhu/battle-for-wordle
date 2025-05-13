@@ -91,7 +91,6 @@ export default function EditIdentityModal({
     }
   }, [visible, displayName, color]);
   
-  
   if (!visible) return null;
 
   return (

@@ -793,7 +793,7 @@ def get_campaign_members(campaign_id: int, requester_id: int):
 def get_self_member(campaign_id: int, user_id: int):
     with get_db() as conn:
         row = conn.execute("""
-            SELECT display_name, color, double_down_activated, double_down_used_week
+            SELECT display_name, color, double_down_activated, double_down_used_week, double_down_date
             FROM campaign_members
             WHERE campaign_id = ? AND user_id = ?
         """, (campaign_id, user_id)).fetchone()
@@ -805,7 +805,8 @@ def get_self_member(campaign_id: int, user_id: int):
             "display_name": row[0],
             "color": row[1],
             "double_down_activated": row[2],
-            "double_down_used_week": row[3]
+            "double_down_used_week": row[3],
+            "double_down_date": row[4]
         }
 
 def update_campaign_member(campaign_id: int, user_id: int, display_name: str, color: str):

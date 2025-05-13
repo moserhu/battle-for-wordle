@@ -164,18 +164,20 @@ export default function GameScreen() {
         body: JSON.stringify({ campaign_id: id }),
       });
       const doubleDownData = await doubleDownRes.json();
-      setDoubleDownStatus({
-        activated: doubleDownData.double_down_activated === 1,
-        usedThisWeek: doubleDownData.double_down_used_week === 1
-      });
-      if (
-        doubleDownData.double_down_activated === 1 &&
-        !doubleDownData.double_down_used_week &&
-        (progress.current_row === 0 || typeof progress.current_row !== "number")
-      ) {
-        setShowDoubleDownModal(true);
-      }
-      
+
+        setDoubleDownStatus({
+          activated: doubleDownData.double_down_activated === 1,
+          usedThisWeek: doubleDownData.double_down_used_week === 1
+        });
+
+        // 🔒 SHOW ONLY if not used this week, not used today, and eligible to activate
+        if (
+          doubleDownData.double_down_activated === 1 &&
+          !doubleDownData.double_down_used_week &&
+          (progress.current_row === 0 || typeof progress.current_row !== "number")
+        ) {
+          setShowDoubleDownModal(true);
+        }        
       const self = await memberRes.json();
       setPlayerDisplayName(self.display_name || user.first_name);
       setPlayerColor(self.color || "#ffffff");
@@ -401,9 +403,14 @@ export default function GameScreen() {
   
       // Advance to next row
       setCurrentRow(currentRow + 1);
-      if (currentRow === 0 && !doubleDownStatus.activated) {
+      if (
+        currentRow === 0 &&
+        !doubleDownStatus.activated &&
+        !doubleDownStatus.usedThisWeek
+      ) {
         setTimeout(() => setShowDoubleDownModal(true), 400);
-      }      
+      }
+           
       setCurrentCol(0);
     
     } catch (err) {
