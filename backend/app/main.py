@@ -12,10 +12,6 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=[
-        "https://battleforwordle.com",  # production
-        "http://localhost:3000"
-    ],
     allow_methods=["GET", "POST", "OPTIONS"],   
     allow_headers=["Authorization", "Content-Type"]
 )
