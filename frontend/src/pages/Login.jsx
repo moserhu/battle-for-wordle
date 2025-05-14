@@ -6,7 +6,7 @@ import { faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons';
 import { useAuth } from '../auth/AuthProvider';
 import '../styles/Login.css';
 
-const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:8000";
+const API_BASE = `${window.location.protocol}//${window.location.hostname}:8000`;
 
 export default function Login() {
   const navigate = useNavigate();

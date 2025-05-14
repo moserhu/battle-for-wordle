@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import '../styles/AccountScreen.css';
 
-const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:8000";
+const API_BASE = `${window.location.protocol}//${window.location.hostname}:8000`;
 
 export default function AccountScreen() {
   

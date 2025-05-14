@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { HslColorPicker } from 'react-colorful';
 import '../styles/EditIdentityModal.css';
 
-const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:8000";
+const API_BASE = `${window.location.protocol}//${window.location.hostname}:8000`;
 
 function parseHslString(input) {
   if (!input) return { h: 0, s: 0, l: 1 };

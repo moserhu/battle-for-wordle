@@ -9,7 +9,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faLandmark } from '@fortawesome/free-solid-svg-icons';
 
 
-const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:8000";
+const API_BASE = `${window.location.protocol}//${window.location.hostname}:8000`;
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
