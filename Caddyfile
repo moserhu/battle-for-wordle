@@ -1,0 +1,4 @@
+* {
+    reverse_proxy /api/* http://b4w-backend:8002
+    reverse_proxy /* http://b4w-frontend:3002
+}
