@@ -13,7 +13,7 @@ import { faExclamationCircle } from '@fortawesome/free-solid-svg-icons';
 import confetti from 'canvas-confetti';
 import { useAuth } from '../auth/AuthProvider';
 
-const API_BASE = `${window.location.protocol}//${window.location.hostname}:8000`;
+const API_BASE = `${window.location.protocol}//${window.location.hostname}`;
 
 const EMPTY_GRID = Array.from({ length: 6 }, () => Array(5).fill(""));
 

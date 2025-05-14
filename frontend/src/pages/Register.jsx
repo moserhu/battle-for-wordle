@@ -4,7 +4,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons';
 import '../styles/Register.css';
 
-const API_BASE = `${window.location.protocol}//${window.location.hostname}:8000`;
+const API_BASE = `${window.location.protocol}//${window.location.hostname}`;
 
 export default function Register() {
   const navigate = useNavigate();

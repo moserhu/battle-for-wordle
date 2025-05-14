@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import '../styles/AccountScreen.css';
 
-const API_BASE = `${window.location.protocol}//${window.location.hostname}:8000`;
+const API_BASE = `${window.location.protocol}//${window.location.hostname}`;
 
 export default function AccountScreen() {
   

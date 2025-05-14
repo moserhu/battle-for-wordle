@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import "../styles/InviteShare.css";
 
-const FRONTEND_URL = `${window.location.protocol}//${window.location.host}`
+const FRONTEND_URL = `${window.location.protocol}//${window.location.hostname}`
 
 export default function InviteShareButton() {
   const [showModal, setShowModal] = useState(false);
