@@ -1,7 +1,8 @@
 import sqlite3
+from os import getenv
 
 def init_db():
-    with sqlite3.connect("game.db") as conn:
+    with sqlite3.connect(getenv("DB_PATH")) as conn:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -14,7 +15,8 @@ def init_db():
                 total_guesses INTEGER DEFAULT 0,
                 correct_guesses INTEGER DEFAULT 0,
                 campaign_wins INTEGER DEFAULT 0,
-                campaign_losses INTEGER DEFAULT 0
+                campaign_losses INTEGER DEFAULT 0,
+                clicked_update INTEGER DEFAULT 0
             )
         """)
         conn.execute("""
@@ -42,7 +44,7 @@ def init_db():
             )
         """)
         conn.execute("""
-            CREATE TABLE campaign_guesses (
+            CREATE TABLE IF NOT EXISTS campaign_guesses (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 campaign_id INTEGER NOT NULL,
                 user_id INTEGER NOT NULL,
@@ -52,7 +54,7 @@ def init_db():
             )
         """)
         conn.execute("""
-            CREATE TABLE campaign_daily_progress (
+            CREATE TABLE IF NOT EXISTS campaign_daily_progress (
                 campaign_id INTEGER NOT NULL,
                 user_id INTEGER NOT NULL,
                 date TEXT NOT NULL,
@@ -84,3 +86,5 @@ def init_db():
                 FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE
             )
         """)
+
+    print("✅ Database initialized!")
