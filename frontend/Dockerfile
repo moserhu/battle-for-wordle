@@ -1,12 +1,12 @@
 # Use a Node.js base image
-FROM node:18-alpine
+FROM node:18-alpine as builder
 
 # Set working directory
 WORKDIR /app
 
 # Copy package files and install dependencies
 COPY package.json package-lock.json ./
-RUN npm install
+RUN npm ci
 
 # Copy the rest of the frontend code
 COPY . .
@@ -14,8 +14,17 @@ COPY . .
 # Build the frontend
 RUN npm run build
 
-# Expose the frontend port
-EXPOSE 3002
+FROM nginx:alpine
 
-# Serve the frontend using a lightweight HTTP server
-CMD ["npx", "serve", "-s", "build", "-l", "3002"]
+# Remove default nginx static content
+RUN rm -rf /usr/share/nginx/html/*
+
+# Copy built static files
+COPY --from=builder /app/build /usr/share/nginx/html
+
+# Copy custom nginx config (optional but recommended)
+# COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]
