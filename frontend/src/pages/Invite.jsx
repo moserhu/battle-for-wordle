@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import '../styles/Invite.css';
 
-const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:8000";
+const API_BASE = `${window.location.protocol}//${window.location.hostname}`;
 
 export default function Invite() {
   const [searchParams] = useSearchParams();

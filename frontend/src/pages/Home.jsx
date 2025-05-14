@@ -7,7 +7,7 @@ import { useAuth } from '../auth/AuthProvider';
 import UpdateLog from '../components/UpdateLog';
 import '../styles/Home.css';
 
-const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:8000";
+const API_BASE = `${window.location.protocol}//${window.location.hostname}`;
 
 export default function Home() {
   const navigate = useNavigate();
