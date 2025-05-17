@@ -359,14 +359,15 @@ def validate_guess(word: str, user_id: int, campaign_id: int):
 
     with get_db() as conn:
         # Check if it's past 8 PM on final day
-        start_row = conn.execute("SELECT start_date FROM campaigns WHERE id = ?", (campaign_id,)).fetchone()
-        if not start_row:
+        campaign_row = conn.execute("SELECT start_date, cycle_length FROM campaigns WHERE id = ?", (campaign_id,)).fetchone()
+        if not campaign_row:
             raise HTTPException(status_code=404, detail="Campaign not found")
 
-        start_date = datetime.strptime(start_row[0], "%Y-%m-%d").date()
+        start_date = datetime.strptime(campaign_row[0], "%Y-%m-%d").date()
+        cycle_length = campaign_row[1]
         today_date = datetime.now(ZoneInfo("America/Chicago")).date()
         delta_days = (today_date - start_date).days
-        is_final_day = (delta_days + 1) == 5
+        is_final_day = (delta_days + 1) == cycle_length
         now_ct = datetime.now(ZoneInfo("America/Chicago"))
         cutoff_time = now_ct.replace(hour=20, minute=0, second=0, microsecond=0)
 
