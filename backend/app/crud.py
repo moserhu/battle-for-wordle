@@ -449,19 +449,13 @@ def validate_guess(word: str, user_id: int, campaign_id: int):
                         WHERE user_id = ? AND campaign_id = ?
                     """, (score_to_add, today, user_id, campaign_id))
                 else:
-                    current_score = conn.execute("""
-                        SELECT score FROM campaign_members
-                        WHERE user_id = ? AND campaign_id = ?
-                    """, (user_id, campaign_id)).fetchone()[0] or 0
-                    penalty = current_score // 2
                     conn.execute("""
                         UPDATE campaign_members
-                        SET score = MAX(score - ?, 0),
-                            double_down_activated = 0,
+                        SET double_down_activated = 0,
                             double_down_used_week = 1,
                             double_down_date = ?
                         WHERE user_id = ? AND campaign_id = ?
-                    """, (penalty, today, user_id, campaign_id))
+                    """, (today, user_id, campaign_id))
             else:
                 conn.execute("""
                     UPDATE campaign_members
@@ -470,19 +464,13 @@ def validate_guess(word: str, user_id: int, campaign_id: int):
                 """, (score_to_add, user_id, campaign_id))
 
         elif new_game_over and is_double_down:
-            current_score = conn.execute("""
-                SELECT score FROM campaign_members
-                WHERE user_id = ? AND campaign_id = ?
-            """, (user_id, campaign_id)).fetchone()[0] or 0
-            penalty = current_score // 2
             conn.execute("""
                 UPDATE campaign_members
-                SET score = MAX(score - ?, 0),
-                    double_down_activated = 0,
+                SET double_down_activated = 0,
                     double_down_used_week = 1,
                     double_down_date = ?
                 WHERE user_id = ? AND campaign_id = ?
-            """, (penalty, today, user_id, campaign_id))
+            """, (today, user_id, campaign_id))
 
         # Save to guesses table
         conn.execute("""
@@ -641,22 +629,14 @@ def get_saved_progress(user_id: int, campaign_id: int):
             """, (user_id, campaign_id, row[1])).fetchone()
 
             if not completed or not completed[0]:
-                # Apply troop penalty and mark Double Down as used
-                current_score = conn.execute("""
-                    SELECT score FROM campaign_members
-                    WHERE user_id = ? AND campaign_id = ?
-                """, (user_id, campaign_id)).fetchone()[0] or 0
-
-                penalty = current_score // 2
-
+                # mark Double Down as used
                 conn.execute("""
                     UPDATE campaign_members
-                    SET score = MAX(score - ?, 0),
-                        double_down_activated = 0,
+                    SET double_down_activated = 0,
                         double_down_used_week = 1,
                         double_down_date = ?
                     WHERE user_id = ? AND campaign_id = ?
-                """, (penalty, today, user_id, campaign_id))
+                """, (today, user_id, campaign_id))
 
         # Fetch today's saved progress
         row = conn.execute("""
@@ -712,10 +692,10 @@ def handle_campaign_end(campaign_id: int):
         conn.execute("""
             UPDATE campaign_members
             SET double_down_used_week = 0,
+                double_down_activated = 0,
                 double_down_date = NULL
-            WHERE double_down_date IS NOT NULL
-              AND date(double_down_date) <= date(?, '-7 days')
-        """, (today,))
+            WHERE campaign_id = ?
+        """, (campaign_id,))
         conn.execute("DELETE FROM campaign_words WHERE campaign_id = ?", (campaign_id,))
         
         # Reinitialize for a new cycle of # days 
