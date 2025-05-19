@@ -1,4 +1,7 @@
 namepsace: b4w
 name: <+artifacts.primary.tag>
-image: <+artifacts.primary.imagePath>
+
+repo: <+serviceVariables.repo>
+frontend-image: <+serviceVariables.frontend_image>
+backend-image: <+serviceVariables.backend_image>
 tag: <+artifacts.primary.tag>

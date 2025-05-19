@@ -32,7 +32,7 @@ spec:
       - name: regcred
       containers:
         - name: b4w-backend
-          image: {{ .Values.image }}
+          image: {{ .Values.repo }}/{{ .Values.backend-image }}:{{ .Values.tag }}
           ports:
             - name: api
               containerPort: 8002
@@ -49,7 +49,7 @@ spec:
             - name: b4w-storage
               mountPath: /db/
         - name: b4w-frontend
-          image: {{ .Values.image }}
+          image: {{ .Values.repo }}/{{ .Values.frontend-image }}:{{ .Values.tag }}
           ports:
             - name: http
               containerPort: 80
