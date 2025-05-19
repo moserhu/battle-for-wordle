@@ -222,7 +222,7 @@ export default function Home() {
   <div className="modal">
     <h3>Create Campaign</h3>
     
-    <label htmlFor="campaignName">Campaign Name</label>
+    <label htmlFor="campaignName">Campaign Nombre</label>
     <input
       id="campaignName"
       value={campaignName}
