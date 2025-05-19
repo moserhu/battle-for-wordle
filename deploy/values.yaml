@@ -1,5 +1,5 @@
 namepsace: b4w
-name: <+artifacts.primary.tag>
+name: b4w-<+artifacts.primary.tag>
 
 repo: <+serviceVariables.repo>
 frontendImage: <+serviceVariables.frontend_image>
