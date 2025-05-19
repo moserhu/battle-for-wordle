@@ -149,7 +149,7 @@ export default function Home() {
   
         {user ? (
           <>
-            <h2 className='sub-main-title'>Welcome, {user?.first_name || 'Player'}!</h2>
+            <h2 className='sub-main-title'>Goodbye, {user?.first_name || 'Player'}!</h2>
             <div className="campaign-actions">
               <button onClick={() => setShowJoinModal(true)}>Join Campaign</button>
               <button onClick={() => setShowCreateModal(true)}>Create Campaign</button>
