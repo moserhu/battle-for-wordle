@@ -92,7 +92,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-    - host: {{ .Values.name }}.b4w.k8s.rileysnyder.dev
+    - host: {{ .Values.name }}.k8s.rileysnyder.dev
       http:
         paths:
           - path: /api
