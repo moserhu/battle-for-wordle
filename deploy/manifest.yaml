@@ -1,0 +1,112 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Values.name }}
+  namespace: {{ .Values.namepsace }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn
+  numberOfReplicas: 
+  resources:
+    requests:
+      storage: 1M
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.name }}
+  namespace: {{ .Values.namepsace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: b4w
+  template:
+    metadata:
+      labels:
+        app: b4w
+    spec:
+      imagePullSecrets:
+      - name: regcred
+      containers:
+        - name: b4w-backend
+          image: {{ .Values.image }}
+          ports:
+            - name: api
+              containerPort: 8002
+          env:
+            - name: DB_PATH
+              value: /db/game.db
+            - name: SECRET_KEY
+              value: harleyisschmoobs
+            - name: ALGORITHM
+              value: HS256
+            - name: ACCESS_TOKEN_EXPIRE_MINUTES
+              value: "10080"
+          volumeMounts:
+            - name: b4w-storage
+              mountPath: /db/
+        - name: b4w-frontend
+          image: {{ .Values.image }}
+          ports:
+            - name: http
+              containerPort: 80
+      volumes:
+        - name: b4w-storage
+          persistentVolumeClaim:
+            claimName: b4w
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.name }}-frontend
+  namespace: {{ .Values.namepsace }}
+spec:
+  selector:
+    app: b4w
+  ports:
+    - port: 80
+      targetPort: http
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.name }}-backend
+  namespace: {{ .Values.namepsace }}
+spec:
+  selector:
+    app: b4w
+  ports:
+    - port: 80
+      targetPort: api
+                  
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Values.name }}
+  namespace: {{ .Values.namepsace }}
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: {{ .Values.tag }}.b4w.k8s.rileysnyder.dev
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name:  {{ .Values.name }}-backend
+                port:
+                  number: 80
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name:  {{ .Values.name }}-frontend
+                port:
+                  number: 80

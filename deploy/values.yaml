@@ -1,0 +1,4 @@
+namepsace: b4w
+name: <+artifacts.primary.tag>
+image: <+artifacts.primary.imagePath>
+tag: <+artifacts.primary.tag>
