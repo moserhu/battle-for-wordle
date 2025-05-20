@@ -589,7 +589,7 @@ export default function GameScreen() {
       {showFailureModal && (
           <div className="modal-overlay">
             <div className="modal failure-modal">
-              <h2>💀 Thou Hast Failed!</h2>
+              <h2>💀 Thou Shall Not Failed!</h2>
               <p>
                 The sacred word was: 
                 <strong className='secretWord'> {failedWord}</strong>
