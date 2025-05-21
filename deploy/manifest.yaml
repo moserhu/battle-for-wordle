@@ -7,7 +7,6 @@ spec:
   accessModes:
     - ReadWriteOnce
   storageClassName: longhorn
-  reclaimPolicy: delete
   resources:
     requests:
       storage: 1M
