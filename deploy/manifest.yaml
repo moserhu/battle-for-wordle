@@ -26,6 +26,9 @@ spec:
     metadata:
       labels:
         app: b4w
+      annotations:
+        prometheus.io/port: 8002
+        prometheus.io/scrape: true
     spec:
       imagePullSecrets:
       - name: regcred
