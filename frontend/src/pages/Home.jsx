@@ -220,7 +220,7 @@ export default function Home() {
   
   {showCreateModal && (
   <div className="modal">
-    <h3>Create Campaign</h3>
+    <h3>Create Something</h3>
     
     <label htmlFor="campaignName">Campaign Nombre</label>
     <input
