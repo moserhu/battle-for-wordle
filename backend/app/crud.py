@@ -335,7 +335,7 @@ def validate_guess(word: str, user_id: int, campaign_id: int):
     }
 
     if word.lower() not in VALID_WORDS:
-        raise HTTPException(status_code=400, detail="Invalid word")
+        raise HTTPException(status_code=204, detail="Invalid word")
 
     secret = get_daily_word(campaign_id)
     guess = word.lower()
