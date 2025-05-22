@@ -159,7 +159,7 @@ export default function Home() {
               <table className="campaign-table">
                 <thead>
                 <tr>
-                  <th>Campaign</th>
+                  <th>c</th>
                   <th>Completed</th>
                   <th colSpan={2}>Actions</th>
                 </tr>
