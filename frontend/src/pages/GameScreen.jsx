@@ -331,6 +331,12 @@ export default function GameScreen() {
         },
         body: JSON.stringify({ word: guess, campaign_id }),
       });
+
+      if (res.status === 204) {
+        setErrorMsg("❌ Not a valid word");
+        setTimeout(() => setErrorMsg(null), 3000); // clears after 3 seconds
+        return;
+      }
       
       if (!res.ok) {
         const error = await res.json();
