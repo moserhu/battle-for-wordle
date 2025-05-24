@@ -1,0 +1,10 @@
+version: "3.9"
+
+services:
+  caddy:
+    image: caddy:latest
+    container_name: caddy
+    restart: unless-stopped
+    network_mode: "host"
+    volumes:
+      - $PWD/Caddyfile.dev:/etc/caddy/Caddyfile:ro
