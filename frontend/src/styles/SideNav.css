@@ -1,0 +1,147 @@
+/* === Sidebar Styles === */
+.side-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 240px;
+  background: linear-gradient(to bottom, #2b2b2b, #1c1c1c);
+  color: #f2e6d8;
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  transform: translateX(-100%);
+  transition: transform 0.3s ease;
+  z-index: 1001;
+  font-family: 'MedievalSharp', serif;
+  border-right: 2px solid #bfa76f;
+  box-shadow: 3px 0 12px rgba(0, 0, 0, 0.6);
+}
+
+.side-nav.open {
+  transform: translateX(0);
+}
+
+.side-nav .nav-links button {
+  background: none;
+  border: none;
+  color: inherit;
+  padding: 10px;
+  text-align: left;
+  width: 100%;
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.side-nav .nav-links button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.side-nav .campaign-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-left: 10px;
+}
+
+.campaign-buttons button {
+  font-size: 0.8rem;
+  padding: 4px 8px;
+  margin: 2px 0;
+  width: 100%;
+  text-align: left;
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid #ccc;
+  color: #f8e8c8;
+}
+
+/* === Toggle Button Styles === */
+.side-nav-toggle {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1100;
+  background-color: #3b2e2a;
+  color: #f0d9b5;
+  border: 2px solid #c2a370;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.side-nav-toggle:hover {
+  background-color: #4e3b32;
+}
+
+/* === Overlay when sidebar is open === */
+.side-nav-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  width: 100vw;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 1000;
+}
+
+/* === Label visibility (optional if you add collapsible mode again) === */
+.label {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.side-nav-header {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 1100;
+}
+
+.update-button {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  background-color: #8b6f47;
+  border: none;
+  color: #fff;
+  font-size: 1.6rem;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.update-button.hidden {
+  display: none;
+}
+
+.update-button:hover {
+  background-color: #a38457;
+}
+
+.update-button.pulse {
+  animation: pulse-shake 1s infinite, color-cycle 2s infinite;
+  color: #d9e9e1;
+  background-color: rgb(168, 55, 183);
+}
+
+@keyframes pulse-shake {
+  0% { transform: scale(1) rotate(0deg); }
+  25% { transform: scale(1.05) rotate(2deg); }
+  50% { transform: scale(0.95) rotate(-2deg); }
+  75% { transform: scale(1.05) rotate(1deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+
+@keyframes color-cycle {
+  0% { background-color: rgb(168, 55, 183); }
+  50% { background-color: #ffd700; }
+  100% { background-color: rgb(168, 55, 183); }
+}

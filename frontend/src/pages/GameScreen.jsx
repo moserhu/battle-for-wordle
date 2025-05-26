@@ -3,17 +3,13 @@ import Header from '../components/Header';
 import WordGrid from '../components/WordGrid';
 import Keyboard from '../components/Keyboard';
 import DoubleDownModal from "../components/DoubleDownModal";
-import UpdateLog from '../components/UpdateLog';
 import EditIdentityModal from "../components/EditIdentityModal";
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import '../styles/GameScreen.css';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faLandmark } from "@fortawesome/free-solid-svg-icons";
-import { faExclamationCircle } from '@fortawesome/free-solid-svg-icons';
 import confetti from 'canvas-confetti';
 import { useAuth } from '../auth/AuthProvider';
 
-const API_BASE = `${window.location.protocol}//${window.location.hostname}`;
+const API_BASE = process.env.REACT_APP_API_URL || `${window.location.protocol}//${window.location.hostname}`;
 
 const EMPTY_GRID = Array.from({ length: 6 }, () => Array(5).fill(""));
 
@@ -50,7 +46,8 @@ function isFinalCampaignDay(campaignDay) {
 
 export default function GameScreen() {
   const navigate = useNavigate();
-  const { user, isAuthenticated, loading } = useAuth();
+  const location = useLocation();
+  const { user, token, isAuthenticated, loading } = useAuth();
 
   const [campaignId, setCampaignId] = useState(null);
   const [guesses, setGuesses] = useState(EMPTY_GRID);
@@ -72,8 +69,6 @@ export default function GameScreen() {
   const [showDoubleDownModal, setShowDoubleDownModal] = useState(false);
   const [showFailureModal, setShowFailureModal] = useState(false);
   const [failedWord, setFailedWord] = useState("");
-  const [hasSeenUpdate, setHasSeenUpdate] = useState(true);
-  const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [doubleDownStatus, setDoubleDownStatus] = useState({
     activated: false,
     usedThisWeek: false
@@ -85,35 +80,27 @@ export default function GameScreen() {
     }
   }, [isAuthenticated, loading, navigate]);
   
-  useEffect(() => {
-    const fetchUserInfo = async () => {
-      const res = await fetch(`${API_BASE}/api/user/info`, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setHasSeenUpdate(data.clicked_update === 1);
-      }
-    };
-  
-    if (!loading && isAuthenticated) fetchUserInfo();
-  }, [loading, isAuthenticated]);
   
   useEffect(() => {
-    localStorage.removeItem("campaign_ended"); 
     if (loading) return;
+  
+    const searchParams = new URLSearchParams(location.search);
+    const urlCampaignId = searchParams.get("campaign_id");
+    const rawId = urlCampaignId;
 
-    const storedId = localStorage.getItem("campaign_id");
-    if (!storedId) {
+    if (!rawId) {
       navigate("/home");
       return;
     }
   
-    const id = parseInt(storedId);
+    const id = parseInt(rawId);  
     setCampaignId(id);
+    
+  }, [loading, location.search, navigate]); // ✅ add navigate
+  
+  
+  useEffect(() => {
+    if (!campaignId || !user || loading) return;
 
     const resetAndFetch = async () => {
       setGuesses(EMPTY_GRID);
@@ -130,17 +117,17 @@ export default function GameScreen() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ campaign_id: id }),
+          body: JSON.stringify({ campaign_id: campaignId }),
         }),
         fetch(`${API_BASE}/api/game/state`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ campaign_id: id }), // no need for user_id anymore
+          body: JSON.stringify({ campaign_id: campaignId }),
         }),              
       ]);
 
@@ -151,17 +138,17 @@ export default function GameScreen() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ campaign_id: id }),
+        body: JSON.stringify({ campaign_id: campaignId }),
       });
       const doubleDownRes = await fetch(`${API_BASE}/api/campaign/self_member`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ campaign_id: id }),
+        body: JSON.stringify({ campaign_id: campaignId }),
       });
       const doubleDownData = await doubleDownRes.json();
 
@@ -182,10 +169,6 @@ export default function GameScreen() {
       setPlayerDisplayName(self.display_name || user.first_name);
       setPlayerColor(self.color || "#ffffff");
       
-      localStorage.setItem("invite_code", campaignDay.invite_code);
-      localStorage.setItem("campaign_name", campaignDay.name);
-
-
       const validGuesses = Array.isArray(progress.guesses) && progress.guesses.length === 6
   ? progress.guesses.map(row => Array.isArray(row) && row.length === 5 ? row : Array(5).fill("")) 
   : EMPTY_GRID;
@@ -206,24 +189,23 @@ export default function GameScreen() {
     };
 
     resetAndFetch();
-  }, [user, loading, navigate]);
+  }, [campaignId, user, loading, token]);
   
   const checkIfCampaignShouldEnd = useCallback(async () => {
     const res = await fetch(`${API_BASE}/api/campaign/finished_today`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
+        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({ campaign_id: campaignId }),
     });
   
     const data = await res.json();
     if (data.ended) {
-      localStorage.setItem("campaign_ended", "true");
       setCampaignEnded(true);
     }
-  }, [campaignId]);
+  }, [campaignId, token]);
 
   useEffect(() => {
     const interval = setInterval(async () => {
@@ -252,14 +234,13 @@ export default function GameScreen() {
         newMidnightCountdown.minutes === 0 &&
         newMidnightCountdown.seconds === 0
       ) {
-        localStorage.removeItem("campaign_ended"); 
         if (isFinalDay) {
           try {
             await fetch(`${API_BASE}/api/campaign/end`, {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
-                Authorization: `Bearer ${localStorage.getItem("token")}`,
+                Authorization: `Bearer ${token}`,
               },
               body: JSON.stringify({ campaign_id: campaignId }),
             });
@@ -276,7 +257,7 @@ export default function GameScreen() {
     }, 1000);
   
     return () => clearInterval(interval);
-  }, [campaignDay, campaignId, campaignEnded, checkIfCampaignShouldEnd]);
+  }, [campaignDay, campaignId, campaignEnded, checkIfCampaignShouldEnd, token]);
   
   function generateBattleShareText(guesses, results, campaignDay) {
     const board = guesses
@@ -315,7 +296,7 @@ export default function GameScreen() {
     if (currentRow >= 6 || gameOver) return;
   
     const guess = guesses[currentRow].join("");
-    const campaign_id = parseInt(localStorage.getItem("campaign_id"));
+    const campaign_id = campaignId;
     const user_id = user?.user_id;
 
     if (!user_id || !campaign_id || guess.length !== 5) {
@@ -327,7 +308,7 @@ export default function GameScreen() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ word: guess, campaign_id }),
       });
@@ -459,36 +440,8 @@ export default function GameScreen() {
     <div className="game-wrapper">
       <div className="game-content">
         <div className="game-inner">
-          <button
-            className="home-button"
-            onClick={() => {
-              localStorage.removeItem("campaign_id");
-              localStorage.removeItem("invite_code");
-              localStorage.removeItem("campaign_ended");
-              localStorage.removeItem("campaign_name");
-              navigate("/home");
-            }}
-          >
-            <FontAwesomeIcon icon={faLandmark} />
-          </button>
-          <button
-            className={`update-button-game ${!hasSeenUpdate ? 'pulse' : ''}`}
-            onClick={async () => {
-              setShowUpdateModal(true);
-              if (!hasSeenUpdate) {
-                await fetch(`${API_BASE}/api/user/acknowledge_update`, {
-                  method: "POST",
-                  headers: {
-                    Authorization: `Bearer ${localStorage.getItem("token")}`,
-                  },
-                });
-                setHasSeenUpdate(true);
-              }
-            }}
-          >
-            <FontAwesomeIcon icon={faExclamationCircle} />
-          </button>
           <Header
+            campaignId={campaignId} 
             campaignDay={campaignDay}
             cutoffCountdown={cutoffCountdown}
             midnightCountdown={midnightCountdown}
@@ -628,7 +581,7 @@ export default function GameScreen() {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",
-                  Authorization: `Bearer ${localStorage.getItem("token")}`,
+                  Authorization: `Bearer ${token}`,
                 },
                 body: JSON.stringify({ campaign_id: campaignId }),
               });
@@ -651,16 +604,6 @@ export default function GameScreen() {
           }}
           onDecline={() => setShowDoubleDownModal(false)}
         />
-        {showUpdateModal && (
-            <>
-              <div className="modal-overlay" onClick={() => setShowUpdateModal(false)} />
-              <div className="modal">
-                <h3>Recent Updates</h3>
-                <UpdateLog />
-                <button className="troop-btn close-btn" onClick={() => setShowUpdateModal(false)}>Close</button>
-              </div>
-            </>
-          )}
     </div>
   );
   

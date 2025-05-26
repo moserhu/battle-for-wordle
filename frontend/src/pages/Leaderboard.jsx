@@ -1,38 +1,39 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Pie } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import throneBackground from '../assets/throne_background.png';
 import '../styles/LeaderBoard.css';
 import defaultBackground from '../assets/B4W_BG.png';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faLandmark } from '@fortawesome/free-solid-svg-icons';
+import { useAuth } from '../auth/AuthProvider';
 
-
-const API_BASE = `${window.location.protocol}//${window.location.hostname}`;
+const API_BASE = process.env.REACT_APP_API_URL || `${window.location.protocol}//${window.location.hostname}`;
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
 export default function Leaderboard() {
-  const campaignId = parseInt(localStorage.getItem("campaign_id"));
+  const { id } = useParams();
+  const campaignId = parseInt(id);  
   const navigate = useNavigate();
   const [data, setData] = useState([]);
   const [declaredWinner, setDeclaredWinner] = useState(null);
   const [loading, setLoading] = useState(true); // 🆕
   const [hasEnded, setHasEnded] = useState(false);
-
-  const token = localStorage.getItem("token");
+  const { token } = useAuth();
   const [statusLoaded, setStatusLoaded] = useState(false);
 
   useEffect(() => {
     const fetchStatus = async () => {
       try {
+        console.log("⏳ Fetching campaign status for ID:", campaignId);
+  
         const res1 = await fetch(`${API_BASE}/api/campaign/finished_today`, {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
           body: JSON.stringify({ campaign_id: campaignId }),
         });
         const finishedData = await res1.json();
+        console.log("✅ finished_today response:", finishedData);
   
         const res2 = await fetch(`${API_BASE}/api/campaign/progress`, {
           method: "POST",
@@ -40,6 +41,7 @@ export default function Leaderboard() {
           body: JSON.stringify({ campaign_id: campaignId }),
         });
         const progress = await res2.json();
+        console.log("✅ progress response:", progress);
   
         const now = new Date();
         const nowCT = new Date(now.toLocaleString("en-US", { timeZone: "America/Chicago" }));
@@ -48,17 +50,19 @@ export default function Leaderboard() {
         const pastCutoff = nowCT.getHours() >= 20;
         const inferredEnd = isFinalDay && (finishedData.ended || pastCutoff);
   
+        console.log("📌 isFinalDay:", isFinalDay, "pastCutoff:", pastCutoff, "inferredEnd:", inferredEnd);
+  
         setHasEnded(inferredEnd);
       } catch (err) {
-        console.error("Error inferring campaign end:", err);
+        console.error("❌ Error during fetchStatus:", err);
       } finally {
+        console.log("✅ Setting statusLoaded to true");
         setStatusLoaded(true);
       }
     };
   
     if (campaignId && token) fetchStatus();
   }, [campaignId, token]);
-  
   
   
   useEffect(() => {
@@ -146,20 +150,7 @@ export default function Leaderboard() {
           hasEnded && declaredWinner ? throneBackground : defaultBackground
         })`,
       }}
-    >
-      <button
-        className="home-button"
-        onClick={() => {
-          localStorage.removeItem("campaign_id");
-          localStorage.removeItem("invite_code");
-          localStorage.removeItem("campaign_ended");
-          localStorage.removeItem("campaign_name");
-          navigate("/home");
-        }}
-      >
-        <FontAwesomeIcon icon={faLandmark} />
-      </button>
-  
+    >  
       {statusLoaded && hasEnded && declaredWinner !== null ? (
         <div className="declared-winner-screen">
           <div className="winner-content">

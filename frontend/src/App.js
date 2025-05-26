@@ -13,6 +13,7 @@ import Leaderboard from './pages/Leaderboard';
 import { AuthProvider } from './auth/AuthProvider';
 import RedirectIfAuthenticated from './auth/RedirectIfAuthenticated';
 import RequireAuth from './auth/RequireAuth'; // ✅ Import protection wrapper
+import LayoutWithSidebar from './components/LayoutWithSidebar'; // ✅ new import
 
 function App() {
   return (
@@ -24,38 +25,45 @@ function App() {
 
           {/* ✅ Protected Routes */}
           <Route
-            path="/home"
-            element={
-              <RequireAuth>
-                <Home />
-              </RequireAuth>
-            }
-          />
-          <Route
-            path="/game"
-            element={
-              <RequireAuth>
-                <GameScreen />
-              </RequireAuth>
-            }
-          />
-          <Route
-            path="/leaderboard/:campaignHash"
-            element={
-              <RequireAuth>
-                <Leaderboard />
-              </RequireAuth>
-            }
-          />
-          <Route
-            path="/account"
-            element={
-              <RequireAuth>
-                <AccountScreen />
-              </RequireAuth>
-            }
-          />
-
+              path="/home"
+              element={
+                <RequireAuth>
+                  <LayoutWithSidebar>
+                    <Home />
+                  </LayoutWithSidebar>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/game"
+              element={
+                <RequireAuth>
+                  <LayoutWithSidebar>
+                    <GameScreen />
+                  </LayoutWithSidebar>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/leaderboard/:id"
+              element={
+                <RequireAuth>
+                  <LayoutWithSidebar>
+                    <Leaderboard />
+                  </LayoutWithSidebar>
+                </RequireAuth>
+              }
+            />
+            <Route
+              path="/account"
+              element={
+                <RequireAuth>
+                  <LayoutWithSidebar>
+                    <AccountScreen />
+                  </LayoutWithSidebar>
+                </RequireAuth>
+              }
+            />
           {/* 🔓 Public Routes with redirect if already logged in */}
           <Route
             path="/"

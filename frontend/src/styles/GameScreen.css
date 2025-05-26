@@ -48,26 +48,6 @@
   text-align: center;
 }
 
-.home-button {
-  position: absolute;
-  top: 2%;
-  right: 5%;
-  font-size: 2rem;
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: white;
-  z-index: 1000;
-  transition: transform 0.2s;
-  min-width: 44px;
-  min-height: 44px;
-  touch-action: manipulation;
-}
-
-.home-button:hover {
-  transform: scale(1.2);
-}
-
 /* === MODAL === */
 .troop-modal-overlay {
   position: fixed;
@@ -221,53 +201,11 @@
   font-size: 1.2rem;
 }
 
-.update-button-game {
-  position: absolute;
-  top: 2%;
-  left: 8%;
-  background-color: #8b6f47;
-  border: none;
-  color: #fff;
-  font-size: 1.6rem;
-  padding: 8px 12px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.3s;
-  z-index: 100
-}
 
-.update-button-game:hover {
-  background-color: #a38457;
-}
-
-.update-button-game.pulse {
-  animation: pulse-shake 1s infinite, color-cycle 2s infinite;
-  color: #d9e9e1;
-  background-color: rgb(168, 55, 183);
-}
-
-@keyframes pulse-shake {
-  0% { transform: scale(1) rotate(0deg); }
-  25% { transform: scale(1.05) rotate(2deg); }
-  50% { transform: scale(0.95) rotate(-2deg); }
-  75% { transform: scale(1.05) rotate(1deg); }
-  100% { transform: scale(1) rotate(0deg); }
-}
-
-@keyframes color-cycle {
-  0% { background-color: rgb(168, 55, 183); }
-  50% { background-color: #ffd700; }
-  100% { background-color: rgb(168, 55, 183); }
-}
 /* === RESPONSIVE BREAKPOINTS === */
 
 /* Mobile */
 @media (max-width: 600px) {
-  .home-button {
-    top: 1%;
-    right: 3%;
-    font-size: 1.5rem;
-  }
 
   .troop-btn {
     font-size: 0.9rem;
@@ -295,11 +233,6 @@
   .game-inner {
     padding: 2rem;
   }
-
-  .home-button {
-    font-size: 1.8rem;
-  }
-
   .troop-btn {
     font-size: 1rem;
   }

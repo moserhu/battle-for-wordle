@@ -62,30 +62,7 @@
       2px 2px 4px rgba(0, 0, 0, 0.6),
       0 0 10px rgba(255, 215, 0, 0.3);
   }
-  
-  .top-buttons {
-    position: absolute;
-    top: 2%;
-    right: 5%;
-    display: flex;
-    gap: 10px;
-  }
-  
-  .account-button,
-  .logout-button {
-    background-color: #8b6f47;
-    border: none;
-    color: #fff;
-    font-size: 1.8rem;
-    padding: 8px 12px;
-    border-radius: 8px;
-    cursor: pointer;
-  }
-  
-  .account-button:hover,
-  .logout-button:hover {
-    background-color: #a38457;
-  }
+
   
   .welcome-msg {
     font-size: 1.4rem;
@@ -249,12 +226,6 @@
     margin-bottom: 16px;
   }
 
-  .account-button,
-  .logout-button {
-    font-size: 1.4rem;
-    padding: 6px 10px;
-  }
-
   .welcome-msg {
     font-size: 1.1rem;
     margin-bottom: 16px;
@@ -317,40 +288,6 @@
   }
 }
 
-.update-button {
-  background-color: #8b6f47;
-  border: none;
-  color: #fff;
-  font-size: 1.6rem;
-  padding: 8px 12px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.3s;
-}
-
-.update-button:hover {
-  background-color: #a38457;
-}
-
-.update-button.pulse {
-  animation: pulse-shake 1s infinite, color-cycle 2s infinite;
-  color: #d9e9e1;
-  background-color: rgb(168, 55, 183);
-}
-
-@keyframes pulse-shake {
-  0% { transform: scale(1) rotate(0deg); }
-  25% { transform: scale(1.05) rotate(2deg); }
-  50% { transform: scale(0.95) rotate(-2deg); }
-  75% { transform: scale(1.05) rotate(1deg); }
-  100% { transform: scale(1) rotate(0deg); }
-}
-
-@keyframes color-cycle {
-  0% { background-color: rgb(168, 55, 183); }
-  50% { background-color: #ffd700; }
-  100% { background-color: rgb(168, 55, 183); }
-}
 
 .update-list {
   list-style-type: none;
