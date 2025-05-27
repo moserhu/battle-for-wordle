@@ -15,10 +15,10 @@ export default function Header({
   playerColor,
   onEditClick,
   doubleDownUsed,
-  doubleDownActivated
+  doubleDownActivated,
+  campaignId
 }) {
   const navigate = useNavigate();
-  const campaignId = localStorage.getItem("campaign_id");
 
   return (
     <div className="header-container">
