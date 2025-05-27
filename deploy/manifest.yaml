@@ -78,10 +78,12 @@ kind: Ingress
 metadata:
   name: {{ .Values.name }}
   namespace: {{ .Values.namepsace }}
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
 spec:
   ingressClassName: nginx
   rules:
-    - host: {{ .Values.name }}.k8s.rileysnyder.dev
+    - host: {{ .Values.name }}.b4wtest.rileysnyder.dev
       http:
         paths:
           - path: /api
