@@ -8,8 +8,8 @@ from app.auth import create_access_token
 from app.models import UserOnly, UpdateUserInfo, CampaignAndUserOnly
 from prometheus_fastapi_instrumentator import Instrumentator
 
-from app.scheduler import start_scheduler
-from database import init_db
+from app.scheduler import start_scheduler, check_connections
+from app.db import init_db
 
 
 app = FastAPI()
@@ -29,6 +29,7 @@ async def startup_event():
     start_scheduler()
     init_db()
     instrumentator.expose(app, include_in_schema=True, should_gzip=False)
+    asyncio.create_task(check_connections())
 
 @app.post("/api/word/reveal")
 def reveal_word(data: models.CampaignOnly):

@@ -1,8 +1,17 @@
-import sqlite3
+from functools import lru_cache
 from os import getenv
 
+# import psycopg
+from psycopg_pool import ConnectionPool
+
+
+@lru_cache()
+def get_pool():
+    return ConnectionPool(conninfo=getenv("PG_URI"))
+
+
 def init_db():
-    with sqlite3.connect(getenv("DB_PATH")) as conn:
+    with get_pool() as conn:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -7,3 +7,4 @@ pydantic
 bcrypt
 apscheduler
 prometheus-fastapi-instrumentator
+psycopg[binary]

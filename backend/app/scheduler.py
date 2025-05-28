@@ -3,6 +3,17 @@ from apscheduler.triggers.cron import CronTrigger
 from app.crud import handle_campaign_end, get_db
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
+import asyncio
+
+from db import get_pool
+
+pool = get_pool()
+
+async def check_connections():
+    while True:
+        await asyncio.sleep(600)
+        print("check connections")
+        pool.check()
 
 def reset_expired_campaigns():
     print(f"[{datetime.now(ZoneInfo('America/Chicago'))}] Checking for expired campaigns...")
