@@ -272,19 +272,18 @@ export default function GameScreen() {
       .filter(Boolean)
       .join("\n");
   
-      const nameLine = campaignDay?.name ? `🏰 Battle for Wordle: ${campaignDay.name}` : "🏰 Battle for Wordle";
-      const dayLine = `📅 Day ${campaignDay?.day} of ${campaignDay?.total}`;
-  
+      const nameLine = campaignDay?.name
+      ? `🏰 B4W: ${campaignDay.name} — https://battleforwordle.com`
+      : `🏰 Battle for Wordle — https://battleforwordle.com`;    
+      
     const solvedRow = results.findIndex(r => r?.every(cell => cell === "correct"));
     const didSolve = solvedRow !== -1;
   
     const resultLine = didSolve
       ? `⚔️ Solved in ${solvedRow + 1}/6`
       : `❌ Failed - Disappointment to their King`;
-  
-    const homeLink = `Do your part at https://battleforwordle.com/home ⚔️`;
-  
-    return `${nameLine}\n${dayLine}\n${resultLine}\n\n${board}\n\n${homeLink}`;
+    
+    return `${nameLine}\n${resultLine}\n\n${board}`;
   }
   
   

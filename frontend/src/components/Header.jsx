@@ -45,14 +45,6 @@ export default function Header({
               <span className="dd-available">🛡️ Double Down Available</span>
             )}
           </div>
-
-          {/* Campaign Info */}
-          {campaignDay && (
-            <p className="campaign-info">
-              Day {campaignDay.day} of {campaignDay.total} • Campaign: <strong>{campaignDay.name}</strong>
-            </p>
-          )}
-
           {/* Countdown */}
           {campaignEnded ? (
             <p className="countdown-timer">
@@ -69,7 +61,11 @@ export default function Header({
 
           {/* Buttons */}
           <div className="header-buttons">
-            <InviteShareButton />
+          <InviteShareButton
+            campaignId={campaignId}
+            campaignName={campaignDay?.name || "Campaign"}
+            inviteCode={campaignDay?.invite_code}
+          />
             <button
               className="leaderboard-toggle-btn"
               onClick={() => navigate(`/leaderboard/${campaignId}`)}

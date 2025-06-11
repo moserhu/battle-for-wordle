@@ -1,23 +1,18 @@
 import React, { useState } from "react";
 import "../styles/InviteShare.css";
 
-const FRONTEND_URL = `${window.location.protocol}//${window.location.hostname}`
+const FRONTEND_URL = `${window.location.protocol}//${window.location.hostname}`;
 
-export default function InviteShareButton() {
+export default function InviteShareButton({ campaignId, campaignName, inviteCode }) {
   const [showModal, setShowModal] = useState(false);
 
-
-  const inviteCode = localStorage.getItem("invite_code"); 
-  const campaignId = localStorage.getItem("campaign_id");
-  const campaignName = localStorage.getItem("campaign_name") || "Campaign";
   const smartInviteURL = `${FRONTEND_URL}/invite?campaign_id=${campaignId}&campaign_name=${encodeURIComponent(campaignName)}`;
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(inviteCode);
     alert("Invite code copied!");
   };
-  
-//   // Check if the device supports the Web Share API
+
   const handleShare = async () => {
     if (navigator.share) {
       try {
@@ -32,7 +27,6 @@ export default function InviteShareButton() {
       alert("Sharing not supported on this device");
     }
   };
-  
 
   return (
     <>

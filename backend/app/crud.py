@@ -193,12 +193,15 @@ def join_campaign_by_id(campaign_id, user_id):
         return {"message": "Joined campaign", "campaign_id": campaign_id}
 
 def get_user_campaigns(user_id: int):
-    today = datetime.now(ZoneInfo("America/Chicago")).strftime("%Y-%m-%d")
+    today = datetime.now(ZoneInfo("America/Chicago")).date()
+
     with get_db() as conn:
         rows = conn.execute("""
             SELECT 
                 c.id, 
                 c.name,
+                c.start_date,
+                c.cycle_length,
                 EXISTS (
                     SELECT 1 FROM campaign_daily_progress dp
                     WHERE dp.user_id = ? AND dp.campaign_id = c.id
@@ -214,16 +217,26 @@ def get_user_campaigns(user_id: int):
             WHERE cm.user_id = ?
         """, (user_id, today, today, user_id)).fetchall()
 
-    return [
-        {
-            "campaign_id": row[0],
-            "name": row[1],
-            "is_finished": bool(row[2]),  # legacy support
-            "double_down_activated": row[3],
-            "daily_completed": row[4],
-        }
-        for row in rows
-    ]
+    campaign_list = []
+    for row in rows:
+        campaign_id, name, start_date_str, cycle_length, is_finished, dd_activated, daily_completed = row
+
+        # Safely calculate current day
+        start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
+        day = min((today - start_date).days + 1, cycle_length)
+
+        campaign_list.append({
+            "campaign_id": campaign_id,
+            "name": name,
+            "day": day,
+            "total": cycle_length,
+            "is_finished": bool(is_finished),
+            "double_down_activated": dd_activated,
+            "daily_completed": daily_completed
+        })
+
+    return campaign_list
+
 
 def get_user_info(user_id: int):
     with get_db() as conn:

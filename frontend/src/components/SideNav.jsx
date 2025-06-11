@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faBars, faXmark, faExclamationCircle } from '@fortawesome/free-solid-svg-icons';
+import { faBars, faXmark, faExclamationCircle, faLandmark, faUserShield } from '@fortawesome/free-solid-svg-icons';
 import UpdateLog from './UpdateLog'; // ✅ Only if you already have this component
 import '../styles/SideNav.css';
 
@@ -15,20 +15,33 @@ export default function SideNav() {
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
 
-  // Fetch campaigns
-  useEffect(() => {
-    fetch(`${API_BASE}/api/user/campaigns`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({})
-    })
-      .then(res => res.json())
-      .then(data => Array.isArray(data) ? setCampaigns(data) : setCampaigns([]))
-      .catch(() => setCampaigns([]));
+
+  const fetchCampaigns = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/user/campaigns`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({})
+      });
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setCampaigns(data);
+      } else {
+        setCampaigns([]);
+      }
+    } catch {
+      setCampaigns([]);
+    }
   }, [token]);
+  
+  useEffect(() => {
+    if (open) {
+      fetchCampaigns();
+    }
+  }, [open, fetchCampaigns]);
 
   // Fetch update status
   useEffect(() => {
@@ -63,12 +76,6 @@ export default function SideNav() {
     <>
       {/* Top-right control panel */}
       <div className="side-nav-header">
-      <button
-        className={`update-button ${!hasSeenUpdate ? 'pulse' : ''} ${open ? 'hidden' : ''}`}
-        onClick={handleUpdateClick}
-        >
-          <FontAwesomeIcon icon={faExclamationCircle} />
-        </button>
         <button className="side-nav-toggle" onClick={() => setOpen(!open)}>
           <FontAwesomeIcon icon={open ? faXmark : faBars} />
         </button>
@@ -76,44 +83,71 @@ export default function SideNav() {
 
       {/* Sidebar Drawer */}
       <div className={`side-nav ${open ? 'open' : ''}`}>
-        <div className="nav-links">
-        <button onClick={() => {
-            navigate('/home');
-            setOpen(false);
-            }}>
-            🏠 <span className="label">Home</span>
-            </button>
-            <button onClick={() => {
+      <div className="nav-links-scrollable">
+        <button className="main-nav-btn" onClick={() => {
             navigate('/account');
             setOpen(false);
-            }}>
-            👤 <span className="label">Account</span>
+        }}>
+            <FontAwesomeIcon icon={faUserShield} />
+            <span className="label">Account</span>
         </button>
-          <div className="campaign-links">
-            <h4 className="label">Your Campaigns</h4>
+
+        <button
+            className={`main-nav-btn ${!hasSeenUpdate ? 'pulse' : ''}`}
+            onClick={() => {
+                handleUpdateClick();
+                setOpen(false);
+            }}>
+            <FontAwesomeIcon icon={faExclamationCircle} />
+            <span className="label">Updates</span>
+        </button>
+
+        <div className="campaign-links">
+            <h4 className="campaigns-header">Campaigns</h4>
             {campaigns.map((c) => (
             <div key={c.campaign_id} className="campaign-buttons">
-                <span className="label">{c.name}</span>
+                <span className="campaign-name">{c.name}</span>
+                <div className="play-row">
                 <button
-                onClick={() => {
-                    if (!c.campaign_id) return; // early escape
+                    className="campaign-action play-btn"
+                    onClick={() => {
                     navigate(`/game?campaign_id=${c.campaign_id}`);
+                    setOpen(false);
+                    }}
+                >
+                    Play
+                    <span className="completion-icon">
+                    {c.double_down_activated === 1 && c.daily_completed === 0 ? (
+                    <span className="double-down-icon pulse">⚔️</span>
+                    ) : (
+                    c.is_finished ? '✅' : '❌'
+                    )}
+                </span>
+                </button>
+
+                </div>
+                <button
+                className="campaign-action leaderboard-btn"
+                onClick={() => {
+                    navigate(`/leaderboard/${c.campaign_id}`);
                     setOpen(false);
                 }}
                 >
-                <span className="label">Play</span>
+                Leaderboard
                 </button>
-                    <button
-                    onClick={() => {
-                        navigate(`/leaderboard/${c.campaign_id}`);
-                        setOpen(false);
-                    }}
-                    >
-                    <span className="label">Leaderboard</span>
-                    </button>
-              </div>
+            </div>
             ))}
-          </div>
+        </div>
+        </div>
+
+        <div className="nav-links-fixed">
+        <button className="main-home-btn" onClick={() => {
+            navigate('/home');
+            setOpen(false);
+        }}>
+            <FontAwesomeIcon icon={faLandmark} />
+            <span className="label">Home</span>
+        </button>
         </div>
       </div>
 

@@ -12,6 +12,7 @@
     width: 100%;
     gap: 6px;
     margin: 6px 0;
+    
   }
   
   /* Row-specific column templates */
@@ -50,8 +51,14 @@
   /* Coloring */
   .keyboard-container .keyboard-key.correct { background-color: #538d4e; }
   .keyboard-container .keyboard-key.present { background-color: #b59f3b; }
-  .keyboard-container .keyboard-key.absent  { background-color: #222229cb; }
-  
+  .keyboard-container .keyboard-key.absent  { 
+    background-color: #3d3d4e69;
+    color: rgba(255, 255, 255, 0.467);
+   }
+  .keyboard-container .keyboard-key:not(.correct):not(.present):not(.absent) {
+    background-color: #d1cfc4; /* or whatever you want */
+    color: #000000;
+  }
 
   /* Responsive tweaks for mobile */
   @media (max-width: 500px) {

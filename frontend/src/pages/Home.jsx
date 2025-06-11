@@ -62,7 +62,6 @@ export default function Home() {
 
     const data = await res.json();
     if (res.ok) {
-      localStorage.setItem('campaign_id', data.campaign_id);
       navigate('/game');
     } else {
       alert(data.detail || 'Create failed');
@@ -81,7 +80,6 @@ export default function Home() {
 
     const data = await res.json();
     if (res.ok) {
-      localStorage.setItem('campaign_id', data.campaign_id);
       navigate('/game');
     } else {
       alert(data.detail || 'Join failed');
@@ -102,49 +100,38 @@ export default function Home() {
             </div>
 
             {campaigns.length > 0 && (
-              <table className="campaign-table">
-                <thead>
-                  <tr>
-                    <th>Campaign</th>
-                    <th>Completed</th>
-                    <th colSpan={2}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {campaigns.map((camp) => (
-                    <tr key={camp.campaign_id}>
-                      <td>{camp.name}</td>
-                      <td>
-                        {camp.double_down_activated === 1 && camp.daily_completed === 0 ? (
-                          <span className="double-down-icon pulse">⚔️</span>
-                        ) : (
-                          camp.is_finished ? '✅' : '❌'
-                        )}
-                      </td>
-                      <td colSpan={2}>
-                        <div className="campaign-buttons">
-                          <button
-                            onClick={() => {
-                              localStorage.setItem('campaign_id', camp.campaign_id);
-                              navigate(`/leaderboard/${camp.campaign_id}`);
-                            }}
-                          >
-                            Leaderboard
-                          </button>
-                          <button
-                            onClick={() => {
-                              localStorage.setItem('campaign_id', camp.campaign_id);
-                              navigate(`/game?campaign_id=${camp.campaign_id}`);
-                            }}
-                          >
-                            Play
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <div className="campaign-cards">
+              {campaigns.map((camp) => (
+                <div className="campaign-card" key={camp.campaign_id}>
+                  <h3 className="campaign-title">{camp.name}</h3>
+
+                  <div className="campaign-buttons">
+                  <p className="campaign-day">📅  Day {camp.day} of {camp.total}</p>
+                    <button
+                      onClick={() => {
+                        navigate(`/game?campaign_id=${camp.campaign_id}`);
+                      }}
+                    >
+                      Play
+                    </button>
+                    <button
+                      onClick={() => {
+                        navigate(`/leaderboard/${camp.campaign_id}`);
+                      }}
+                    >
+                      Leaderboard
+                    </button>
+                  <p className="campaign-status">
+                    {camp.double_down_activated === 1 && camp.daily_completed === 0 ? (
+                      <span className="double-down-icon pulse">⚔️ Double Down Active</span>
+                    ) : (
+                      camp.is_finished ? '✅ Completed' : '❌ Not Completed'
+                    )}
+                  </p>
+                  </div>
+                </div>
+              ))}
+            </div>
             )}
           </>
         )}
