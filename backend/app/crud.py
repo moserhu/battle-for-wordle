@@ -750,12 +750,42 @@ def delete_campaign(campaign_id: int, requester_id: int):
 
 def kick_player_from_campaign(campaign_id: int, target_user_id: int, requester_id: int):
     with get_db() as conn:
-        owner_check = conn.execute("SELECT owner_id FROM campaigns WHERE id = ?", (campaign_id,)).fetchone()
-        if not owner_check or owner_check[0] != requester_id:
+        owner_row = conn.execute(
+            "SELECT owner_id FROM campaigns WHERE id = ?",
+            (campaign_id,)
+        ).fetchone()
+        if not owner_row:
+            raise HTTPException(status_code=404, detail="Campaign not found")
+
+        owner_id = owner_row[0]
+        if owner_id != requester_id:
             raise HTTPException(status_code=403, detail="Only the campaign owner can kick players")
 
-        conn.execute("DELETE FROM campaign_members WHERE campaign_id = ? AND user_id = ?", (campaign_id, target_user_id))
+        if target_user_id == owner_id:
+            raise HTTPException(status_code=403, detail="Owner cannot be removed from their own campaign")
+
+        # Ensure target is actually a member of this campaign
+        member_exists = conn.execute(
+            "SELECT 1 FROM campaign_members WHERE campaign_id = ? AND user_id = ?",
+            (campaign_id, target_user_id)
+        ).fetchone()
+        if not member_exists:
+            raise HTTPException(status_code=404, detail="Member not found in this campaign")
+
+        result = conn.execute(
+            "DELETE FROM campaign_members WHERE campaign_id = ? AND user_id = ?",
+            (campaign_id, target_user_id)
+        )
+        if result.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Member already removed")
+
+        # Optional: clean up any per-user campaign state
+        conn.execute("DELETE FROM campaign_guesses WHERE campaign_id = ? AND user_id = ?", (campaign_id, target_user_id))
+        conn.execute("DELETE FROM campaign_guess_states WHERE campaign_id = ? AND user_id = ?", (campaign_id, target_user_id))
+        conn.execute("DELETE FROM campaign_daily_progress WHERE campaign_id = ? AND user_id = ?", (campaign_id, target_user_id))
+
         return {"status": "kicked"}
+
 
 def get_campaigns_by_owner(owner_id: int):
     with get_db() as conn:

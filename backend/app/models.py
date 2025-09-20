@@ -46,3 +46,7 @@ class UpdateUserInfo(BaseModel):
     last_name: str
     phone: str
 
+class KickRequest(BaseModel):
+    campaign_id: int
+    user_id: int
+

@@ -240,8 +240,9 @@ export default function AccountScreen() {
     {kickList.map((player) => (
       <div key={player.user_id || player.name}>
         {player.name}
-        <button onClick={async () => {
-          await fetch(`${API_BASE}/api/campaign/kick`, {
+      <button
+        onClick={async () => {
+          const res = await fetch(`${API_BASE}/api/campaign/kick`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -252,8 +253,17 @@ export default function AccountScreen() {
               user_id: player.user_id,
             }),
           });
-          setKickList(kickList.filter((p) => p.user_id !== player.user_id));
-        }}>🥾</button>
+
+          if (res.ok) {
+            setKickList(kickList.filter((p) => p.user_id !== player.user_id));
+          } else {
+            const err = await res.json().catch(() => ({}));
+            alert(err.detail || "Kick failed");
+          }
+        }}
+      >
+        🥾
+      </button>
       </div>
     ))}
   </div>

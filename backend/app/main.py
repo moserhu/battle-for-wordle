@@ -103,8 +103,9 @@ def delete_campaign(data: CampaignOnly, current_user: dict = Depends(get_current
     return crud.delete_campaign(data.campaign_id, current_user["user_id"])
 
 @app.post("/api/campaign/kick")
-def kick_player(data: CampaignAndUserOnly, current_user: dict = Depends(get_current_user)):
+def kick_player(data: models.KickRequest, current_user: dict = Depends(get_current_user)):
     return crud.kick_player_from_campaign(data.campaign_id, data.user_id, current_user["user_id"])
+
 
 @app.get("/api/campaigns/owned")
 def get_owned_campaigns(current_user: dict = Depends(get_current_user)):
