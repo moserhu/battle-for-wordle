@@ -371,6 +371,22 @@ def validate_guess(word: str, user_id: int, campaign_id: int):
     today = datetime.now(ZoneInfo("America/Chicago")).strftime("%Y-%m-%d")
 
     with get_db() as conn:
+        conn.execute("BEGIN IMMEDIATE")
+
+        # NEW: if this exact word was already guessed today, bail out without mutating state
+        dup = conn.execute("""
+            SELECT 1
+            FROM campaign_guesses
+            WHERE user_id = ? AND campaign_id = ? AND date = ? AND word = ?
+        """, (user_id, campaign_id, today, guess)).fetchone()
+        if dup:
+            return {
+                "result": result,      
+                "correct": correct,
+                "word": secret,
+                "duplicate": True
+            }
+        
         # Check if it's past 8 PM on final day
         campaign_row = conn.execute("SELECT start_date, cycle_length FROM campaigns WHERE id = ?", (campaign_id,)).fetchone()
         if not campaign_row:
@@ -487,9 +503,10 @@ def validate_guess(word: str, user_id: int, campaign_id: int):
 
         # Save to guesses table
         conn.execute("""
-            INSERT INTO campaign_guesses (user_id, campaign_id, word, date)
+            INSERT OR IGNORE INTO campaign_guesses (user_id, campaign_id, word, date)
             VALUES (?, ?, ?, ?)
         """, (user_id, campaign_id, guess, today))
+
 
         # Save full state
         conn.execute("""

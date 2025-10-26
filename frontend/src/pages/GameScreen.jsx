@@ -69,11 +69,18 @@ export default function GameScreen() {
   const [showDoubleDownModal, setShowDoubleDownModal] = useState(false);
   const [showFailureModal, setShowFailureModal] = useState(false);
   const [failedWord, setFailedWord] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [shake, setShake] = useState(false);
   const [doubleDownStatus, setDoubleDownStatus] = useState({
     activated: false,
     usedThisWeek: false
   });
   
+  const triggerShake = useCallback(() => {
+  setShake(true);
+  setTimeout(() => setShake(false), 400);
+  }, []);
+
   useEffect(() => {
     if (!loading && !isAuthenticated) {
       navigate('/login');
@@ -291,121 +298,123 @@ export default function GameScreen() {
 //function to submit the guess
   // This function will be called when the user presses Enter
   // It will send the current guess to the server and update the results
-  const submitGuess = async () => {
-    if (currentRow >= 6 || gameOver) return;
-  
-    const guess = guesses[currentRow].join("");
-    const campaign_id = campaignId;
-    const user_id = user?.user_id;
+const submitGuess = async () => {
+  if (isSubmitting || currentRow >= 6 || gameOver) return;
 
-    if (!user_id || !campaign_id || guess.length !== 5) {
-      console.warn("Missing user info, campaign ID, or guess too short");
+  const guess = guesses[currentRow].join("").toLowerCase();
+  const campaign_id = campaignId;
+  const user_id = user?.user_id;
+
+  if (!user_id || !campaign_id || guess.length !== 5) {
+    return;
+  }
+
+  // 🔒 Client-side duplicate guard (prevents local double-entry)
+  const prevWords = guesses
+    .slice(0, currentRow)
+    .map(row => row.join("").toLowerCase());
+  if (prevWords.includes(guess)) {
+    setErrorMsg("⚠️ You already tried that word.");
+    triggerShake();
+    setTimeout(() => setErrorMsg(null), 2000);
+    return;
+  }
+
+  setIsSubmitting(true);
+  try {
+    const res = await fetch(`${API_BASE}/api/guess`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ word: guess, campaign_id }),
+    });
+
+    if (res.status === 204) {
+      setErrorMsg("❌ Not a valid word");
+      triggerShake();
+      setTimeout(() => setErrorMsg(null), 3000);
       return;
-    }    
-    try {
-      const res = await fetch(`${API_BASE}/api/guess`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ word: guess, campaign_id }),
-      });
-
-      if (res.status === 204) {
-        setErrorMsg("❌ Not a valid word");
-        setTimeout(() => setErrorMsg(null), 3000); // clears after 3 seconds
-        return;
-      }
-      
-      if (!res.ok) {
-        const error = await res.json();
-        if (error.detail === "Invalid word") {
-          setErrorMsg("❌ Not a valid word");
-          setTimeout(() => setErrorMsg(null), 3000); // clears after 3 seconds
-          return;
-        }
-         else {
-          throw new Error(error.detail || "Unknown error");
-        }
-      }
-  
-      const data = await res.json();
-  
-      const newResults = [...results];
-      newResults[currentRow] = data.result;
-      setResults(newResults);
-  
-      const newStatus = { ...letterStatus };
-      for (let i = 0; i < guess.length; i++) {
-        const letter = guess[i].toLowerCase();
-        const result = data.result[i];
-        const current = newStatus[letter];
-  
-        if (result === "correct") {
-          newStatus[letter] = "correct";
-        } else if (result === "present" && current !== "correct") {
-          newStatus[letter] = "present";
-        } else if (!current) {
-          newStatus[letter] = "absent";
-        }
-      }
-      setLetterStatus(newStatus);
-  
-      if (data.result.every(r => r === "correct")) {
-        setGameOver(true);
-      
-        let baseTroops = [150, 100, 60, 40, 30, 10][currentRow];
-        const awardedTroops = doubleDownStatus.activated && currentRow <= 2 ? baseTroops * 2 : baseTroops;
-
-        if (currentRow <= 2) {
-          confetti({
-            particleCount: 150,
-            spread: 100,
-            origin: { y: 0.6 },
-          });
-        }
-      
-        setTroopsEarned(awardedTroops); 
-        setShowTroopModal(true);
-      
-        // 🧠 Check for campaign end eligibility if it's the final day
-        if (isFinalCampaignDay(campaignDay)) {
-          await checkIfCampaignShouldEnd();
-        }
-      
-        return;
-      }
-      
-      const maxAttempts = doubleDownStatus.activated ? 3 : 6;
-      if (currentRow + 1 === maxAttempts) {
-        setGameOver(true);
-        setFailedWord(data.word.toUpperCase());
-        setTimeout(() => setShowFailureModal(true), 300);
-        return;
-      }
-      
-      
-  
-      // Advance to next row
-      setCurrentRow(currentRow + 1);
-      if (
-        currentRow === 0 &&
-        !doubleDownStatus.activated &&
-        !doubleDownStatus.usedThisWeek
-      ) {
-        setTimeout(() => setShowDoubleDownModal(true), 400);
-      }
-           
-      setCurrentCol(0);
-    
-    } catch (err) {
-      console.error("Guess submission failed:", err);
-      alert("⚠️ Failed to submit guess. Please try again.");
     }
-  };  
 
-  
+    const data = await res.json();
+
+    // 🛡️ Server-side duplicate guard (idempotent path)
+    if (data.duplicate) {
+      setErrorMsg("⚠️ You already tried that word.");
+      triggerShake();
+      setTimeout(() => setErrorMsg(null), 2000);
+      return;
+    }
+
+    if (!res.ok) {
+      if (data?.detail === "Invalid word") {
+        setErrorMsg("❌ Not a valid word");
+        triggerShake();
+        setTimeout(() => setErrorMsg(null), 3000);
+        return;
+      }
+      throw new Error(data?.detail || "Unknown error");
+    }
+
+    // --- Existing success flow (unchanged) ---
+    const newResults = [...results];
+    newResults[currentRow] = data.result;
+    setResults(newResults);
+
+    const newStatus = { ...letterStatus };
+    for (let i = 0; i < guess.length; i++) {
+      const letter = guess[i].toLowerCase();
+      const r = data.result[i];
+      const current = newStatus[letter];
+
+      if (r === "correct") newStatus[letter] = "correct";
+      else if (r === "present" && current !== "correct") newStatus[letter] = "present";
+      else if (!current) newStatus[letter] = "absent";
+    }
+    setLetterStatus(newStatus);
+
+    if (data.result.every(r => r === "correct")) {
+      setGameOver(true);
+
+      let baseTroops = [150, 100, 60, 40, 30, 10][currentRow];
+      const awardedTroops = doubleDownStatus.activated && currentRow <= 2 ? baseTroops * 2 : baseTroops;
+
+      if (currentRow <= 2) {
+        confetti({ particleCount: 150, spread: 100, origin: { y: 0.6 } });
+      }
+
+      setTroopsEarned(awardedTroops);
+      setShowTroopModal(true);
+
+      if (isFinalCampaignDay(campaignDay)) {
+        await checkIfCampaignShouldEnd();
+      }
+      return;
+    }
+
+    const maxAttempts = doubleDownStatus.activated ? 3 : 6;
+    if (currentRow + 1 === maxAttempts) {
+      setGameOver(true);
+      setFailedWord(data.word.toUpperCase());
+      setTimeout(() => setShowFailureModal(true), 300);
+      return;
+    }
+
+    // Advance to next row
+    setCurrentRow(currentRow + 1);
+    if (currentRow === 0 && !doubleDownStatus.activated && !doubleDownStatus.usedThisWeek) {
+      setTimeout(() => setShowDoubleDownModal(true), 400);
+    }
+    setCurrentCol(0);
+  } catch (err) {
+    console.error("Guess submission failed:", err);
+    alert("⚠️ Failed to submit guess. Please try again.");
+  } finally {
+    setIsSubmitting(false);
+  }
+};
   
   const handleKeyPress = (key) => {
     if (gameOver || campaignEnded) return;
@@ -421,9 +430,9 @@ export default function GameScreen() {
         setCurrentCol(currentCol - 1);
       }
     } else if (key === 'Enter') {
-      if (currentCol === 5) {
-        submitGuess();
-      }
+  if (currentCol === 5 && !isSubmitting) {
+    submitGuess();
+  }
     } else {
       if (currentCol < 5) {
         const newGuesses = [...guesses];
@@ -477,16 +486,18 @@ export default function GameScreen() {
             </div>
           )}
           {/* Re-inserted core game components */}
-          <WordGrid
-            guesses={guesses}
-            results={results}
-            currentRow={currentRow}
-            currentCol={currentCol}
-            maxVisibleRows={doubleDownStatus.activated ? 3 : 6}
+          <div className={`grid-outer ${shake ? 'shake' : ''}`}>
+            <WordGrid
+              guesses={guesses}
+              results={results}
+              currentRow={currentRow}
+              currentCol={currentCol}
+              maxVisibleRows={doubleDownStatus.activated ? 3 : 6}
             />
+          </div>
           <Keyboard letterStatus={letterStatus} onKeyPress={handleKeyPress} />
   
-          {errorMsg && <div className="error-msg">{errorMsg}</div>}
+         
         </div>
       </div>
   
