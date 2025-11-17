@@ -445,9 +445,9 @@ const submitGuess = async () => {
           className="back-btn"
           onClick={() => {
             if (campaignId) {
-              navigate(`/campaign/${campaignId}`);   // go to that campaign's dashboard
+              navigate(`/campaign/${campaignId}`); 
             } else {
-              navigate('/campaigns');                // safe fallback
+              navigate('/campaigns');               
             }
           }}
         >

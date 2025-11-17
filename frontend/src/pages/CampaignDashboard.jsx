@@ -157,15 +157,16 @@ export default function CampaignDashboard() {
         try {
           const l = await fetch(`${API_BASE}/api/leaderboard`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
             body: JSON.stringify({ campaign_id: Number(cid) })
-          });
+          }
+        
+        );
           if (l.ok) {
             const j = await l.json();
             lbData = Array.isArray(j.items) ? j.items : (Array.isArray(j) ? j : []);
           }
         } catch {}
-
         setRecap(recapData);
         setLeaderboard(lbData);
       } catch (e) {
@@ -274,7 +275,7 @@ export default function CampaignDashboard() {
                     <span className="lb-name" style={{ color: p.color || 'inherit' }}>
                       {p.display_name || p.username}
                     </span>
-                    <span className="lb-score">{p.troops} troops</span>
+                    <span className="lb-score">{p.score} troops</span>
                   </li>
                 ))}
               </ol>
