@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import Header from '../components/Header';
 import WordGrid from '../components/WordGrid';
 import Keyboard from '../components/Keyboard';
 import DoubleDownModal from "../components/DoubleDownModal";
@@ -57,8 +56,6 @@ export default function GameScreen() {
   const [gameOver, setGameOver] = useState(false);
   const [letterStatus, setLetterStatus] = useState({});
   const [campaignDay, setCampaignDay] = useState(null);
-  const [cutoffCountdown, setCutoffCountdown] = useState(getTimeUntilCutoffCT());
-  const [midnightCountdown, setMidnightCountdown] = useState(getTimeUntilMidnightCT());
   const [campaignEnded, setCampaignEnded] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
   const [showTroopModal, setShowTroopModal] = useState(false);
@@ -257,10 +254,6 @@ export default function GameScreen() {
         }
         window.location.reload();
       }
-      
-  
-      setCutoffCountdown(newCutoffCountdown);
-      setMidnightCountdown(newMidnightCountdown);
     }, 1000);
   
     return () => clearInterval(interval);
@@ -448,21 +441,18 @@ const submitGuess = async () => {
     <div className="game-wrapper">
       <div className="game-content">
         <div className="game-inner">
-          <Header
-            campaignId={campaignId} 
-            campaignDay={campaignDay}
-            cutoffCountdown={cutoffCountdown}
-            midnightCountdown={midnightCountdown}
-            isFinalDay={isFinalCampaignDay(campaignDay)}
-            campaignEnded={campaignEnded}
-            playerDisplayName={playerDisplayName}
-            playerColor={playerColor}
-            doubleDownUsed={doubleDownStatus.usedThisWeek}
-            doubleDownActivated={doubleDownStatus.activated}
-            onEditClick={() => {
-              setShowEditModal(true);
-            }}
-          />
+          <button
+          className="back-btn"
+          onClick={() => {
+            if (campaignId) {
+              navigate(`/campaign/${campaignId}`);   // go to that campaign's dashboard
+            } else {
+              navigate('/campaigns');                // safe fallback
+            }
+          }}
+        >
+          🏕 Back to Basecamp
+        </button>
     {gameOver && !showTroopModal && (
             <div className="share-button-container">
               <button

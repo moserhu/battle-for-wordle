@@ -1,0 +1,42 @@
+/* === SHARE CARD === */
+
+.sharecard-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+
+}
+
+.sharecard-code {
+  font-family: 'Cinzel', serif;
+  font-size: 1.3rem;
+  color: #ffd700;
+  text-align: center;
+  letter-spacing: 1px;
+  padding-bottom: 10px;
+}
+
+.sharecard-buttons {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.sharecard-btn {
+  padding: 7px 14px;
+  background: linear-gradient(145deg, #3b2e2a, #5a453e);
+  border: 2px solid #c2a370;
+  border-radius: 8px;
+  color: #fef4e6;
+  font-family: 'Cinzel', serif;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.85rem;
+}
+
+.sharecard-btn:hover {
+  background: #715643;
+  transform: translateY(-1px);
+}

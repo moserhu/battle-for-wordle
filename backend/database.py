@@ -86,5 +86,20 @@ def init_db():
                 FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE
             )
         """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS global_high_scores (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                campaign_id INTEGER,
+                player_name TEXT NOT NULL,
+                campaign_name TEXT NOT NULL,
+                troops INTEGER NOT NULL,
+                ended_on TEXT NOT NULL,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+                FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE SET NULL
+            )
+        """)
+
 
     print("✅ Database initialized!")

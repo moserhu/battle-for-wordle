@@ -1,6 +1,6 @@
 // frontend/src/App.js
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import GameScreen from './pages/GameScreen';
 import Home from './pages/Home';
 import './App.css';
@@ -12,58 +12,76 @@ import Invite from './pages/Invite';
 import Leaderboard from './pages/Leaderboard';
 import { AuthProvider } from './auth/AuthProvider';
 import RedirectIfAuthenticated from './auth/RedirectIfAuthenticated';
-import RequireAuth from './auth/RequireAuth'; // ✅ Import protection wrapper
-import LayoutWithSidebar from './components/LayoutWithSidebar'; // ✅ new import
+import RequireAuth from './auth/RequireAuth';
+import NavBar from './components/NavBar';
+import Campaigns from './pages/Campaigns';
+import CampaignDashboard from './pages/CampaignDashboard';
 
-function App() {
+function AppShell() {
+  const location = useLocation();
+
+  // 🔒 routes where NavBar should be hidden
+  const hideNavOn = ['/', '/login', '/register', '/invite'];
+  const hideNav = hideNavOn.includes(location.pathname);
+
   return (
-    <Router>
-      <AuthProvider>
+    <>
+      {!hideNav && <NavBar />}
+      <div className="app-content">
         <Routes>
           {/* Public invite route */}
           <Route path="/invite" element={<Invite />} />
 
           {/* ✅ Protected Routes */}
           <Route
-              path="/home"
-              element={
-                <RequireAuth>
-                  <LayoutWithSidebar>
-                    <Home />
-                  </LayoutWithSidebar>
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/game"
-              element={
-                <RequireAuth>
-                  <LayoutWithSidebar>
-                    <GameScreen />
-                  </LayoutWithSidebar>
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/leaderboard/:id"
-              element={
-                <RequireAuth>
-                  <LayoutWithSidebar>
-                    <Leaderboard />
-                  </LayoutWithSidebar>
-                </RequireAuth>
-              }
-            />
-            <Route
-              path="/account"
-              element={
-                <RequireAuth>
-                  <LayoutWithSidebar>
-                    <AccountScreen />
-                  </LayoutWithSidebar>
-                </RequireAuth>
-              }
-            />
+            path="/home"
+            element={
+              <RequireAuth>
+                <Home />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/campaigns"
+            element={
+              <RequireAuth>
+                <Campaigns />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/campaign/:campaignId"
+            element={
+              <RequireAuth>
+                <CampaignDashboard />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/game"
+            element={
+              <RequireAuth>
+                <GameScreen />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/leaderboard/:id"
+            element={
+              <RequireAuth>
+                <Leaderboard />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/account"
+            element={
+              <RequireAuth>
+                <AccountScreen />
+              </RequireAuth>
+            }
+          />
+
           {/* 🔓 Public Routes with redirect if already logged in */}
           <Route
             path="/"
@@ -90,6 +108,16 @@ function App() {
             }
           />
         </Routes>
+      </div>
+    </>
+  );
+}
+
+function App() {
+  return (
+    <Router>
+      <AuthProvider>
+        <AppShell />
       </AuthProvider>
     </Router>
   );

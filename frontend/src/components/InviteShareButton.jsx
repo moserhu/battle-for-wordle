@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import "../styles/InviteShare.css";
 
 const FRONTEND_URL = `${window.location.protocol}//${window.location.hostname}`;
 

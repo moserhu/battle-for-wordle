@@ -172,8 +172,8 @@ export default function Leaderboard() {
               </ol>
             </div>
   
-            <button className="back-button" onClick={() => navigate('/game')}>
-              Back to Battle
+            <button className="back-button" onClick={() => navigate(-1)}>
+              Back
             </button>
           </div>
         </div>
@@ -211,8 +211,8 @@ export default function Leaderboard() {
                   ))}
                 </tbody>
               </table>
-              <button className="back-button" onClick={() => navigate('/game')}>
-                Back to Battle
+              <button className="back-button" onClick={() => navigate(-1)}>
+                Back
               </button>
             </div>
           </div>

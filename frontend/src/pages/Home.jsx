@@ -1,184 +1,128 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
+import GlobalLeaderboard from '../components/GlobalLeaderboard';
 import '../styles/Home.css';
 
 const API_BASE = process.env.REACT_APP_API_URL || `${window.location.protocol}//${window.location.hostname}`;
 
 export default function Home() {
   const navigate = useNavigate();
-  const [campaigns, setCampaigns] = useState([]);
-  const [showJoinModal, setShowJoinModal] = useState(false);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [inviteCode, setInviteCode] = useState('');
-  const [campaignName, setCampaignName] = useState('');
-  const [cycleLength, setCycleLength] = useState(5);
-
   const { user, token, isAuthenticated, loading } = useAuth();
 
+  const [campaigns, setCampaigns] = useState([]);
+  const [loadingCampaigns, setLoadingCampaigns] = useState(true);
+
+  // Auth gate
   useEffect(() => {
     if (!loading && (!isAuthenticated || !user?.user_id)) {
       navigate('/login');
     }
   }, [isAuthenticated, user, loading, navigate]);
 
+  // Pull campaigns (for the “at a glance” section)
   useEffect(() => {
     const fetchCampaigns = async () => {
-      if (!user?.user_id) return;
-
-      const res = await fetch(`${API_BASE}/api/user/campaigns`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        }
-      });
-
-      const data = await res.json();
-      if (res.ok) {
-        setCampaigns(data);
+      if (!token || !user?.user_id) return;
+      try {
+        const res = await fetch(`${API_BASE}/api/user/campaigns`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({})
+        });
+        const data = await res.json();
+        if (Array.isArray(data)) setCampaigns(data);
+      } catch (e) {
+        console.error('Failed to load campaigns', e);
+      } finally {
+        setLoadingCampaigns(false);
       }
     };
-
-    if (!loading && token) {
-      fetchCampaigns();
-    }
-  }, [user, token, loading]);
+    if (!loading) fetchCampaigns();
+  }, [token, user, loading]);
 
   if (loading) return null;
 
-  const handleCreate = async () => {
-    const res = await fetch(`${API_BASE}/api/campaign/create`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        name: campaignName,
-        cycle_length: parseInt(cycleLength)
-      })
-    });
-
-    const data = await res.json();
-    if (res.ok) {
-      navigate('/game');
-    } else {
-      alert(data.detail || 'Create failed');
-    }
-  };
-
-  const handleJoin = async () => {
-    const res = await fetch(`${API_BASE}/api/campaign/join`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify({ invite_code: inviteCode, user_id: user.user_id })
-    });
-
-    const data = await res.json();
-    if (res.ok) {
-      navigate('/game');
-    } else {
-      alert(data.detail || 'Join failed');
-    }
-  };
-
   return (
     <div className="home-wrapper">
-      <div className="home-container">
-        <h1 className='main-title'>Battle for Wordle</h1>
+      {/* HERO */}
+      <section className="home-hero home-card">
+        <div className="hero-content">
+          <h1 className="main-title">Battle for Wordle</h1>
+          <p className="hero-tagline">
+            Daily campaigns. Rivalries. Glory. Rally your troops and claim the throne.
+          </p>
+          <div className="hero-ctas">
+            <button className="btn primary" onClick={() => navigate('/campaigns')}>
+              Go to Campaigns
+            </button>
+          </div>
+        </div>
+      </section>
 
-        {user && (
-          <>
-            <h2 className='sub-main-title'>Welcome, {user?.first_name || 'Player'}!</h2>
-            <div className="campaign-actions">
-              <button onClick={() => setShowJoinModal(true)}>Join Campaign</button>
-              <button onClick={() => setShowCreateModal(true)}>Create Campaign</button>
-            </div>
+      {/* CONTENT LAYOUT */}
+      <section className="home-grid">
+        {/* Top row: News + Global Leaderboard */}
+        <div className="home-top-row">
+          <div className="home-card home-news-card">
+            <h2>News &amp; Highlights</h2>
+            <p>
+              Welcome, {user?.first_name || 'Player'}! Check out all the latest updates below:
+            </p>
+            <ul className="home-news-list">
+              <li>Checkout layout 2.0</li>
+              <li>Economy system on the way</li>
+              <li>🛠️ Stores coming soon</li>
+              <li>Each campaign will have its own dedicated dashboard</li>
+              <li>Beware of the CLOWN</li>
+            </ul>
+          </div>
 
-            {campaigns.length > 0 && (
-              <div className="campaign-cards">
-              {campaigns.map((camp) => (
-                <div className="campaign-card" key={camp.campaign_id}>
-                  <h3 className="campaign-title">{camp.name}</h3>
+          <div className="home-card home-leaderboard-card">
+            <h2>Global Leaderboard</h2>
+            <GlobalLeaderboard />
+          </div>
+        </div>
 
-                  <div className="campaign-buttons">
-                  <p className="campaign-day">📅  Day {camp.day} of {camp.total}</p>
-                    <button
-                      onClick={() => {
-                        navigate(`/game?campaign_id=${camp.campaign_id}`);
-                      }}
-                    >
-                      Play
-                    </button>
-                    <button
-                      onClick={() => {
-                        navigate(`/leaderboard/${camp.campaign_id}`);
-                      }}
-                    >
-                      Leaderboard
-                    </button>
-                  <p className="campaign-status">
-                    {camp.double_down_activated === 1 && camp.daily_completed === 0 ? (
-                      <span className="double-down-icon pulse">⚔️ Double Down Active</span>
-                    ) : (
-                      camp.is_finished ? '✅ Completed' : '❌ Not Completed'
-                    )}
-                  </p>
+        {/* Bottom row: Your Campaigns full-width */}
+        <div className="home-bottom-row">
+          <div className="home-card home-campaigns-card">
+            <h2>Your Campaigns</h2>
+            {loadingCampaigns ? (
+              <p>Loading your campaigns…</p>
+            ) : campaigns.length === 0 ? (
+              <p>You’re not in any campaigns yet. Head to Campaigns to join or create one.</p>
+            ) : (
+              <div className="home-campaign-cards">
+                {campaigns.slice(0, 4).map((camp) => (
+                  <div className="home-campaign-card" key={camp.campaign_id}>
+                    <h3 className="campaign-title">{camp.name}</h3>
+                    <p className="campaign-day">📅 Day {camp.day} of {camp.total}</p>
+                    <p className="campaign-status">
+                      {camp.double_down_activated === 1 && camp.daily_completed === 0
+                        ? <span className="double-down-icon pulse">⚔️ Double Down Active</span>
+                        : (camp.is_finished ? '✅ Completed' : '❌ Not Completed')}
+                    </p>
+                    <div className="campaign-buttons">
+                      <button onClick={() => navigate(`/campaign/${camp.campaign_id}`)}>Base Camp</button>
+                      <button onClick={() => navigate(`/game?campaign_id=${camp.campaign_id}`)}>Play</button>
+                      <button onClick={() => navigate(`/leaderboard/${camp.campaign_id}`)}>Leaderboard</button>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
             )}
-          </>
-        )}
-
-        {showJoinModal && (
-          <div className="modal">
-            <h3>Join Campaign</h3>
-            <input
-              value={inviteCode}
-              onChange={(e) => setInviteCode(e.target.value)}
-              placeholder="Enter Invite Code"
-            />
-            <div>
-              <button onClick={handleJoin}>Join</button>
-              <button onClick={() => setShowJoinModal(false)}>Cancel</button>
+            <div style={{ marginTop: 12 }}>
+              <button className="btn" onClick={() => navigate('/campaigns')}>
+                Open Campaigns
+              </button>
             </div>
           </div>
-        )}
-
-        {showCreateModal && (
-          <div className="modal">
-            <h3>Create Campaign</h3>
-
-            <label htmlFor="campaignName">Campaign Name</label>
-            <input
-              id="campaignName"
-              value={campaignName}
-              onChange={(e) => setCampaignName(e.target.value)}
-            />
-
-            <label htmlFor="cycleLength">Number of Days</label>
-            <input
-              id="cycleLength"
-              type="number"
-              min="1"
-              max="30"
-              value={cycleLength}
-              onChange={(e) => setCycleLength(e.target.value)}
-            />
-
-            <div>
-              <button onClick={handleCreate}>Create</button>
-              <button onClick={() => setShowCreateModal(false)}>Cancel</button>
-            </div>
-          </div>
-        )}
-      </div>
+        </div>
+      </section>
     </div>
   );
 }

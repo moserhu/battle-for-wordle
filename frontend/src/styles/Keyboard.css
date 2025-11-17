@@ -60,42 +60,5 @@
     color: #000000;
   }
 
-  /* Responsive tweaks for mobile */
-  @media (max-width: 500px) {
-    .keyboard-key {
-        font-size: 0.85rem;
-        height: 50px;         /* was too short before */    
-        padding: 0 10px;
-        line-height: 1.2;
-        min-width: 34px;
-      }
-  
-    .keyboard-key.enter-key,
-    .keyboard-key.delete-key {
-      min-width: 56px;
-    }
-  
-    .keyboard-row {
-      gap: 4px;
-      margin: 4px 0;
-    }
-  }
-  
-  /* Specific fix for Galaxy Z Fold 5 and Galaxy S8+ screen widths */
-  @media (min-width: 340px) and (max-width: 365px) {
-    .keyboard-key {
-      padding: 0 6px;       /* reduce horizontal padding */
-      font-size: 0.75rem;   /* slightly smaller text */
-      min-width: 32px;
-    }
-  
-    .keyboard-key.enter-key,
-    .keyboard-key.delete-key {
-      min-width: 48px;
-    }
-  
-    .keyboard-row {
-      gap: 3px;
-    }
-  }
+
   

@@ -42,6 +42,10 @@ def guess_with_meta(data: models.GuessWithMeta, current_user: dict = Depends(get
 def get_leaderboard(data: CampaignOnly):
     return crud.get_leaderboard(data.campaign_id)
 
+@app.get("/api/leaderboard/global")
+def get_global_leaderboard(current_user: dict = Depends(get_current_user)):
+    return crud.get_global_leaderboard()
+
 @app.post("/api/register")
 def register(user: models.UserRegister):
     return crud.register_user(
@@ -130,3 +134,4 @@ def activate_double_down(data: CampaignOnly, current_user: dict = Depends(get_cu
 @app.post("/api/user/acknowledge_update")
 def acknowledge_update(current_user: dict = Depends(get_current_user)):
     return crud.acknowledge_update(current_user["user_id"])
+

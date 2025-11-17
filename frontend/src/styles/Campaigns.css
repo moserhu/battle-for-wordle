@@ -1,5 +1,5 @@
-/* === HOME PAGE BASE === */
-.home-wrapper {
+/* === CAMPAIGNS PAGE === */
+.campaigns-wrapper {
   position: relative;
   min-height: 100vh;
   width: 100vw;
@@ -7,58 +7,54 @@
   background-size: cover;
   color: #f4e9d8;
   font-family: 'Cinzel', serif;
-  padding: 80px 20px 60px; /* top padding clears fixed NavBar */
+  padding: 80px 20px 60px; /* clear fixed NavBar */
   display: flex;
   flex-direction: column;
   align-items: center;
   z-index: 0;
 }
 
-.home-wrapper::before {
+.campaigns-wrapper::before {
   content: '';
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  inset: 0;
   background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 30%, rgba(0, 0, 0, 0.5) 100%);
   z-index: -1;
 }
 
-/* === HERO SECTION === */
-.home-hero {
+/* HERO */
+.campaigns-hero {
   width: 100%;
   max-width: 900px;
   background: rgba(30, 27, 24, 0.9);
   border: 2px solid #8b6f47;
   border-radius: 12px;
   box-shadow: 0 0 25px rgba(0, 0, 0, 0.6);
-  padding: 40px 30px;
-  margin-bottom: 40px;
+  padding: 36px 28px;
+  margin-bottom: 32px;
   text-align: center;
 }
 
 .main-title {
-  font-size: 3rem;
-  margin-bottom: 12px;
+  font-size: 2.6rem;
+  margin-bottom: 10px;
   background: linear-gradient(to right, #f7e7b2, #d4af37, #b8860b);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.6);
 }
 
 .hero-tagline {
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   color: #f7e7b2;
   max-width: 650px;
-  margin: 0 auto 20px;
+  margin: 0 auto 16px;
   line-height: 1.6;
 }
 
 .hero-ctas {
   display: flex;
   justify-content: center;
-  gap: 16px;
+  gap: 12px;
 }
 
 .hero-ctas .btn {
@@ -66,8 +62,8 @@
   border: 2px solid #c2a370;
   color: #fef4e6;
   font-family: 'MedievalSharp', serif;
-  font-size: 1.1rem;
-  padding: 10px 22px;
+  font-size: 1.05rem;
+  padding: 10px 18px;
   border-radius: 10px;
   cursor: pointer;
   transition: all 0.3s ease;
@@ -78,86 +74,46 @@
   transform: scale(1.05);
 }
 
-/* === GRID LAYOUT === */
-.home-grid {
+/* GRID */
+.campaigns-grid {
   width: 100%;
   max-width: 1100px;
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-/* Top row: News + Global Leaderboard side by side */
-.home-top-row {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 2fr 1fr; /* left wide column + right stack */
   gap: 24px;
 }
 
-/* Bottom row: Campaigns full width */
-.home-bottom-row {
-  width: 100%;
-}
-
-/* === HOME CARD BASE === */
-.home-card {
+.card {
   background-color: rgba(30, 27, 24, 0.9);
   border: 2px solid #8b6f47;
   border-radius: 10px;
   padding: 20px 24px;
   box-shadow: 0 0 15px rgba(0, 0, 0, 0.4);
-  position: relative;
-  z-index: 1;
 }
 
-.home-card h2 {
+.card h2 {
   color: #f7e7b2;
-  font-size: 1.4rem;
+  font-size: 1.3rem;
   margin-bottom: 10px;
   text-transform: uppercase;
   border-bottom: 1px solid rgba(191, 167, 111, 0.5);
   padding-bottom: 6px;
 }
 
-/* News card list */
-.home-news-list {
-  margin-left: 16px;
-  text-align: left;
-  list-style-type: '✦ ';
-}
-
-.home-news-list li {
-  margin: 6px 0;
-  line-height: 1.4;
-}
-
-/* Buttons inside home cards */
-.home-card .btn {
-  background: linear-gradient(145deg, #3b2e2a, #5a453e);
-  border: 2px solid #c2a370;
-  color: #fef4e6;
-  font-family: 'MedievalSharp', serif;
-  font-size: 1.1rem;
-  padding: 10px 22px;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-/* === CAMPAIGN CARDS === */
-.home-campaign-cards {
+/* CAMPAIGN CARDS */
+.campaign-cards {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  margin-top: 16px;
+  margin-top: 10px;
 }
 
-.home-campaign-card {
+.campaign-card {
   background-color: #2d2a26;
   border: 2px solid #a38457;
   border-radius: 10px;
   padding: 16px 20px;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 0 10px rgba(0,0,0,0.4);
   text-align: left;
 }
 
@@ -203,11 +159,22 @@
   transform: translateY(-1px);
 }
 
-/* === Pulse Animation for Double Down === */
+/* Activity list */
+.activity-list {
+  list-style: '✦ ';
+  margin-left: 18px;
+}
+
+.activity-list li {
+  margin: 6px 0;
+  line-height: 1.4;
+}
+
+/* Pulse for Double Down */
 .double-down-icon.pulse {
   display: inline-block;
   animation: pulse 1.5s infinite;
-  font-size: 1.5rem;
+  font-size: 1.4rem;
 }
 
 @keyframes pulse {
@@ -216,9 +183,98 @@
   100% { transform: scale(1); opacity: 1; }
 }
 
-/* === Responsive Adjustments === */
-@media (max-width: 768px) {
-  .home-hero {
+/* === CAMPAIGNS MODALS === */
+.campaigns-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 900;
+}
+
+.campaigns-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(30, 27, 24, 0.97);
+  border: 2px solid #8b6f47;
+  border-radius: 12px;
+  box-shadow: 0 0 25px rgba(0, 0, 0, 0.7);
+  padding: 24px 26px;
+  width: 90%;
+  max-width: 420px;
+  z-index: 901;
+  color: #f4e9d8;
+  font-family: 'Cinzel', serif;
+}
+
+.campaigns-modal-title {
+  font-size: 1.4rem;
+  margin-bottom: 16px;
+  color: #f7e7b2;
+  text-align: center;
+}
+
+.campaigns-modal-label {
+  display: block;
+  margin-top: 10px;
+  margin-bottom: 4px;
+  font-size: 0.95rem;
+  color: #f7e7b2;
+}
+
+.campaigns-modal-input {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #8b6f47;
+  background-color: #1e1b18;
+  color: #f4e9d8;
+  font-family: inherit;
+  margin-bottom: 8px;
+}
+
+.campaigns-modal-input:focus {
+  outline: none;
+  border-color: #d4af37;
+  box-shadow: 0 0 0 1px rgba(212, 175, 55, 0.5);
+}
+
+.campaigns-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.campaigns-modal-btn {
+  background: linear-gradient(145deg, #3b2e2a, #5a453e);
+  border: 2px solid #c2a370;
+  border-radius: 8px;
+  color: #fef4e6;
+  font-family: 'MedievalSharp', serif;
+  font-size: 0.95rem;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.campaigns-modal-btn.primary {
+  border-color: #d4af37;
+}
+
+.campaigns-modal-btn:hover {
+  background: #715643;
+  transform: translateY(-1px);
+}
+
+
+/* Responsive */
+@media (max-width: 900px) {
+  .campaigns-grid {
+    grid-template-columns: 1fr; /* stack */
+  }
+  .campaigns-hero {
     padding: 28px 20px;
   }
   .main-title {
@@ -226,22 +282,5 @@
   }
   .hero-tagline {
     font-size: 1rem;
-  }
-
-  .home-top-row {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 480px) {
-  .hero-ctas .btn {
-    width: 100%;
-  }
-  .home-card {
-    padding: 16px;
-  }
-  .campaign-buttons {
-    flex-direction: column;
-    align-items: stretch;
   }
 }

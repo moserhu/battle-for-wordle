@@ -695,24 +695,61 @@ def get_saved_progress(user_id: int, campaign_id: int):
 
 def handle_campaign_end(campaign_id: int):
     with get_db() as conn:
-        # 1. Get winner by highest score
-        winner = conn.execute("""
-            SELECT user_id FROM campaign_members
-            WHERE campaign_id = ?
-            ORDER BY score DESC
+        # 1. Get winner with campaign + user info
+        winner_row = conn.execute("""
+            SELECT 
+                cm.user_id,
+                cm.score,
+                u.first_name,
+                u.last_name,
+                c.name,
+                c.start_date,
+                c.cycle_length
+            FROM campaign_members cm
+            JOIN users u ON u.id = cm.user_id
+            JOIN campaigns c ON c.id = cm.campaign_id
+            WHERE cm.campaign_id = ?
+            ORDER BY cm.score DESC
             LIMIT 1
         """, (campaign_id,)).fetchone()
 
-        if winner:
+        if winner_row:
+            user_id, score, first_name, last_name, camp_name, start_date_str, cycle_length = winner_row
+
+            # Determine when this “season” ended
+            start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
+            final_day = start_date + timedelta(days=cycle_length - 1)
+            today = datetime.now(ZoneInfo("America/Chicago")).date()
+
+            # If campaign is ended early via API, use today; otherwise use natural final day.
+            ended_on = min(today, final_day)
+
+            player_name = f"{first_name} {last_name}".strip()
+
+            # 1a. Record global high score entry
+            conn.execute("""
+                INSERT INTO global_high_scores (
+                    user_id, campaign_id, player_name, campaign_name, troops, ended_on
+                ) VALUES (?, ?, ?, ?, ?, ?)
+            """, (
+                user_id,
+                campaign_id,
+                player_name,
+                camp_name,
+                score,
+                ended_on.strftime("%Y-%m-%d")
+            ))
+
+            # 1b. Update winner’s campaign_wins
             conn.execute("""
                 UPDATE users
                 SET campaign_wins = campaign_wins + 1
                 WHERE id = ?
-            """, (winner[0],))
+            """, (user_id,))
 
         # 2. Reset campaign to start over
-        today = datetime.now(ZoneInfo("America/Chicago")).strftime("%Y-%m-%d")
-        conn.execute("UPDATE campaigns SET start_date = ? WHERE id = ?", (today, campaign_id))
+        today_str = datetime.now(ZoneInfo("America/Chicago")).strftime("%Y-%m-%d")
+        conn.execute("UPDATE campaigns SET start_date = ? WHERE id = ?", (today_str, campaign_id))
 
         # 3. Clear old campaign data
         conn.execute("DELETE FROM campaign_guesses WHERE campaign_id = ?", (campaign_id,))
@@ -729,9 +766,14 @@ def handle_campaign_end(campaign_id: int):
         conn.execute("DELETE FROM campaign_words WHERE campaign_id = ?", (campaign_id,))
         
         # Reinitialize for a new cycle of # days 
-        cycle_length = conn.execute("SELECT cycle_length FROM campaigns WHERE id = ?", (campaign_id,)).fetchone()[0]
+        cycle_length_row = conn.execute(
+            "SELECT cycle_length FROM campaigns WHERE id = ?", (campaign_id,)
+        ).fetchone()
+        cycle_length = cycle_length_row[0] if cycle_length_row else 5
         initialize_campaign_words(campaign_id, cycle_length, conn)
-        return {"status": "campaign reset", "new_start_date": today}
+
+        return {"status": "campaign reset", "new_start_date": today_str}
+
 
 
 def has_campaign_finished_for_day(campaign_id: int):
@@ -862,3 +904,55 @@ def update_campaign_member(campaign_id: int, user_id: int, display_name: str, co
             raise HTTPException(status_code=404, detail="Campaign membership not found")
 
         return {"status": "updated", "display_name": display_name, "color": color}
+    
+def get_global_leaderboard():
+    with get_db() as conn:
+        # ✅ 1) Seed dummy data if the table is empty
+        count = conn.execute("SELECT COUNT(*) FROM global_high_scores").fetchone()[0]
+
+        if count == 0:
+            conn.executemany("""
+                INSERT INTO global_high_scores (
+                    user_id,
+                    campaign_id,
+                    player_name,
+                    campaign_name,
+                    troops,
+                    ended_on
+                ) VALUES (?, ?, ?, ?, ?, ?)
+            """, [
+                (None, None, "Sir Lexicon",    "Season of Shadows",      150, "2025-01-01"),
+                (None, None, "Count Vowel",    "Vowels of Valor",        130, "2025-02-10"),
+                (None, None, "Duke Consonant", "Consonant Crusade",      120, "2025-03-05"),
+                (None, None, "Baron Bigram",   "Siege of Syllables",     110, "2025-04-18"),
+                (None, None, "Lady Syllable",  "Whispers of Wordsmiths", 100, "2025-05-22"),
+                (None, None, "Lord Trigram",   "Trigram Trials",          95, "2025-06-15"),
+                (None, None, "Knight Rhyme",   "Rhymes of Ruin",          90, "2025-07-03"),
+                (None, None, "Dame Diction",   "Diction Dominion",        85, "2025-08-09"),
+                (None, None, "Countess Clue",  "Clue of Crowns",          80, "2025-09-12"),
+                (None, None, "Viscount Verb",  "Verbs of Valor",          75, "2025-10-01"),
+            ])
+            conn.commit()
+
+        # ✅ 2) Pull the top 10 scores of all time from the Hall of Fame
+        rows = conn.execute("""
+            SELECT 
+                player_name,
+                campaign_name,
+                troops,
+                ended_on
+            FROM global_high_scores
+            ORDER BY troops DESC, ended_on DESC
+            LIMIT 10
+        """).fetchall()
+
+    # ✅ 3) Shape for the frontend
+    return [
+        {
+            "player_name": row[0],
+            "campaign_name": row[1],
+            "best_troops": row[2],
+            "ended_on": row[3]
+        }
+        for row in rows
+    ]
