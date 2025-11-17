@@ -1,4 +1,22 @@
 ---
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  creationTimestamp: null
+  name: litestream-minio
+  namespace: b4w
+spec:
+  encryptedData:
+    LITESTREAM_ACCESS_KEY_ID: AgA24GvVuRLJBO+CBmHB73MIekXMAXomQGSfyLe3G+lO+gFGtg0E7xesa8nm89vvjmAReLUqgBxLoACH4PwrIHqqLSL+yaRoR9ldwRQ0mdeDmd57enHS+qhGWjLUnoCCkSa3stz/PdH1afWfvmGABbngfKPGISOOQfvGxbV8YxjtQ4yealbjU0/AYEGzCPG/TNzuSQc1vaf0XvCRNLxc/NRh1cMMRb1ZEHDgHYcYl5EfuUMaH4Yz82HVO0tvJtRqLrEnoFLeOBcgZSMyQYz4bFuHjPrBMZrBQYxjV7iTqUVtnejNUfvb5on0IFEm3N5vJ56bJXxufZrxM+P9a5aveUKfLra562FlgCpz1Ni8SfLhyNYn3vpSlrjdXQgfO1Mv9DlOkUYM+J1AeH5wlRU83xkby2DPIcaYlHQpYBZ41eJHgaRDgaDBuzqNHMx8kFxLt7f36CRhLkMLzwLwxQf0b5DrK7uU812GwW+KPmgqPqruTKJJcpV5WnMOaKLUXYpGTbp9koQgGmeeGVZtEW9v7O/Xt23B2xq6zMGdDym987R+QF3ZDiQAjVXH45QeMPQswtiGhlWWpI9R2+/pLdoV25Z2a9Wa///SPC6F/S2awYn0qbW4Kydu4Pq12/CeKvHRkAIsD7QqG8e3U+s7AjbmQ8wxEK//RtP1OjGH8Mk2s5AvOreM4b9kpbs7Xs5fZvDH/7NIGo0Mt8gfYw==
+    LITESTREAM_SECRET_ACCESS_KEY: AgAEcekWddZ1qIaGHX71WvfMs5Nupp+0aZv2g7XMINzclPqbsoqnChoVPAN0JTmtPniSF4iUAVSvhDUDlH9phPRI1hMLPOHA26mNlee7QLzIRNGDwSj96W4sTnyTiU3WLcUpDP1OZTPlv7mce8MNlR/mVgJ4HswXLcn7tX2xBuqm85HOsbqEoV1SPxD5/yrhasyil/yUC9R20f/wTnk1+nJLhMv8998jd//NKUjUkYiA5D/tSCiUuPlxdUYIF8Mcz4cvEaVP5VdzUg6gddYiNZ2xGUHloYxHTHTqW6vcvWplS/ZEs7gibvd/MHi3mHOtkSanrzu70G81C1QmCbrKVRGHBeyUIMmvF94VTerC4cS+qNv65BfBkVOgZ+Z9KiFzUum9YYSTlf6jWHC5tjK0kpqUxC/v9UdoqR/YaBXib42gsrbiuTIYdaySfooca438jdg++S/UhKlG2KoqhYMkF1ATPe3qE+v80LYSPFH4tuBei13BJRpnJ1r3D8qLU3FTWeSlHPkVpnUJq9mqCSenO71EDnyir68Jrvi0j2WdtCgYxpdi7wGaZeWcr45IkULyrPxCUZ2vcuCDJz4GeJigP9dcmlbGDU1WP1O7u0ycuSAr2nqaRFgmEfyZdvqxRVHlDXdD7ubjJpuqrFnR8CmnfhqD5BKjszQ0Q5bof3p7Ti1clz2HFv3ldZ05DTcP4F+korLkBH0k80VO71XohQdFWw==
+  template:
+    metadata:
+      creationTimestamp: null
+      name: litestream-minio
+      namespace: b4w
+    type: Opaque
+
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -19,6 +37,23 @@ spec:
     spec:
       imagePullSecrets:
       - name: regcred
+      initContainers:
+        - name: litestream
+          image: rssnyder/litestream:0.5
+          imagePullPolicy: Always
+          args:
+            - 'restore'
+            - '-if-db-not-exists'
+            - '-if-replica-exists'
+            - '-o'
+            - '/data/game.db'
+            - 's3://b4w/game.db?endpoint=s3.rileysnyder.dev'
+          envFrom:
+            - secretRef:
+                name: litestream-minio
+          volumeMounts:
+            - name: b4w-storage
+              mountPath: /data/
       containers:
         - name: b4w-backend
           image: {{ .Values.repo }}/{{ .Values.backendImage }}:{{ .Values.tag }}
