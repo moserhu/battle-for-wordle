@@ -32,8 +32,8 @@
     font-size: clamp(0.75rem, 1.8vw, 1rem);
     font-weight: bold;
     height: 46px;
-    background-color: #666;
-    color: white;
+    background-color: var(--keyboard-key-bg);
+    color: var(--keyboard-key-text);
     border: none;
     border-radius: 6px;
     cursor: pointer;
@@ -49,15 +49,15 @@
   
   
   /* Coloring */
-  .keyboard-container .keyboard-key.correct { background-color: #538d4e; }
-  .keyboard-container .keyboard-key.present { background-color: #b59f3b; }
+  .keyboard-container .keyboard-key.correct { background-color: var(--keyboard-correct); }
+  .keyboard-container .keyboard-key.present { background-color: var(--keyboard-present); }
   .keyboard-container .keyboard-key.absent  { 
-    background-color: #3d3d4e69;
-    color: rgba(255, 255, 255, 0.467);
+    background-color: var(--keyboard-absent);
+    color: var(--keyboard-absent-text);
    }
   .keyboard-container .keyboard-key:not(.correct):not(.present):not(.absent) {
-    background-color: #d1cfc4; /* or whatever you want */
-    color: #000000;
+    background-color: var(--keyboard-key-bg);
+    color: var(--keyboard-key-text);
   }
 
 

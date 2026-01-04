@@ -9,9 +9,9 @@
 }
 
 .sharecard-code {
-  font-family: 'Cinzel', serif;
+  font-family: var(--theme-font);
   font-size: 1.3rem;
-  color: #ffd700;
+  color: var(--theme-accent-warm-strong);
   text-align: center;
   letter-spacing: 1px;
   padding-bottom: 10px;
@@ -26,17 +26,17 @@
 
 .sharecard-btn {
   padding: 7px 14px;
-  background: linear-gradient(145deg, #3b2e2a, #5a453e);
-  border: 2px solid #c2a370;
+  background: var(--theme-btn-bg);
+  border: 2px solid var(--theme-btn-border);
   border-radius: 8px;
-  color: #fef4e6;
-  font-family: 'Cinzel', serif;
+  color: var(--theme-btn-text);
+  font-family: var(--theme-font);
   cursor: pointer;
   transition: all 0.2s ease;
   font-size: 0.85rem;
 }
 
 .sharecard-btn:hover {
-  background: #715643;
+  background: var(--theme-btn-hover);
   transform: translateY(-1px);
 }

@@ -1,15 +1,16 @@
 /* AccountScreen.css */
 .account-wrapper {
-background: url('../assets/winter_bedroom_background.png') no-repeat center center fixed;
-background-size: cover;
-background-attachment: fixed;
+  background: var(--bg-account) no-repeat center center fixed;
   background-size: cover;
+  background-attachment: fixed;
   min-height: 100vh;
   width: 100vw;
   display: flex;
   justify-content: center;
   align-items: flex-start;
   padding-top: 60px;
+  color: var(--theme-text-primary);
+  font-family: var(--theme-font);
 }
 
 .account-wrapper::before {
@@ -18,7 +19,11 @@ background-attachment: fixed;
   top: 0; left: 0;
   width: 100vw;
   height: 100vh;
-  background: radial-gradient(ellipse at center, rgba(0,0,0,0) 40%, rgba(0,0,0,0.7) 100%);
+  background: radial-gradient(
+    ellipse at center,
+    var(--theme-vignette-inner) 40%,
+    var(--theme-vignette-outer) 100%
+  );
   z-index: 0;
   pointer-events: none;
 }
@@ -27,12 +32,12 @@ background-attachment: fixed;
   max-width: 700px;
   margin: 60px auto;
   padding: 30px;
-  background-color: rgba(30, 27, 24, 0.651); /* <== Added transparency */
-  border: 2px solid #8b6f47;
+  background-color: var(--theme-surface-subtle); /* <== Added transparency */
+  border: 2px solid var(--theme-border);
   border-radius: 10px;
-  color: #f4e9d8;
-  font-family: 'Cinzel', serif;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.6);
+  color: var(--theme-text-primary);
+  font-family: var(--theme-font);
+  box-shadow: var(--theme-shadow-strong);
   position: relative; /* Needed for z-index layering */
   z-index: 1;
 }
@@ -41,7 +46,7 @@ background-attachment: fixed;
   .account-screen h2 {
     font-size: 2rem;
     margin-bottom: 20px;
-    color: #d4af7f;
+    color: var(--theme-text-warm-muted);
     text-align: center;
   }
   
@@ -53,7 +58,7 @@ background-attachment: fixed;
     display: block;
     margin-bottom: 5px;
     font-weight: bold;
-    color: #d4af7f;
+    color: var(--theme-text-warm-muted);
     text-align: left;
   }
   
@@ -61,23 +66,23 @@ background-attachment: fixed;
     width: 100%;
     padding: 10px;
     margin-bottom: 15px;
-    border: 1px solid #8b6f47;
-    background-color: #2d2a26;
-    color: #f4e9d8;
+    border: 1px solid var(--theme-input-border);
+    background-color: var(--theme-input-bg);
+    color: var(--theme-input-text);
     border-radius: 6px;
     font-size: 1rem;
   }
   
   .account-info input:disabled {
-    background-color: #3d3a36;
-    color: #999;
+    background-color: var(--theme-surface-solid);
+    color: rgba(233, 243, 255, 0.5);
   }
   
   .save-btn {
-    background-color: #624a2e;
-    color: #fff;
+    background-color: var(--theme-success-bg);
+    color: var(--theme-text-accent);
     padding: 10px 20px;
-    border: 2px solid #d4af7f;
+    border: 2px solid var(--theme-border-strong);
     border-radius: 6px;
     cursor: pointer;
     font-weight: bold;
@@ -85,29 +90,29 @@ background-attachment: fixed;
   }
   
   .save-btn:hover {
-    background-color: #7a5a3a;
+    background-color: var(--theme-success-hover);
   }
   
   .message {
     margin-top: 15px;
     font-size: 1rem;
-    color: #d4af7f;
+    color: var(--theme-text-warm-muted);
   }
   
   .account-highlights {
     padding-top: 20px;
-    border-top: 1px solid #8b6f47;
+    border-top: 1px solid var(--theme-border);
   }
   
   .account-highlights h3 {
     font-size: 1.5rem;
     margin-bottom: 10px;
-    color: #d4af7f;
+    color: var(--theme-text-warm-muted);
   }
   
   .highlight-box {
-    background-color: #2d2a26;
-    border: 1px solid #8b6f47;
+    background-color: var(--theme-surface-solid);
+    border: 1px solid var(--theme-border);
     border-radius: 8px;
     padding: 15px;
     font-size: 1.1rem;
@@ -131,37 +136,37 @@ background-attachment: fixed;
 }
 
 .edit-btn {
-  background-color: #444;
-  color: #fff;
+  background-color: var(--theme-neutral-bg);
+  color: var(--theme-text-accent);
 }
 
 .edit-btn:hover {
-  background-color: #666;
+  background-color: var(--theme-neutral-hover);
 }
 
 .cancel-btn {
-  background-color: #888;
-  color: #fff;
+  background-color: var(--theme-danger-bg);
+  color: var(--theme-text-accent);
   margin-left: 10px;
 }
 
 .cancel-btn:hover {
-  background-color: #a44;
+  background-color: var(--theme-danger-hover);
 }
 
 .save-btn {
-  background-color: #2d6a4f;
-  color: white;
+  background-color: var(--theme-success-bg);
+  color: var(--theme-text-accent);
 }
 
 .save-btn:hover {
-  background-color: #40916c;
+  background-color: var(--theme-success-hover);
 }
 
 .back-btn {
     background-color: transparent;
     border: none;
-    color: #fff;
+    color: var(--theme-text-accent);
     font-size: 16px;
     cursor: pointer;
     margin-bottom: 10px;
@@ -177,7 +182,7 @@ background-attachment: fixed;
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(0, 0, 0, 0.7);
+  background: var(--theme-overlay-strong);
   z-index: 1000;
   display: flex;
   justify-content: center;
@@ -185,24 +190,24 @@ background-attachment: fixed;
 }
 
 .modal-content {
-  background: #1e1b18;
+  background: var(--theme-surface-solid);
   padding: 2rem;
   border-radius: 12px;
   width: 90%;
   max-width: 600px;
   max-height: 80vh;
   overflow-y: auto;
-  color: #f4e9d8;
-  font-family: 'Cinzel', serif;
-  border: 2px solid #8b6f47;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.6);
+  color: var(--theme-text-primary);
+  font-family: var(--theme-font);
+  border: 2px solid var(--theme-border);
+  box-shadow: var(--theme-shadow-strong);
 }
 
 .modal-content h3,
 .modal-content h4 {
   margin-bottom: 1rem;
   text-align: center;
-  color: #d4af7f;
+  color: var(--theme-text-warm-muted);
 }
 
 .campaign-entry {
@@ -211,14 +216,14 @@ background-attachment: fixed;
   align-items: center;
   margin: 0.75rem 0;
   padding: 0.75rem;
-  background: #2d2a26;
+  background: var(--theme-surface-subtle);
   border-radius: 8px;
-  border: 1px solid #8b6f47;
+  border: 1px solid var(--theme-border);
 }
 
 .campaign-entry strong {
   font-size: 1.1rem;
-  color: #f4e9d8;
+  color: var(--theme-text-primary);
   text-transform: none;
   font-family: 'Courier New', monospace; /* or choose a clean sans font like Roboto */
   letter-spacing: 0.5px;
@@ -231,25 +236,25 @@ background-attachment: fixed;
 
 .campaign-actions button {
   padding: 0.5rem 1rem;
-  background-color: #3c2f24;
-  color: #f4e9d8;
-  border: 1px solid #d4af7f;
+  background-color: var(--theme-btn-bg);
+  color: var(--theme-btn-text);
+  border: 1px solid var(--theme-btn-border);
   border-radius: 6px;
   cursor: pointer;
   font-weight: bold;
-  font-family: 'Cinzel', serif;
+  font-family: var(--theme-font);
   transition: background 0.2s;
 }
 
 .campaign-actions button:hover {
-  background-color: #5a422e;
-  color: #fff1d6;
+  background-color: var(--theme-btn-hover);
+  color: var(--theme-text-accent);
 }
 
 .campaign-name-highlight {
   font-family: 'Roboto Mono', monospace;
   font-size: 1.05rem;
-  color: #ffd27f;
+  color: var(--theme-accent-warm-strong);
   letter-spacing: 0.4px;
 }
 
@@ -257,10 +262,10 @@ background-attachment: fixed;
   width: 100%;
   padding: 0.6rem;
   margin: 0.5rem 0 1rem 0;
-  background: #2d2a26;
-  color: #f4e9d8;
+  background: var(--theme-input-bg);
+  color: var(--theme-input-text);
   font-size: 1rem;
-  border: 1px solid #8b6f47;
+  border: 1px solid var(--theme-input-border);
   border-radius: 6px;
   font-family: 'Roboto Mono', monospace;  /* 👈 Set font here */
   letter-spacing: 0.3px;
@@ -269,18 +274,18 @@ background-attachment: fixed;
 .modal-content button {
   padding: 0.6rem 1.2rem;
   margin-top: 0.5rem;
-  background: #802e2e;
-  color: #f4e9d8;
-  border: 2px solid #d4af7f;
+  background: var(--theme-danger-bg);
+  color: var(--theme-text-accent);
+  border: 2px solid var(--theme-border-strong);
   border-radius: 6px;
   font-weight: bold;
-  font-family: 'Cinzel', serif;
+  font-family: var(--theme-font);
   transition: background 0.2s;
 }
 
 .modal-content button:hover {
-  background: #a64242;
-  color: #fff1d6;
+  background: var(--theme-danger-hover);
+  color: var(--theme-text-accent);
 }
 
 .modal-content .kick-list {
@@ -292,36 +297,36 @@ background-attachment: fixed;
   justify-content: space-between;
   align-items: center;
   padding: 0.5rem 0;
-  background: #2a2a2c;
+  background: var(--theme-surface-subtle);
   border-radius: 6px;
   margin-bottom: 0.4rem;
   padding: 0.6rem;
-  border: 1px solid #8b6f47;
+  border: 1px solid var(--theme-border);
 }
 
 .kick-list button {
-  background: #994d00;
-  color: #fff1d6;
-  border: 1px solid #c68642;
+  background: var(--theme-warning-bg);
+  color: var(--theme-text-accent);
+  border: 1px solid var(--theme-accent-warm);
   padding: 0.4rem 0.8rem;
   border-radius: 4px;
   font-size: 0.9rem;
-  font-family: 'Cinzel', serif;
+  font-family: var(--theme-font);
   cursor: pointer;
 }
 
 .kick-list button:hover {
-  background: #bb5e00;
+  background: var(--theme-warning-hover);
 }
 
 
 .management-btn {
-  background-color: #3e2f20;
-  color: #f4e9d8;
+  background-color: var(--theme-btn-bg);
+  color: var(--theme-btn-text);
   padding: 10px 20px;
-  border: 2px solid #8b6f47;
+  border: 2px solid var(--theme-border);
   border-radius: 8px;
-  font-family: 'Cinzel', serif;
+  font-family: var(--theme-font);
   font-size: 1rem;
   font-weight: bold;
   cursor: pointer;
@@ -330,8 +335,8 @@ background-attachment: fixed;
 }
 
 .management-btn:hover {
-  background-color: #5a422e;
-  color: #fff1d6;
+  background-color: var(--theme-btn-hover);
+  color: var(--theme-text-accent);
 }
 
 
@@ -404,15 +409,15 @@ background-attachment: fixed;
     align-items: stretch;
     gap: 0.6rem;
     padding: 0.75rem;
-    background: #2e2d2b;
-    border: 1px solid #8b6f47;
+    background: var(--theme-surface-subtle);
+    border: 1px solid var(--theme-border);
   }
 
   .campaign-entry strong {
     font-size: 1rem;
-    color: #f4e9d8;
+    color: var(--theme-text-primary);
     padding-bottom: 0.25rem;
-    border-bottom: 1px solid #444;
+    border-bottom: 1px solid var(--theme-divider);
   }
 
   .campaign-actions {
@@ -424,28 +429,28 @@ background-attachment: fixed;
   .campaign-actions button {
     font-size: 0.95rem;
     padding: 0.6rem;
-    border: 1px solid #d4af7f;
-    background: #3c2f24;
-    color: #f4e9d8;
-    font-family: 'Cinzel', serif;
+    border: 1px solid var(--theme-btn-border);
+    background: var(--theme-btn-bg);
+    color: var(--theme-btn-text);
+    font-family: var(--theme-font);
   }
 
   .campaign-actions button:hover {
-    background: #5a422e;
+    background: var(--theme-btn-hover);
   }
 
   .modal-content input {
     font-size: 1rem;
     padding: 0.5rem;
-    border: 1px solid #8b6f47;
-    background: #2d2a26;
-    color: #f4e9d8;
+    border: 1px solid var(--theme-input-border);
+    background: var(--theme-input-bg);
+    color: var(--theme-input-text);
   }
 
   .modal-content .kick-list div {
     flex-direction: column;
     align-items: stretch;
-    background: #2a2a2c;
+    background: var(--theme-surface-subtle);
     padding: 0.6rem;
     margin-bottom: 0.5rem;
     border-radius: 6px;
@@ -454,22 +459,22 @@ background-attachment: fixed;
   .modal-content .kick-list button {
     margin-top: 0.4rem;
     font-size: 0.9rem;
-    background: #994d00;
-    border: 1px solid #c68642;
+    background: var(--theme-warning-bg);
+    border: 1px solid var(--theme-accent-warm);
   }
 
   .modal-content .kick-list button:hover {
-    background: #bb5e00;
+    background: var(--theme-warning-hover);
   }
 
   .modal-content button.close-btn {
-    background: #444;
-    border: 1px solid #aaa;
+    background: var(--theme-neutral-bg);
+    border: 1px solid var(--theme-border);
     margin-top: 1.5rem;
   }
 
   .modal-content button.close-btn:hover {
-    background: #666;
+    background: var(--theme-neutral-hover);
   }
 }
 
@@ -494,4 +499,3 @@ background-attachment: fixed;
     padding: 9px 14px;
   }
 }
-

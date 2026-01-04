@@ -1,4 +1,5 @@
-import sqlite3
+import psycopg
+from psycopg.rows import tuple_row
 from datetime import datetime
 import random
 import string
@@ -17,12 +18,12 @@ import bcrypt
 # Load environment variables from .env file
 load_dotenv()
 
-DB = os.getenv("DB_PATH")
+DB_URL = os.getenv("DATABASE_URL")
 
 def get_db():
-    conn = sqlite3.connect(DB, timeout=10.0) 
-    conn.execute("PRAGMA foreign_keys = ON")  # 🔥 CRITICAL
-    return conn
+    if not DB_URL:
+        raise RuntimeError("DATABASE_URL is not set")
+    return psycopg.connect(DB_URL, row_factory=tuple_row)
 
 
 
@@ -32,10 +33,10 @@ def register_user(first_name, last_name, email, phone, password):
         try:
             conn.execute("""
                 INSERT INTO users (first_name, last_name, email, phone, password)
-                VALUES (?, ?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s, %s)
             """, (first_name, last_name, email.lower(), phone, hashed_pw))
             return {"status": "ok"}
-        except sqlite3.IntegrityError as e:
+        except psycopg.errors.UniqueViolation as e:
             if "email" in str(e).lower():
                 raise HTTPException(status_code=400, detail="Email already registered")
             elif "phone" in str(e).lower():
@@ -48,12 +49,19 @@ def register_user(first_name, last_name, email, phone, password):
 def login_user(email, password):
     with get_db() as conn:
         user = conn.execute(
-            "SELECT id, first_name, password FROM users WHERE email = ?",
+            "SELECT id, first_name, password FROM users WHERE email = %s",
             (email.lower(),)
         ).fetchone()
 
-        if user and bcrypt.checkpw(password.encode('utf-8'), user[2]):
-            return {"user_id": user[0], "first_name": user[1]}
+        if user:
+            stored_pw = user[2]
+            if isinstance(stored_pw, memoryview):
+                stored_pw = stored_pw.tobytes()
+            elif isinstance(stored_pw, str):
+                stored_pw = stored_pw.encode('utf-8')
+
+            if bcrypt.checkpw(password.encode('utf-8'), stored_pw):
+                return {"user_id": user[0], "first_name": user[1]}
 
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
@@ -64,15 +72,16 @@ def create_campaign(name, user_id, cycle_length):
     today = datetime.now(ZoneInfo("America/Chicago")).strftime("%Y-%m-%d")
 
     with get_db() as conn:
-        conn.execute("""
+        cur = conn.execute("""
             INSERT INTO campaigns (name, owner_id, invite_code, start_date, cycle_length)
-            VALUES (?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s)
+            RETURNING id
         """, (name, user_id, code, today, cycle_length))
 
-        camp_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+        camp_id = cur.fetchone()[0]
 
         # Fetch the user's first name for default display name
-        user_row = conn.execute("SELECT first_name FROM users WHERE id = ?", (user_id,)).fetchone()
+        user_row = conn.execute("SELECT first_name FROM users WHERE id = %s", (user_id,)).fetchone()
         if not user_row:
             raise HTTPException(status_code=404, detail="User not found")
         default_name = user_row[0]
@@ -82,10 +91,10 @@ def create_campaign(name, user_id, cycle_length):
 
         conn.execute("""
             INSERT INTO campaign_members (user_id, campaign_id, display_name, color)
-            VALUES (?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s)
         """, (user_id, camp_id, default_name, default_color))
 
-        conn.execute("UPDATE users SET campaigns = campaigns + 1 WHERE id = ?", (user_id,))
+        conn.execute("UPDATE users SET campaigns = campaigns + 1 WHERE id = %s", (user_id,))
 
         initialize_campaign_words(camp_id, cycle_length, conn)
 
@@ -94,7 +103,7 @@ def create_campaign(name, user_id, cycle_length):
 def join_campaign(invite_code, user_id):
     with get_db() as conn:
         campaign = conn.execute(
-            "SELECT id FROM campaigns WHERE invite_code = ?",
+            "SELECT id FROM campaigns WHERE invite_code = %s",
             (invite_code,)
         ).fetchone()
 
@@ -104,7 +113,7 @@ def join_campaign(invite_code, user_id):
         campaign_id = campaign[0]
 
         already_in = conn.execute(
-            "SELECT 1 FROM campaign_members WHERE user_id = ? AND campaign_id = ?",
+            "SELECT 1 FROM campaign_members WHERE user_id = %s AND campaign_id = %s",
             (user_id, campaign_id)
         ).fetchone()
 
@@ -112,7 +121,7 @@ def join_campaign(invite_code, user_id):
             return {"message": "Already joined"}
 
         # Get user's first name
-        user_row = conn.execute("SELECT first_name FROM users WHERE id = ?", (user_id,)).fetchone()
+        user_row = conn.execute("SELECT first_name FROM users WHERE id = %s", (user_id,)).fetchone()
         if not user_row:
             raise HTTPException(status_code=404, detail="User not found")
 
@@ -122,7 +131,7 @@ def join_campaign(invite_code, user_id):
         all_colors = ['#ffd700', '#c0c0c0', '#cd7f32', '#4caf50', '#2196f3',
                       '#9c27b0', '#ff5722', '#00bcd4', '#795548', '#607d8b']
         used_colors = conn.execute(
-            "SELECT color FROM campaign_members WHERE campaign_id = ?", (campaign_id,)
+            "SELECT color FROM campaign_members WHERE campaign_id = %s", (campaign_id,)
         ).fetchall()
         used_colors = {row[0] for row in used_colors if row[0]}
         available_color = next((c for c in all_colors if c not in used_colors), '#000000')
@@ -130,10 +139,10 @@ def join_campaign(invite_code, user_id):
         # Insert member with display name and color
         conn.execute("""
             INSERT INTO campaign_members (user_id, campaign_id, display_name, color)
-            VALUES (?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s)
         """, (user_id, campaign_id, default_name, available_color))
 
-        conn.execute("UPDATE users SET campaigns = campaigns + 1 WHERE id = ?", (user_id,))
+        conn.execute("UPDATE users SET campaigns = campaigns + 1 WHERE id = %s", (user_id,))
 
         return {"message": "Joined campaign", "campaign_id": campaign_id}
 
@@ -144,7 +153,7 @@ def join_campaign_by_id(campaign_id, user_id):
         row = conn.execute("""
             SELECT start_date, cycle_length
             FROM campaigns
-            WHERE id = ?
+            WHERE id = %s
         """, (campaign_id,)).fetchone()
 
         if not row:
@@ -160,14 +169,14 @@ def join_campaign_by_id(campaign_id, user_id):
 
         # ✅ Already in check
         already_in = conn.execute(
-            "SELECT 1 FROM campaign_members WHERE user_id = ? AND campaign_id = ?",
+            "SELECT 1 FROM campaign_members WHERE user_id = %s AND campaign_id = %s",
             (user_id, campaign_id)
         ).fetchone()
         if already_in:
             return {"message": "Already joined"}
 
         # 🔧 Get user first name
-        user_row = conn.execute("SELECT first_name FROM users WHERE id = ?", (user_id,)).fetchone()
+        user_row = conn.execute("SELECT first_name FROM users WHERE id = %s", (user_id,)).fetchone()
         if not user_row:
             raise HTTPException(status_code=404, detail="User not found")
 
@@ -178,7 +187,7 @@ def join_campaign_by_id(campaign_id, user_id):
                       '#9c27b0', '#ff5722', '#00bcd4', '#795548', '#607d8b']
 
         used_colors = conn.execute(
-            "SELECT color FROM campaign_members WHERE campaign_id = ?", (campaign_id,)
+            "SELECT color FROM campaign_members WHERE campaign_id = %s", (campaign_id,)
         ).fetchall()
         used_colors = {row[0] for row in used_colors if row[0]}
         available_color = next((c for c in all_colors if c not in used_colors), '#000000')
@@ -186,14 +195,15 @@ def join_campaign_by_id(campaign_id, user_id):
         # 📝 Insert member
         conn.execute("""
             INSERT INTO campaign_members (user_id, campaign_id, display_name, color)
-            VALUES (?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s)
         """, (user_id, campaign_id, default_name, available_color))
 
-        conn.execute("UPDATE users SET campaigns = campaigns + 1 WHERE id = ?", (user_id,))
+        conn.execute("UPDATE users SET campaigns = campaigns + 1 WHERE id = %s", (user_id,))
         return {"message": "Joined campaign", "campaign_id": campaign_id}
 
 def get_user_campaigns(user_id: int):
     today = datetime.now(ZoneInfo("America/Chicago")).date()
+    today_str = today.strftime("%Y-%m-%d")
 
     with get_db() as conn:
         rows = conn.execute("""
@@ -204,8 +214,8 @@ def get_user_campaigns(user_id: int):
                 c.cycle_length,
                 EXISTS (
                     SELECT 1 FROM campaign_daily_progress dp
-                    WHERE dp.user_id = ? AND dp.campaign_id = c.id
-                      AND dp.date = ?
+                    WHERE dp.user_id = %s AND dp.campaign_id = c.id
+                      AND dp.date = %s
                       AND dp.completed = 1
                 ) as is_finished,
                 cm.double_down_activated,
@@ -213,9 +223,9 @@ def get_user_campaigns(user_id: int):
             FROM campaigns c
             JOIN campaign_members cm ON cm.campaign_id = c.id
             LEFT JOIN campaign_daily_progress dp 
-                ON dp.user_id = cm.user_id AND dp.campaign_id = cm.campaign_id AND dp.date = ?
-            WHERE cm.user_id = ?
-        """, (user_id, today, today, user_id)).fetchall()
+                ON dp.user_id = cm.user_id AND dp.campaign_id = cm.campaign_id AND dp.date = %s
+            WHERE cm.user_id = %s
+        """, (user_id, today_str, today_str, user_id)).fetchall()
 
     campaign_list = []
     for row in rows:
@@ -244,7 +254,7 @@ def get_user_info(user_id: int):
             SELECT first_name, last_name, phone, email,
                    campaigns, total_guesses, correct_guesses,
                    campaign_wins, campaign_losses, clicked_update
-            FROM users WHERE id = ?
+            FROM users WHERE id = %s
         """, (user_id,)).fetchone()
 
         if not row:
@@ -268,11 +278,11 @@ def update_user_info(user_id: int, first_name: str, last_name: str, phone: str):
         try:
             conn.execute("""
                 UPDATE users
-                SET first_name = ?, last_name = ?, phone = ?
-                WHERE id = ?
+                SET first_name = %s, last_name = %s, phone = %s
+                WHERE id = %s
             """, (first_name, last_name, phone, user_id))
             return {"status": "ok"}
-        except sqlite3.IntegrityError as e:
+        except psycopg.errors.UniqueViolation as e:
             if "phone" in str(e).lower():
                 raise HTTPException(status_code=400, detail="Phone number already registered")
             raise HTTPException(status_code=400, detail="Failed to update user info")
@@ -280,7 +290,7 @@ def update_user_info(user_id: int, first_name: str, last_name: str, phone: str):
 def acknowledge_update(user_id: int):
     with get_db() as conn:
         conn.execute("""
-            UPDATE users SET clicked_update = 1 WHERE id = ?
+            UPDATE users SET clicked_update = 1 WHERE id = %s
         """, (user_id,))
     return {"status": "acknowledged"}
 
@@ -307,7 +317,7 @@ def initialize_campaign_words(campaign_id: int, num_days: int, conn):
 
     for day, word in enumerate(selected_words, start=1):
         conn.execute(
-            "INSERT INTO campaign_words (campaign_id, day, word) VALUES (?, ?, ?)",
+            "INSERT INTO campaign_words (campaign_id, day, word) VALUES (%s, %s, %s)",
             (campaign_id, day, word)
         )
 
@@ -317,7 +327,7 @@ def get_daily_word(campaign_id: int):
 
     with get_db() as conn:
         row = conn.execute(
-            "SELECT start_date FROM campaigns WHERE id = ?",
+            "SELECT start_date FROM campaigns WHERE id = %s",
             (campaign_id,)
         ).fetchone()
         if not row:
@@ -328,7 +338,7 @@ def get_daily_word(campaign_id: int):
         day = delta_days + 1  # Day 1-based
 
         word_row = conn.execute(
-            "SELECT word FROM campaign_words WHERE campaign_id = ? AND day = ?",
+            "SELECT word FROM campaign_words WHERE campaign_id = %s AND day = %s",
             (campaign_id, day)
         ).fetchone()
 
@@ -377,7 +387,7 @@ def validate_guess(word: str, user_id: int, campaign_id: int):
         dup = conn.execute("""
             SELECT 1
             FROM campaign_guesses
-            WHERE user_id = ? AND campaign_id = ? AND date = ? AND word = ?
+            WHERE user_id = %s AND campaign_id = %s AND date = %s AND word = %s
         """, (user_id, campaign_id, today, guess)).fetchone()
         if dup:
             return {
@@ -388,7 +398,7 @@ def validate_guess(word: str, user_id: int, campaign_id: int):
             }
         
         # Check if it's past 8 PM on final day
-        campaign_row = conn.execute("SELECT start_date, cycle_length FROM campaigns WHERE id = ?", (campaign_id,)).fetchone()
+        campaign_row = conn.execute("SELECT start_date, cycle_length FROM campaigns WHERE id = %s", (campaign_id,)).fetchone()
         if not campaign_row:
             raise HTTPException(status_code=404, detail="Campaign not found")
 
@@ -407,7 +417,7 @@ def validate_guess(word: str, user_id: int, campaign_id: int):
         row = conn.execute("""
             SELECT guesses, results, letter_status, current_row, game_over
             FROM campaign_guess_states
-            WHERE user_id = ? AND campaign_id = ? AND date = ?
+            WHERE user_id = %s AND campaign_id = %s AND date = %s
         """, (user_id, campaign_id, today)).fetchone()
 
         if row:
@@ -432,7 +442,7 @@ def validate_guess(word: str, user_id: int, campaign_id: int):
         conn.execute("""
             UPDATE users
             SET total_guesses = total_guesses + 1
-            WHERE id = ?
+            WHERE id = %s
         """, (user_id,))
 
         results_data[current_row] = result
@@ -451,7 +461,7 @@ def validate_guess(word: str, user_id: int, campaign_id: int):
         dd_row = conn.execute("""
             SELECT double_down_activated
             FROM campaign_members
-            WHERE user_id = ? AND campaign_id = ?
+            WHERE user_id = %s AND campaign_id = %s
         """, (user_id, campaign_id)).fetchone()
         is_double_down = dd_row and dd_row[0] == 1
         max_rows = 3 if is_double_down else 6
@@ -461,7 +471,7 @@ def validate_guess(word: str, user_id: int, campaign_id: int):
             conn.execute("""
                 UPDATE users
                 SET correct_guesses = correct_guesses + 1
-                WHERE id = ?
+                WHERE id = %s
             """, (user_id,))
 
             score_to_add = points_by_row.get(current_row, 0)
@@ -471,25 +481,25 @@ def validate_guess(word: str, user_id: int, campaign_id: int):
                     score_to_add *= 2
                     conn.execute("""
                         UPDATE campaign_members
-                        SET score = score + ?,
+                        SET score = score + %s,
                             double_down_activated = 0,
                             double_down_used_week = 1,
-                            double_down_date = ?
-                        WHERE user_id = ? AND campaign_id = ?
+                            double_down_date = %s
+                        WHERE user_id = %s AND campaign_id = %s
                     """, (score_to_add, today, user_id, campaign_id))
                 else:
                     conn.execute("""
                         UPDATE campaign_members
                         SET double_down_activated = 0,
                             double_down_used_week = 1,
-                            double_down_date = ?
-                        WHERE user_id = ? AND campaign_id = ?
+                            double_down_date = %s
+                        WHERE user_id = %s AND campaign_id = %s
                     """, (today, user_id, campaign_id))
             else:
                 conn.execute("""
                     UPDATE campaign_members
-                    SET score = score + ?
-                    WHERE user_id = ? AND campaign_id = ?
+                    SET score = score + %s
+                    WHERE user_id = %s AND campaign_id = %s
                 """, (score_to_add, user_id, campaign_id))
 
         elif new_game_over and is_double_down:
@@ -497,23 +507,29 @@ def validate_guess(word: str, user_id: int, campaign_id: int):
                 UPDATE campaign_members
                 SET double_down_activated = 0,
                     double_down_used_week = 1,
-                    double_down_date = ?
-                WHERE user_id = ? AND campaign_id = ?
+                    double_down_date = %s
+                WHERE user_id = %s AND campaign_id = %s
             """, (today, user_id, campaign_id))
 
         # Save to guesses table
         conn.execute("""
-            INSERT OR IGNORE INTO campaign_guesses (user_id, campaign_id, word, date)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO campaign_guesses (user_id, campaign_id, word, date)
+            VALUES (%s, %s, %s, %s)
         """, (user_id, campaign_id, guess, today))
 
 
         # Save full state
         conn.execute("""
-            INSERT OR REPLACE INTO campaign_guess_states (
+            INSERT INTO campaign_guess_states (
                 user_id, campaign_id, date,
                 guesses, results, letter_status, current_row, game_over
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (user_id, campaign_id, date) DO UPDATE
+            SET guesses = EXCLUDED.guesses,
+                results = EXCLUDED.results,
+                letter_status = EXCLUDED.letter_status,
+                current_row = EXCLUDED.current_row,
+                game_over = EXCLUDED.game_over
         """, (
             user_id, campaign_id, today,
             json.dumps(guesses),
@@ -524,9 +540,11 @@ def validate_guess(word: str, user_id: int, campaign_id: int):
         ))
 
         conn.execute("""
-            INSERT OR REPLACE INTO campaign_daily_progress (
+            INSERT INTO campaign_daily_progress (
                 user_id, campaign_id, date, completed
-            ) VALUES (?, ?, ?, ?)
+            ) VALUES (%s, %s, %s, %s)
+            ON CONFLICT (campaign_id, user_id, date) DO UPDATE
+            SET completed = EXCLUDED.completed
         """, (
             user_id,
             campaign_id,
@@ -546,7 +564,7 @@ def activate_double_down(user_id: int, campaign_id: int):
         row = conn.execute("""
             SELECT double_down_used_week, double_down_activated
             FROM campaign_members
-            WHERE user_id = ? AND campaign_id = ?
+            WHERE user_id = %s AND campaign_id = %s
         """, (user_id, campaign_id)).fetchone()
 
         if not row:
@@ -561,8 +579,8 @@ def activate_double_down(user_id: int, campaign_id: int):
         conn.execute("""
             UPDATE campaign_members
             SET double_down_activated = 1,
-                double_down_date = ?
-            WHERE user_id = ? AND campaign_id = ?
+                double_down_date = %s
+            WHERE user_id = %s AND campaign_id = %s
         """, (today, user_id, campaign_id))
 
     return {"status": "double down activated"}
@@ -570,7 +588,7 @@ def activate_double_down(user_id: int, campaign_id: int):
 def get_campaign_day(campaign_id: int):
     with get_db() as conn:
         row = conn.execute(
-            "SELECT start_date, cycle_length FROM campaigns WHERE id = ?",
+            "SELECT start_date, cycle_length FROM campaigns WHERE id = %s",
             (campaign_id,)
         ).fetchone()
     
@@ -589,7 +607,7 @@ def get_campaign_day(campaign_id: int):
 def get_campaign_progress(campaign_id: int):
     with get_db() as conn:
         row = conn.execute(
-            "SELECT name, start_date, invite_code, cycle_length FROM campaigns WHERE id = ?",
+            "SELECT name, start_date, invite_code, cycle_length FROM campaigns WHERE id = %s",
             (campaign_id,)
         ).fetchone()
 
@@ -623,8 +641,8 @@ def get_leaderboard(campaign_id: int):
             LEFT JOIN campaign_daily_progress dp 
               ON cm.user_id = dp.user_id 
               AND cm.campaign_id = dp.campaign_id 
-              AND dp.date = ?
-            WHERE cm.campaign_id = ?
+              AND dp.date = %s
+            WHERE cm.campaign_id = %s
             ORDER BY cm.score DESC
             """,
             (today, campaign_id)
@@ -648,14 +666,14 @@ def get_saved_progress(user_id: int, campaign_id: int):
         row = conn.execute("""
             SELECT double_down_activated, double_down_date
             FROM campaign_members
-            WHERE user_id = ? AND campaign_id = ?
+            WHERE user_id = %s AND campaign_id = %s
         """, (user_id, campaign_id)).fetchone()
 
         if row and row[0] == 1 and row[1] and row[1] < today:
             # Check if player completed the game on that day
             completed = conn.execute("""
                 SELECT completed FROM campaign_daily_progress
-                WHERE user_id = ? AND campaign_id = ? AND date = ?
+                WHERE user_id = %s AND campaign_id = %s AND date = %s
             """, (user_id, campaign_id, row[1])).fetchone()
 
             if not completed or not completed[0]:
@@ -664,15 +682,15 @@ def get_saved_progress(user_id: int, campaign_id: int):
                     UPDATE campaign_members
                     SET double_down_activated = 0,
                         double_down_used_week = 1,
-                        double_down_date = ?
-                    WHERE user_id = ? AND campaign_id = ?
+                        double_down_date = %s
+                    WHERE user_id = %s AND campaign_id = %s
                 """, (today, user_id, campaign_id))
 
         # Fetch today's saved progress
         row = conn.execute("""
             SELECT guesses, results, letter_status, current_row, game_over
             FROM campaign_guess_states
-            WHERE user_id = ? AND campaign_id = ? AND date = ?
+            WHERE user_id = %s AND campaign_id = %s AND date = %s
         """, (user_id, campaign_id, today)).fetchone()
 
     if row:
@@ -708,7 +726,7 @@ def handle_campaign_end(campaign_id: int):
             FROM campaign_members cm
             JOIN users u ON u.id = cm.user_id
             JOIN campaigns c ON c.id = cm.campaign_id
-            WHERE cm.campaign_id = ?
+            WHERE cm.campaign_id = %s
             ORDER BY cm.score DESC
             LIMIT 1
         """, (campaign_id,)).fetchone()
@@ -730,7 +748,7 @@ def handle_campaign_end(campaign_id: int):
             conn.execute("""
                 INSERT INTO global_high_scores (
                     user_id, campaign_id, player_name, campaign_name, troops, ended_on
-                ) VALUES (?, ?, ?, ?, ?, ?)
+                ) VALUES (%s, %s, %s, %s, %s, %s)
             """, (
                 user_id,
                 campaign_id,
@@ -744,30 +762,30 @@ def handle_campaign_end(campaign_id: int):
             conn.execute("""
                 UPDATE users
                 SET campaign_wins = campaign_wins + 1
-                WHERE id = ?
+                WHERE id = %s
             """, (user_id,))
 
         # 2. Reset campaign to start over
         today_str = datetime.now(ZoneInfo("America/Chicago")).strftime("%Y-%m-%d")
-        conn.execute("UPDATE campaigns SET start_date = ? WHERE id = ?", (today_str, campaign_id))
+        conn.execute("UPDATE campaigns SET start_date = %s WHERE id = %s", (today_str, campaign_id))
 
         # 3. Clear old campaign data
-        conn.execute("DELETE FROM campaign_guesses WHERE campaign_id = ?", (campaign_id,))
-        conn.execute("DELETE FROM campaign_guess_states WHERE campaign_id = ?", (campaign_id,))
-        conn.execute("DELETE FROM campaign_daily_progress WHERE campaign_id = ?", (campaign_id,))
-        conn.execute("UPDATE campaign_members SET score = 0 WHERE campaign_id = ?", (campaign_id,))
+        conn.execute("DELETE FROM campaign_guesses WHERE campaign_id = %s", (campaign_id,))
+        conn.execute("DELETE FROM campaign_guess_states WHERE campaign_id = %s", (campaign_id,))
+        conn.execute("DELETE FROM campaign_daily_progress WHERE campaign_id = %s", (campaign_id,))
+        conn.execute("UPDATE campaign_members SET score = 0 WHERE campaign_id = %s", (campaign_id,))
         conn.execute("""
             UPDATE campaign_members
             SET double_down_used_week = 0,
                 double_down_activated = 0,
                 double_down_date = NULL
-            WHERE campaign_id = ?
+            WHERE campaign_id = %s
         """, (campaign_id,))
-        conn.execute("DELETE FROM campaign_words WHERE campaign_id = ?", (campaign_id,))
+        conn.execute("DELETE FROM campaign_words WHERE campaign_id = %s", (campaign_id,))
         
         # Reinitialize for a new cycle of # days 
         cycle_length_row = conn.execute(
-            "SELECT cycle_length FROM campaigns WHERE id = ?", (campaign_id,)
+            "SELECT cycle_length FROM campaigns WHERE id = %s", (campaign_id,)
         ).fetchone()
         cycle_length = cycle_length_row[0] if cycle_length_row else 5
         initialize_campaign_words(campaign_id, cycle_length, conn)
@@ -780,37 +798,37 @@ def has_campaign_finished_for_day(campaign_id: int):
     with get_db() as conn:
         # Total members
         total_members = conn.execute("""
-            SELECT COUNT(*) FROM campaign_members WHERE campaign_id = ?
+            SELECT COUNT(*) FROM campaign_members WHERE campaign_id = %s
         """, (campaign_id,)).fetchone()[0]
 
         # Total who completed today
         today = datetime.now(ZoneInfo("America/Chicago")).strftime("%Y-%m-%d")
         finished_today = conn.execute("""
             SELECT COUNT(*) FROM campaign_daily_progress
-            WHERE campaign_id = ? AND date = ? AND completed = 1
+            WHERE campaign_id = %s AND date = %s AND completed = 1
         """, (campaign_id, today)).fetchone()[0]
 
         return finished_today >= total_members
 
 def delete_campaign(campaign_id: int, requester_id: int):
     with get_db() as conn:
-        owner_check = conn.execute("SELECT owner_id FROM campaigns WHERE id = ?", (campaign_id,)).fetchone()
+        owner_check = conn.execute("SELECT owner_id FROM campaigns WHERE id = %s", (campaign_id,)).fetchone()
         if not owner_check or owner_check[0] != requester_id:
             raise HTTPException(status_code=403, detail="Only the campaign owner can delete this campaign")
 
-        conn.execute("DELETE FROM campaigns WHERE id = ?", (campaign_id,))
-        conn.execute("DELETE FROM campaign_members WHERE campaign_id = ?", (campaign_id,))
-        conn.execute("DELETE FROM campaign_guesses WHERE campaign_id = ?", (campaign_id,))
-        conn.execute("DELETE FROM campaign_guess_states WHERE campaign_id = ?", (campaign_id,))
-        conn.execute("DELETE FROM campaign_daily_progress WHERE campaign_id = ?", (campaign_id,))
-        conn.execute("DELETE FROM campaign_words WHERE campaign_id = ?", (campaign_id,)) 
+        conn.execute("DELETE FROM campaigns WHERE id = %s", (campaign_id,))
+        conn.execute("DELETE FROM campaign_members WHERE campaign_id = %s", (campaign_id,))
+        conn.execute("DELETE FROM campaign_guesses WHERE campaign_id = %s", (campaign_id,))
+        conn.execute("DELETE FROM campaign_guess_states WHERE campaign_id = %s", (campaign_id,))
+        conn.execute("DELETE FROM campaign_daily_progress WHERE campaign_id = %s", (campaign_id,))
+        conn.execute("DELETE FROM campaign_words WHERE campaign_id = %s", (campaign_id,)) 
         return {"status": "deleted"}
 
 
 def kick_player_from_campaign(campaign_id: int, target_user_id: int, requester_id: int):
     with get_db() as conn:
         owner_row = conn.execute(
-            "SELECT owner_id FROM campaigns WHERE id = ?",
+            "SELECT owner_id FROM campaigns WHERE id = %s",
             (campaign_id,)
         ).fetchone()
         if not owner_row:
@@ -825,23 +843,23 @@ def kick_player_from_campaign(campaign_id: int, target_user_id: int, requester_i
 
         # Ensure target is actually a member of this campaign
         member_exists = conn.execute(
-            "SELECT 1 FROM campaign_members WHERE campaign_id = ? AND user_id = ?",
+            "SELECT 1 FROM campaign_members WHERE campaign_id = %s AND user_id = %s",
             (campaign_id, target_user_id)
         ).fetchone()
         if not member_exists:
             raise HTTPException(status_code=404, detail="Member not found in this campaign")
 
         result = conn.execute(
-            "DELETE FROM campaign_members WHERE campaign_id = ? AND user_id = ?",
+            "DELETE FROM campaign_members WHERE campaign_id = %s AND user_id = %s",
             (campaign_id, target_user_id)
         )
         if result.rowcount == 0:
             raise HTTPException(status_code=404, detail="Member already removed")
 
         # Optional: clean up any per-user campaign state
-        conn.execute("DELETE FROM campaign_guesses WHERE campaign_id = ? AND user_id = ?", (campaign_id, target_user_id))
-        conn.execute("DELETE FROM campaign_guess_states WHERE campaign_id = ? AND user_id = ?", (campaign_id, target_user_id))
-        conn.execute("DELETE FROM campaign_daily_progress WHERE campaign_id = ? AND user_id = ?", (campaign_id, target_user_id))
+        conn.execute("DELETE FROM campaign_guesses WHERE campaign_id = %s AND user_id = %s", (campaign_id, target_user_id))
+        conn.execute("DELETE FROM campaign_guess_states WHERE campaign_id = %s AND user_id = %s", (campaign_id, target_user_id))
+        conn.execute("DELETE FROM campaign_daily_progress WHERE campaign_id = %s AND user_id = %s", (campaign_id, target_user_id))
 
         return {"status": "kicked"}
 
@@ -849,7 +867,7 @@ def kick_player_from_campaign(campaign_id: int, target_user_id: int, requester_i
 def get_campaigns_by_owner(owner_id: int):
     with get_db() as conn:
         rows = conn.execute("""
-            SELECT id, name FROM campaigns WHERE owner_id = ?
+            SELECT id, name FROM campaigns WHERE owner_id = %s
         """, (owner_id,)).fetchall()
 
     return [{"id": row[0], "name": row[1]} for row in rows]
@@ -857,7 +875,7 @@ def get_campaigns_by_owner(owner_id: int):
 def get_campaign_members(campaign_id: int, requester_id: int):
     with get_db() as conn:
         owner = conn.execute(
-            "SELECT owner_id FROM campaigns WHERE id = ?", 
+            "SELECT owner_id FROM campaigns WHERE id = %s", 
             (campaign_id,)
         ).fetchone()
 
@@ -868,7 +886,7 @@ def get_campaign_members(campaign_id: int, requester_id: int):
             SELECT u.id, u.first_name || ' ' || u.last_name
             FROM campaign_members cm
             JOIN users u ON cm.user_id = u.id
-            WHERE cm.campaign_id = ? AND u.id != ?
+            WHERE cm.campaign_id = %s AND u.id != %s
         """, (campaign_id, requester_id)).fetchall()
 
         return [{"user_id": r[0], "name": r[1]} for r in rows]
@@ -878,7 +896,7 @@ def get_self_member(campaign_id: int, user_id: int):
         row = conn.execute("""
             SELECT display_name, color, double_down_activated, double_down_used_week, double_down_date
             FROM campaign_members
-            WHERE campaign_id = ? AND user_id = ?
+            WHERE campaign_id = %s AND user_id = %s
         """, (campaign_id, user_id)).fetchone()
 
         if not row:
@@ -896,8 +914,8 @@ def update_campaign_member(campaign_id: int, user_id: int, display_name: str, co
     with get_db() as conn:
         result = conn.execute("""
             UPDATE campaign_members
-            SET display_name = ?, color = ?
-            WHERE user_id = ? AND campaign_id = ?
+            SET display_name = %s, color = %s
+            WHERE user_id = %s AND campaign_id = %s
         """, (display_name, color, user_id, campaign_id))
 
         if result.rowcount == 0:
@@ -907,6 +925,19 @@ def update_campaign_member(campaign_id: int, user_id: int, display_name: str, co
     
 def get_global_leaderboard():
     with get_db() as conn:
+        # Ensure table exists (in case migration missed it)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS global_high_scores (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER,
+                campaign_id INTEGER,
+                player_name TEXT NOT NULL,
+                campaign_name TEXT NOT NULL,
+                troops INTEGER NOT NULL,
+                ended_on TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
         # ✅ 1) Seed dummy data if the table is empty
         count = conn.execute("SELECT COUNT(*) FROM global_high_scores").fetchone()[0]
 
@@ -919,7 +950,7 @@ def get_global_leaderboard():
                     campaign_name,
                     troops,
                     ended_on
-                ) VALUES (?, ?, ?, ?, ?, ?)
+                ) VALUES (%s, %s, %s, %s, %s, %s)
             """, [
                 (None, None, "Sir Lexicon",    "Season of Shadows",      150, "2025-01-01"),
                 (None, None, "Count Vowel",    "Vowels of Valor",        130, "2025-02-10"),

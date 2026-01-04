@@ -2,7 +2,25 @@
   list-style: none;
   margin: 0.5rem 0 0;
   padding: 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid var(--theme-divider);
+  max-height: 360px;
+  overflow-y: auto;
+  padding-right: 6px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--theme-border-strong) transparent;
+}
+
+.global-leaderboard::-webkit-scrollbar {
+  width: 6px;
+}
+
+.global-leaderboard::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.global-leaderboard::-webkit-scrollbar-thumb {
+  background: var(--theme-border-strong);
+  border-radius: 999px;
 }
 
 .global-lb-row {
@@ -10,7 +28,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 0.45rem 0.25rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid var(--theme-divider);
   gap: 0.75rem;
 }
 
@@ -22,8 +40,8 @@
   min-width: 2.2rem;
   text-align: center;
   font-weight: 700;
-  font-family: 'Cinzel', serif;
-  color: #f4e2b8;
+  font-family: var(--theme-font);
+  color: var(--theme-text-warm);
 }
 
 .glb-main {
@@ -34,24 +52,24 @@
 
 .glb-name {
   font-weight: 600;
-  font-family: 'Cinzel', serif;
-  color: #fef4e6;
+  font-family: var(--theme-font);
+  color: var(--theme-text-accent);
 }
 
 .glb-sub {
   font-size: 0.8rem;
-  color: #d1bfa1;
+  color: var(--theme-text-muted);
 }
 
 .glb-campaign {
   font-weight: 500;
-  color: #f4e2b8;
+  color: var(--theme-text-warm);
 }
 
 .glb-score {
   font-weight: 700;
-  font-family: 'Cinzel', serif;
-  color: #f8e3b1;
+  font-family: var(--theme-font);
+  color: var(--theme-text-warm);
   white-space: nowrap;
 }
 
@@ -63,9 +81,9 @@
 .glb-status {
   margin-top: 0.5rem;
   font-size: 0.9rem;
-  color: #e7dac5;
+  color: var(--theme-text-muted);
 }
 
 .glb-error {
-  color: #ffb3b3;
+  color: var(--theme-danger-text);
 }

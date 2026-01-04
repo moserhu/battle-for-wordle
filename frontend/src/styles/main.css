@@ -2,9 +2,9 @@
 
 body {
     margin: 0;
-    font-family: 'Cinzel', serif;
-    background-color: #121212;
-    color: white;
+    font-family: var(--theme-font);
+    background-color: var(--theme-surface-solid);
+    color: var(--theme-text-primary);
     display: flex;
     justify-content: center;
     align-items: flex-start;
@@ -29,12 +29,12 @@ body {
   .letter-box {
     width: 48px;
     height: 48px;
-    border: 2px solid #444;
+    border: 2px solid var(--theme-border);
     display: flex;
     justify-content: center;
     align-items: center;
     font-size: 1.5rem;
-    background-color: #1e1e1e;
+    background-color: var(--theme-surface-solid);
   }
   
   .keyboard-row {
@@ -46,9 +46,9 @@ body {
   
   .keyboard-key {
     padding: 12px;
-    background-color: #333;
+    background-color: var(--theme-surface-subtle);
     border: none;
-    color: white;
+    color: var(--theme-text-primary);
     font-size: 1rem;
     cursor: pointer;
     border-radius: 4px;

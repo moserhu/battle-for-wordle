@@ -17,27 +17,43 @@ export default function HubBar({
   return (
     <section className="hub-bar">
       {/* Status Effects */}
-      <div className="stat-card card">
+      <div className="stat-card">
         <div className="stat-title">🧪 Status Effects</div>
         <div className="stat-value">Coming Soon</div>
         <div className="stat-subtle">Buffs & debuffs</div>
       </div>
 
       {/* Streak */}
-      <div className="stat-card card">
+      <div className="stat-card">
         <div className="stat-title">🔥 Streak</div>
         <div className="stat-value">{streak ?? 0} days</div>
       </div>
 
       {/* Coins */}
-      <div className="stat-card card">
+      <div className="stat-card">
         <div className="stat-title">💰 Coins</div>
         <div className="stat-value">{coins ?? 0}</div>
         <div className="stat-subtle">Economy coming soon</div>
       </div>
 
+      {/* Completion */}
+      <div className="stat-card">
+        <div className="stat-title">Completion</div>
+        {campaignEnded ? (
+          <>
+            <div className="completion-symbol complete">✅</div>
+            <div className="completion-text complete">Complete</div>
+          </>
+        ) : (
+          <>
+            <div className="completion-symbol incomplete">❌</div>
+            <div className="completion-text incomplete">Not Complete</div>
+          </>
+        )}
+      </div>
+
       {/* Double Down */}
-      <div className="stat-card card">
+      <div className="stat-card">
         <div className="stat-title">⚔️ Double Down</div>
         {doubleDownUsed ? (
           <div className="stat-pill used">Used</div>
@@ -49,7 +65,7 @@ export default function HubBar({
       </div>
 
       {/* Timer */}
-      <div className="stat-card card">
+      <div className="stat-card">
         <div className="stat-title">
           ⏳ {isFinalDay ? 'Ends In' : 'Next Word In'}
         </div>

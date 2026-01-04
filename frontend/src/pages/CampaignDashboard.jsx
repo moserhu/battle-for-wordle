@@ -186,11 +186,11 @@ export default function CampaignDashboard() {
 
   return (
     <div className="dash-wrapper">
-            {/* Back button above banner */}
+      {/* Back button above banner */}
       <div className="dash-back-row">
         <button
           className="btn back-btn"
-          onClick={() => navigate(-1)}
+          onClick={() => navigate('/campaigns')}
           aria-label="Go back"
         >
           ← Back
@@ -223,81 +223,100 @@ export default function CampaignDashboard() {
         </div>
       </header>
 
-      {/* HUB BAR: Status Effects / Streak / Coins / Double Down / Timer */}
-      <HubBar
-        campaignId={cid}
-        campaignDay={campaignMeta}
-        cutoffCountdown={cutoffCountdown}
-        midnightCountdown={midnightCountdown}
-        isFinalDay={isFinalDay}
-        campaignEnded={campaignEnded}
-        doubleDownUsed={doubleDownUsed}
-        doubleDownActivated={doubleDownActivated}
-        streak={streak}
-        coins={coins}
-      />
+      <div className="dash-hub-wrap">
+        <HubBar
+          campaignId={cid}
+          campaignDay={campaignMeta}
+          cutoffCountdown={cutoffCountdown}
+          midnightCountdown={midnightCountdown}
+          isFinalDay={isFinalDay}
+          campaignEnded={campaignEnded}
+          doubleDownUsed={doubleDownUsed}
+          doubleDownActivated={doubleDownActivated}
+          streak={streak}
+          coins={coins}
+        />
+      </div>
 
-      {error && <div className="card dash-error">{error}</div>}
+      <section className="dash-surface">
+        <div className="dash-surface-header">
+          <div className="dash-surface-title">Campaign Overview</div>
+          <div className="dash-surface-subtitle">
+            {campaignMeta?.day ? `Day ${campaignMeta.day} of ${campaignMeta?.total ?? '?'}` : 'Loading…'}
+          </div>
+        </div>
 
-      {loadingPage ? (
-        <div className="card">Loading…</div>
-      ) : (
-        <section className="dash-grid">
-          {/* Recap */}
-          <div className="card">
-            <h2>Yesterday’s Recap</h2>
-            {recap?.date ? (
-              <div className="recap-block">
-                <p className="recap-date"><strong>{recap.date_label}</strong></p>
-                {recap.summary && <p className="recap-summary">{recap.summary}</p>}
-                {Array.isArray(recap.highlights) && recap.highlights.length > 0 ? (
-                  <ul className="recap-list">
-                    {recap.highlights.map((h, i) => <li key={i}>{h}</li>)}
-                  </ul>
-                ) : (
-                  !recap.summary && <p>No recap available.</p>
-                )}
+        {error && <div className="dash-panel dash-error">{error}</div>}
+
+        {loadingPage ? (
+          <div className="dash-panel">Loading…</div>
+        ) : (
+          <section className="dash-panels">
+            {/* Recap */}
+            <div className="dash-panel">
+              <div className="dash-panel-header">
+                <h2>Yesterday’s Recap</h2>
+                <span className="dash-pill">Yesterday</span>
               </div>
-            ) : (
-              <p>No recap available.</p>
-            )}
-          </div>
-
-          {/* Leaderboard */}
-          <div className="card">
-            <h2>Today’s Leaderboard</h2>
-            {leaderboard.length === 0 ? (
-              <p>No scores yet.</p>
-            ) : (
-              <ol className="leaderboard-list">
-                {leaderboard.map((p) => (
-                  <li key={p.user_id || p.username} className="leaderboard-row">
-                    <span className="lb-name" style={{ color: p.color || 'inherit' }}>
-                      {p.display_name || p.username}
-                    </span>
-                    <span className="lb-score">{p.score} troops</span>
-                  </li>
-                ))}
-              </ol>
-            )}
-            <div style={{ marginTop: 12 }}>
-              <button className="btn" onClick={() => navigate(`/leaderboard/${cid}`)}>
-                The Pretty Leaderboard
-              </button>
+              {recap?.date ? (
+                <div className="recap-block">
+                  <p className="recap-date"><strong>{recap.date_label}</strong></p>
+                  {recap.summary && <p className="recap-summary">{recap.summary}</p>}
+                  {Array.isArray(recap.highlights) && recap.highlights.length > 0 ? (
+                    <ul className="recap-list">
+                      {recap.highlights.map((h, i) => <li key={i}>{h}</li>)}
+                    </ul>
+                  ) : (
+                    !recap.summary && <p>No recap available.</p>
+                  )}
+                </div>
+              ) : (
+                <p>No recap available.</p>
+              )}
             </div>
-          </div>
 
-          {/* Tips */}
-          <div className="card card--full">
-            <h2>Tips</h2>
-            <ul className="tips-list">
-              <li>Check yesterday’s recap to plan your opening word.</li>
-              <li>Use Double Down wisely—go aggressive if your lead is safe.</li>
-              <li>Try starting with words with lots of vowels</li>
-            </ul>
-          </div>
-        </section>
-      )}
+            {/* Leaderboard */}
+            <div className="dash-panel">
+              <div className="dash-panel-header">
+                <h2>Today’s Leaderboard</h2>
+                <span className="dash-pill">Today</span>
+              </div>
+              {leaderboard.length === 0 ? (
+                <p>No scores yet.</p>
+              ) : (
+                <ol className="leaderboard-list">
+                  {leaderboard.map((p) => (
+                    <li key={p.user_id || p.username} className="leaderboard-row">
+                      <span className="lb-name" style={{ color: p.color || 'inherit' }}>
+                        {p.display_name || p.username}
+                      </span>
+                      <span className="lb-score">{p.score} troops</span>
+                    </li>
+                  ))}
+                </ol>
+              )}
+              <div style={{ marginTop: 12 }}>
+                <button className="btn" onClick={() => navigate(`/leaderboard/${cid}`)}>
+                  The Pretty Leaderboard
+                </button>
+              </div>
+            </div>
+
+            {/* Tips */}
+            <div className="dash-panel dash-panel--full">
+              <div className="dash-panel-header">
+                <h2>Tips</h2>
+                <span className="dash-pill">Strategy</span>
+              </div>
+              <ul className="tips-list">
+                <li>Check yesterday’s recap to plan your opening word.</li>
+                <li>Use Double Down wisely—go aggressive if your lead is safe.</li>
+                <li>Try starting with words with lots of vowels</li>
+              </ul>
+            </div>
+          </section>
+        )}
+      </section>
 
       {/* Invite Modal */}
       {showInviteModal && (

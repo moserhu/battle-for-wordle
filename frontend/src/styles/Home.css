@@ -2,11 +2,15 @@
 .home-wrapper {
   position: relative;
   min-height: 100vh;
-  width: 100vw;
-  background: url('../assets/winter_city.png') no-repeat center center fixed;
+  width: 100%;
+  box-sizing: border-box;
+  background-image: var(--home-bg-image);
+  background-repeat: no-repeat;
+  background-position: center center;
+  background-attachment: fixed;
   background-size: cover;
-  color: #f4e9d8;
-  font-family: 'Cinzel', serif;
+  color: var(--home-text-primary);
+  font-family: var(--theme-font);
   padding: 80px 20px 60px; /* top padding clears fixed NavBar */
   display: flex;
   flex-direction: column;
@@ -21,7 +25,11 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 30%, rgba(0, 0, 0, 0.5) 100%);
+  background: radial-gradient(
+    ellipse at center,
+    var(--home-vignette-inner) 30%,
+    var(--home-vignette-outer) 100%
+  );
   z-index: -1;
 }
 
@@ -29,19 +37,38 @@
 .home-hero {
   width: 100%;
   max-width: 900px;
-  background: rgba(30, 27, 24, 0.9);
-  border: 2px solid #8b6f47;
+  background: var(--home-surface);
+  border: 2px solid var(--home-border);
   border-radius: 12px;
-  box-shadow: 0 0 25px rgba(0, 0, 0, 0.6);
-  padding: 40px 30px;
-  margin-bottom: 40px;
-  text-align: center;
+  box-shadow: var(--home-shadow-strong);
+  padding: 28px 26px;
+  margin-bottom: 18px;
+}
+
+.home-card--hero {
+  backdrop-filter: blur(6px);
+}
+
+.hero-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.hero-text {
+  flex: 1;
 }
 
 .main-title {
   font-size: 3rem;
   margin-bottom: 12px;
-  background: linear-gradient(to right, #f7e7b2, #d4af37, #b8860b);
+  background: linear-gradient(
+    to right,
+    var(--home-title-gradient-start),
+    var(--home-title-gradient-mid),
+    var(--home-title-gradient-end)
+  );
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.6);
@@ -49,23 +76,23 @@
 
 .hero-tagline {
   font-size: 1.2rem;
-  color: #f7e7b2;
+  color: var(--home-text-muted);
   max-width: 650px;
-  margin: 0 auto 20px;
+  margin: 0 0 20px;
   line-height: 1.6;
 }
 
 .hero-ctas {
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 16px;
 }
 
 .hero-ctas .btn {
-  background: linear-gradient(145deg, #3b2e2a, #5a453e);
-  border: 2px solid #c2a370;
-  color: #fef4e6;
-  font-family: 'MedievalSharp', serif;
+  background: var(--home-btn-bg);
+  border: 2px solid var(--home-btn-border);
+  color: var(--home-btn-text);
+  font-family: var(--theme-font-accent);
   font-size: 1.1rem;
   padding: 10px 22px;
   border-radius: 10px;
@@ -74,49 +101,126 @@
 }
 
 .hero-ctas .btn:hover {
-  background: #715643;
+  background: var(--home-btn-hover);
   transform: scale(1.05);
 }
 
+.hero-ctas .btn.ghost {
+  background: transparent;
+  border-color: var(--home-border-strong);
+  color: var(--home-text-accent);
+}
+
+.hero-ctas .btn.ghost:hover {
+  background: rgba(255, 255, 255, 0.08);
+  transform: translateY(-1px);
+}
+
+/* Quick actions */
+.home-quick-actions {
+  width: 100%;
+  max-width: 900px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.home-quick-card {
+  width: 100%;
+  max-width: 900px;
+  padding: 16px;
+  margin-bottom: 24px;
+}
+
+.home-quick-btn {
+  background: var(--home-btn-bg);
+  border: 2px solid var(--home-btn-border);
+  color: var(--home-btn-text);
+  font-family: var(--theme-font-accent);
+  font-size: 0.95rem;
+  padding: 10px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.3s ease;
+}
+
+.home-quick-btn:hover {
+  background: var(--home-btn-hover);
+  transform: translateY(-1px);
+}
+
 /* === GRID LAYOUT === */
-.home-grid {
+.home-layout {
   width: 100%;
   max-width: 1100px;
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-/* Top row: News + Global Leaderboard side by side */
-.home-top-row {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 24px;
 }
 
-/* Bottom row: Campaigns full width */
-.home-bottom-row {
-  width: 100%;
+.home-primary {
+  display: grid;
+  gap: 24px;
+}
+
+.home-sidebar {
+  display: grid;
+  gap: 24px;
 }
 
 /* === HOME CARD BASE === */
 .home-card {
-  background-color: rgba(30, 27, 24, 0.9);
-  border: 2px solid #8b6f47;
+  background-color: var(--home-surface-strong);
+  border: 2px solid var(--home-border-strong);
   border-radius: 10px;
   padding: 20px 24px;
-  box-shadow: 0 0 15px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--home-shadow-card);
   position: relative;
   z-index: 1;
+  scroll-margin-top: 90px;
 }
 
 .home-card h2 {
-  color: #f7e7b2;
+  color: var(--home-text-accent);
   font-size: 1.4rem;
   margin-bottom: 10px;
   text-transform: uppercase;
-  border-bottom: 1px solid rgba(191, 167, 111, 0.5);
+  border-bottom: 1px solid var(--home-card-title-border);
   padding-bottom: 6px;
+}
+
+.home-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.home-section-header h2 {
+  margin: 0;
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.home-section-header .btn {
+  font-size: 0.95rem;
+  padding: 8px 14px;
+}
+
+.home-section-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--home-border-strong);
+  background: var(--home-surface);
+  color: var(--home-text-accent);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
 /* News card list */
@@ -133,10 +237,10 @@
 
 /* Buttons inside home cards */
 .home-card .btn {
-  background: linear-gradient(145deg, #3b2e2a, #5a453e);
-  border: 2px solid #c2a370;
-  color: #fef4e6;
-  font-family: 'MedievalSharp', serif;
+  background: var(--home-btn-bg);
+  border: 2px solid var(--home-btn-border);
+  color: var(--home-btn-text);
+  font-family: var(--theme-font-accent);
   font-size: 1.1rem;
   padding: 10px 22px;
   border-radius: 10px;
@@ -153,29 +257,29 @@
 }
 
 .home-campaign-card {
-  background-color: #2d2a26;
-  border: 2px solid #a38457;
+  background-color: var(--home-surface);
+  border: 2px solid var(--home-border);
   border-radius: 10px;
   padding: 16px 20px;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--home-shadow-card);
   text-align: left;
 }
 
 .campaign-title {
   font-size: 1.2rem;
-  color: #f7e7b2;
+  color: var(--home-text-accent);
   margin-bottom: 4px;
 }
 
 .campaign-day {
   font-size: 1rem;
-  color: #d4af7f;
+  color: var(--home-text-muted);
   margin-bottom: 8px;
 }
 
 .campaign-status {
   font-size: 1rem;
-  color: #f4e9d8;
+  color: var(--home-text-primary);
   font-style: italic;
   margin-bottom: 10px;
 }
@@ -187,11 +291,11 @@
 }
 
 .campaign-buttons button {
-  background: linear-gradient(145deg, #3b2e2a, #5a453e);
-  border: 2px solid #c2a370;
+  background: var(--home-btn-bg);
+  border: 2px solid var(--home-btn-border);
   border-radius: 8px;
-  color: #fef4e6;
-  font-family: 'Cinzel', serif;
+  color: var(--home-btn-text);
+  font-family: var(--theme-font);
   font-size: 1rem;
   padding: 8px 14px;
   cursor: pointer;
@@ -199,7 +303,7 @@
 }
 
 .campaign-buttons button:hover {
-  background: #715643;
+  background: var(--home-btn-hover);
   transform: translateY(-1px);
 }
 
@@ -221,15 +325,31 @@
   .home-hero {
     padding: 28px 20px;
   }
+
+  .home-wrapper {
+    background-image: var(--bg-home-mobile);
+    background-attachment: scroll;
+  }
+
+  .hero-content {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .hero-tagline {
+    margin: 0 auto 16px;
+  }
+
+  .hero-ctas {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
   .main-title {
     font-size: 2.2rem;
   }
   .hero-tagline {
     font-size: 1rem;
-  }
-
-  .home-top-row {
-    grid-template-columns: 1fr;
   }
 }
 
@@ -243,5 +363,16 @@
   .campaign-buttons {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .home-quick-actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (min-width: 900px) {
+  .home-layout {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    align-items: start;
   }
 }

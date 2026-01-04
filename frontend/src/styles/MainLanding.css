@@ -1,23 +1,23 @@
 .main-landing {
-    background: url('../assets/landing_portrait.png') no-repeat center top fixed;
+    background: var(--bg-landing-portrait) no-repeat center top fixed;
     background-size: cover;
     height: 100vh;
     width: 100vw;
     display: flex;
     justify-content: center;
     align-items: flex-end;
-    font-family: 'Cinzel', serif;
+    font-family: var(--theme-font);
     padding-bottom: 5vh;
   }
   
   .landing-overlay {
     position: absolute;
     top: 50%;
-    background-color: rgba(0, 0, 0, 0.65);
+    background-color: var(--theme-surface-strong);
     padding: 40px;
     border-radius: 12px;
     text-align: center;
-    box-shadow: 0 0 20px rgba(255, 215, 0, 0.2);
+    box-shadow: var(--theme-shadow-soft);
     opacity: 0;
   animation: fadeInOverlay 1.5s ease-out forwards;
 }
@@ -31,28 +31,28 @@
 }
   
   .join-btn {
-    background-color: #ba8c44;
-    border: 2px solid #d4af37;
-    color: #fff;
+    background-color: var(--theme-btn-bg);
+    border: 2px solid var(--theme-btn-border);
+    color: var(--theme-btn-text);
     font-size: 1.3rem;
     padding: 14px 28px;
     border-radius: 8px;
     cursor: pointer;
     font-weight: bold;
     transition: background-color 0.3s ease, transform 0.2s ease;
-    font-family: 'Cinzel', serif;
+    font-family: var(--theme-font);
 
   }
   
   .join-btn:hover {
-    background-color: #d4a954;
+    background-color: var(--theme-btn-hover);
     transform: scale(1.05);
   }
   
   /* Desktop override: use landscape version */
 @media (min-width: 601px) {
     .main-landing {
-      background: url('../assets/landing_landscape.png') no-repeat center center fixed;
+      background: var(--bg-landing-landscape) no-repeat center center fixed;
       background-size: cover;
       align-items: center; /* optional: center vertically again */
       padding-bottom: 0;

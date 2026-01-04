@@ -64,7 +64,7 @@ export default function GlobalLeaderboard() {
 
   return (
     <ol className="global-leaderboard">
-      {entries.slice(0, 5).map((entry, index) => (
+      {entries.slice(0, 10).map((entry, index) => (
         <li key={`${entry.player_name}-${entry.ended_on}-${index}`} className="global-lb-row">
           <div className="glb-rank">
             {index === 0 ? '👑' : `#${index + 1}`}

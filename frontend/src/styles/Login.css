@@ -3,37 +3,37 @@
 .login-page {
   height: 100vh;
   width: 100vw;
-  background: url('../assets/winter_throne_background.png') no-repeat center center fixed;
+  background: var(--bg-login) no-repeat center center fixed;
   background-size: cover;
   background-position: center center; /* ensure full centering */
   background-attachment: fixed;
   background-repeat: no-repeat;
-  background-color: #967b36;
+  background-color: var(--theme-surface-solid);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
   padding-top: 80px;
-  font-family: 'Cinzel', serif;
+  font-family: var(--theme-font);
 }
 
   
   .login-toggle {
     position: absolute;
     top: 40%;
-    background-color: rgba(26, 26, 26, 0.8);
+    background-color: var(--theme-surface-subtle);
     padding: 10px 20px;
-    border: 2px solid #444;
+    border: 2px solid var(--theme-border);
     border-radius: 10px;
-    box-shadow: 0 0 10px rgba(255, 215, 0, 0.2);
+    box-shadow: var(--theme-shadow-soft);
     margin-bottom: 20px;
   }
   
   .login-toggle button {
     padding: 10px 20px;
     margin: 0 5px;
-    background-color: #6a4f2a;
-    color: #fefefe;
+    background-color: var(--theme-btn-bg);
+    color: var(--theme-btn-text);
     border: none;
     border-radius: 5px;
     font-weight: bold;
@@ -42,12 +42,12 @@
   }
   
   .login-toggle button:hover {
-    background-color: #8b6731;
+    background-color: var(--theme-btn-hover);
   }
   
   .login-toggle button.active {
-    background-color: #ba8c44;
-    box-shadow: 0 0 8px rgba(218, 165, 32, 0.5);
+    background-color: var(--theme-accent-warm);
+    box-shadow: 0 0 8px rgba(183, 211, 255, 0.4);
   }
   
   .form-container {
@@ -60,12 +60,12 @@
   /* src/styles/Login.css */
 
 .login-form {
-    background-color: #1a1a1a8e;
-    border: 2px solid #444;
+    background-color: var(--theme-surface-strong);
+    border: 2px solid var(--theme-border);
     border-radius: 10px;
     padding: 30px;
-    color: #f4f4f4;
-    box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+    color: var(--theme-text-primary);
+    box-shadow: var(--theme-shadow-soft);
     max-width: 400px;
     margin: auto;
   }
@@ -80,9 +80,9 @@
     width: 100%;
     padding: 10px;
     margin: 8px 0;
-    background-color: #2b2b2b;
-    color: #fff;
-    border: 1px solid #555;
+    background-color: var(--theme-input-bg);
+    color: var(--theme-input-text);
+    border: 1px solid var(--theme-input-border);
     border-radius: 5px;
     font-family: inherit;
     font-family: 'Arial', sans-serif; /* or any neutral, readable font */
@@ -92,14 +92,14 @@
   }
   
   .login-form input::placeholder {
-    color: #ccc;
+    color: var(--theme-text-muted);
   }
   
   .login-form button {
     width: 100%;
     padding: 10px;
-    background-color: #ba8c44;
-    color: white;
+    background-color: var(--theme-btn-bg);
+    color: var(--theme-btn-text);
     border: none;
     border-radius: 5px;
     font-weight: bold;
@@ -109,11 +109,11 @@
   }
   
   .login-form button:hover {
-    background-color: #d4a954;
+    background-color: var(--theme-btn-hover);
   }
   
   .login-form .error {
-    color: #f44336;
+    color: var(--theme-danger-text);
     font-weight: bold;
     text-align: center;
     margin-top: 10px;
@@ -200,16 +200,16 @@
 .small-link {
   text-align: center;
   font-size: 0.9rem;
-  color: #ddd;
+  color: var(--theme-text-muted);
   margin-top: 10px;
 }
 
 .small-link a {
-  color: #f4e9d8;
+  color: var(--theme-text-accent);
   text-decoration: underline;
   font-weight: bold;
 }
 
 .small-link a:hover {
-  color: #d4af37;
+  color: var(--theme-accent-warm);
 }

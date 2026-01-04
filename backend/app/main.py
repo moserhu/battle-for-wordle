@@ -16,10 +16,15 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3002",
+        "http://127.0.0.1:3002"
+    ],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "OPTIONS"],   
-    allow_headers=["Authorization", "Content-Type"]
+    allow_methods=["*"],   
+    allow_headers=["*"]
 )
 
 instrumentator = Instrumentator().instrument(app)
@@ -134,4 +139,3 @@ def activate_double_down(data: CampaignOnly, current_user: dict = Depends(get_cu
 @app.post("/api/user/acknowledge_update")
 def acknowledge_update(current_user: dict = Depends(get_current_user)):
     return crud.acknowledge_update(current_user["user_id"])
-

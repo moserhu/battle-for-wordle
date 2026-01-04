@@ -1,8 +1,125 @@
 /* App.css */
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&display=swap');
 
+:root {
+  --theme-font: 'Cinzel', serif;
+  --theme-font-accent: 'MedievalSharp', serif;
+
+  /* Winter palette */
+  --theme-text-primary: #e9f3ff;
+  --theme-text-muted: #cfe1ff;
+  --theme-text-accent: #f4fbff;
+  --theme-text-warm: #f5e2b8;
+  --theme-text-warm-muted: #e6c98a;
+  --theme-text-inverse: #0d1422;
+
+  --theme-title-gradient-start: #f4fbff;
+  --theme-title-gradient-mid: #b7d3ff;
+  --theme-title-gradient-end: #7ea7ff;
+
+  --theme-surface: rgba(14, 20, 30, 0.78);
+  --theme-surface-strong: rgba(12, 18, 28, 0.84);
+  --theme-surface-subtle: rgba(18, 26, 38, 0.82);
+  --theme-surface-solid: #141c28;
+
+  --theme-border: #6f86a6;
+  --theme-border-strong: #89a1c6;
+  --theme-border-muted: rgba(155, 182, 223, 0.5);
+
+  --theme-shadow-strong: 0 0 25px rgba(6, 10, 20, 0.6);
+  --theme-shadow-card: 0 0 15px rgba(6, 10, 20, 0.5);
+  --theme-shadow-soft: 0 0 10px rgba(6, 10, 20, 0.4);
+
+  --theme-btn-bg: linear-gradient(145deg, #253149, #2f425f);
+  --theme-btn-border: #9bb6df;
+  --theme-btn-text: #f3f8ff;
+  --theme-btn-hover: #3a5073;
+  --theme-btn-disabled: rgba(147, 167, 198, 0.5);
+
+  --theme-pill-bg: linear-gradient(145deg, #253149, #2f425f);
+  --theme-pill-border: #9bb6df;
+  --theme-pill-text: #f3f8ff;
+
+  --theme-accent: #b7d3ff;
+  --theme-accent-strong: #7ea7ff;
+  --theme-accent-warm: #f0d394;
+  --theme-accent-warm-strong: #ffd27d;
+
+  --theme-danger-text: #ffd2d2;
+  --theme-danger-border: #b36565;
+  --theme-danger-bg: #7b3535;
+  --theme-danger-hover: #954040;
+
+  --theme-success-bg: #2f6f5f;
+  --theme-success-hover: #3b8a73;
+  --theme-success-text: #b9f5d0;
+  --theme-neutral-bg: #39465a;
+  --theme-neutral-hover: #4a5a73;
+  --theme-warning-bg: #8a5a2a;
+  --theme-warning-hover: #a66a2f;
+
+  --theme-overlay: rgba(0, 0, 0, 0.6);
+  --theme-overlay-strong: rgba(0, 0, 0, 0.7);
+
+  --theme-vignette-inner: rgba(0, 0, 0, 0);
+  --theme-vignette-outer: rgba(10, 16, 26, 0.65);
+
+  --theme-divider: rgba(233, 243, 255, 0.12);
+
+  --theme-input-bg: #141c28;
+  --theme-input-border: #6f86a6;
+  --theme-input-text: #e9f3ff;
+
+  --keyboard-key-bg: #c7d5ea;
+  --keyboard-key-text: #0d1422;
+  --keyboard-correct: #3f8f6b;
+  --keyboard-present: #c6a23d;
+  --keyboard-absent: rgba(61, 74, 96, 0.6);
+  --keyboard-absent-text: rgba(233, 243, 255, 0.6);
+
+  --nav-bg: linear-gradient(to right, #121926, #0b111b);
+  --nav-border: #6f86a6;
+  --nav-text: var(--theme-text-primary);
+  --nav-brand: var(--theme-text-accent);
+  --nav-brand-hover: #dbe8ff;
+
+  --bg-home: url('./assets/winter_background_16_9.png');
+  --bg-home-mobile: url('./assets/winter_background_mobile.png');
+  --bg-campaigns: url('./assets/winter_background_16_9.png');
+  --bg-campaigns-mobile: url('./assets/winter_background_mobile.png');
+  --bg-dashboard: url('./assets/winter_camp.png');
+  --bg-account: url('./assets/winter_bedroom_background.png');
+  --bg-login: url('./assets/winter_throne_background.png');
+  --bg-game: url('./assets/snow_soldiers.png');
+  --bg-landing-portrait: url('./assets/landing_portrait.png');
+  --bg-landing-landscape: url('./assets/landing_landscape.png');
+  --bg-invite: url('./assets/parchment_texture.png');
+
+  /* Home tokens (mapped to theme tokens) */
+  --home-bg-image: var(--bg-home);
+  --home-vignette-inner: var(--theme-vignette-inner);
+  --home-vignette-outer: var(--theme-vignette-outer);
+  --home-text-primary: var(--theme-text-primary);
+  --home-text-muted: var(--theme-text-muted);
+  --home-text-accent: var(--theme-text-accent);
+  --home-surface: var(--theme-surface);
+  --home-surface-strong: var(--theme-surface-strong);
+  --home-border: var(--theme-border);
+  --home-border-strong: var(--theme-border-strong);
+  --home-shadow-strong: var(--theme-shadow-strong);
+  --home-shadow-card: var(--theme-shadow-card);
+  --home-title-gradient-start: var(--theme-title-gradient-start);
+  --home-title-gradient-mid: var(--theme-title-gradient-mid);
+  --home-title-gradient-end: var(--theme-title-gradient-end);
+  --home-btn-bg: var(--theme-btn-bg);
+  --home-btn-border: var(--theme-btn-border);
+  --home-btn-text: var(--theme-btn-text);
+  --home-btn-hover: var(--theme-btn-hover);
+  --home-card-title-border: var(--theme-border-muted);
+}
+
 body {
-  font-family: 'Cinzel', serif;
+  font-family: var(--theme-font);
 }
 
 
@@ -21,5 +138,3 @@ body {
   50% { transform: translateX(-100%); }
   100% { transform: translateX(-100%); }
 }
-
-
