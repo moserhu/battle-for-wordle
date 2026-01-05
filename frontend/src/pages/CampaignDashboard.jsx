@@ -4,6 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import HubBar from '../components/HubBar';
 import ShareCard from '../components/ShareCard';
+import RulerTitleModal from '../components/RulerTitleModal';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faEnvelope } from '@fortawesome/free-solid-svg-icons';
 import '../styles/Dashboard.css';
@@ -64,6 +65,7 @@ export default function CampaignDashboard() {
 
   // invite modal
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [showRulerModal, setShowRulerModal] = useState(false);
 
   // ---- auth gate ----
   useEffect(() => {
@@ -177,6 +179,27 @@ export default function CampaignDashboard() {
 
   const inviteCode = campaignMeta?.invite_code || '';
   const campaignName = campaignMeta?.name || 'Campaign';
+  const rulerTitle = campaignMeta?.ruler_title || 'Current Ruler';
+  const isRuler = campaignMeta?.ruler_id && user?.user_id === campaignMeta.ruler_id;
+
+  const handleEditRulerTitle = () => {
+    setShowRulerModal(true);
+  };
+
+  const handleSaveRulerTitle = async (nextTitle) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/campaign/ruler_title`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ campaign_id: Number(cid), title: nextTitle })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCampaignMeta((prev) => prev ? { ...prev, ruler_title: data.ruler_title } : prev);
+        setShowRulerModal(false);
+      }
+    } catch {}
+  };
 
   return (
     <div className="dash-wrapper">
@@ -222,13 +245,23 @@ export default function CampaignDashboard() {
       </div>
 
       <section className="dash-king-banner" aria-live="polite">
-        <div className="dash-king-crown">👑</div>
         <div className="dash-king-text">
-          <div className="dash-king-title">Current Ruler</div>
+          <div className="dash-king-title">{rulerTitle}</div>
           <div className="dash-king-name">{campaignMeta?.king || 'Uncrowned'}</div>
         </div>
         <div className="dash-king-glow" aria-hidden="true" />
+        {isRuler && (
+          <button className="dash-king-edit" onClick={handleEditRulerTitle} type="button">
+            Edit
+          </button>
+        )}
       </section>
+      <RulerTitleModal
+        visible={showRulerModal}
+        initialTitle={rulerTitle}
+        onSave={handleSaveRulerTitle}
+        onClose={() => setShowRulerModal(false)}
+      />
 
       <section className="dash-surface">
         <div className="dash-surface-header">

@@ -24,6 +24,10 @@ class CampaignIDOnly(BaseModel):
 class CampaignOnly(BaseModel):
     campaign_id: int
 
+class CampaignRulerTitle(BaseModel):
+    campaign_id: int
+    title: str
+
 class UserRegister(BaseModel):
     first_name: str
     last_name: str
@@ -49,4 +53,3 @@ class UpdateUserInfo(BaseModel):
 class KickRequest(BaseModel):
     campaign_id: int
     user_id: int
-

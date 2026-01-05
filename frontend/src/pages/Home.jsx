@@ -40,6 +40,9 @@ export default function Home() {
             <button className="btn ghost" onClick={() => navigate('/account')}>
               Account
             </button>
+            <button className="btn ghost" onClick={() => navigate('/campaigns?manage=1')}>
+              Create/Join
+            </button>
           </div>
         </div>
       </section>

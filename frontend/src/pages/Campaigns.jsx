@@ -26,6 +26,8 @@ export default function Campaigns() {
   useEffect(() => {
     const fetchCampaigns = async () => {
       if (!user?.user_id) return;
+      const searchParams = new URLSearchParams(window.location.search);
+      const manageMode = searchParams.get('manage') === '1';
 
       const res = await fetch(`${API_BASE}/api/user/campaigns`, {
         method: 'POST',
@@ -37,7 +39,7 @@ export default function Campaigns() {
 
       const data = await res.json();
       if (res.ok && Array.isArray(data)) {
-        if (data.length === 1 && data[0]?.campaign_id) {
+        if (!manageMode && data.length === 1 && data[0]?.campaign_id) {
           navigate(`/campaign/${data[0].campaign_id}`);
           return;
         }

@@ -1,0 +1,114 @@
+.ruler-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 6, 4, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 1rem;
+}
+
+.ruler-modal {
+  position: relative;
+  width: min(520px, 92vw);
+  padding: 2rem;
+  border-radius: 18px;
+  border: 2px solid rgba(255, 220, 140, 0.65);
+  background:
+    radial-gradient(140% 140% at 20% 10%, rgba(255, 232, 160, 0.35), transparent 60%),
+    linear-gradient(135deg, rgba(70, 45, 12, 0.95), rgba(20, 12, 4, 0.95));
+  box-shadow:
+    0 18px 40px rgba(5, 3, 1, 0.6),
+    inset 0 0 20px rgba(255, 220, 140, 0.2);
+  color: #fff3c7;
+  font-family: var(--theme-font);
+  text-align: center;
+}
+
+.ruler-modal h2 {
+  margin: 0 0 0.6rem;
+  font-family: var(--theme-font-accent);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #ffe8b3;
+}
+
+.ruler-modal p {
+  margin: 0 0 1.4rem;
+  color: rgba(255, 238, 204, 0.8);
+}
+
+.ruler-modal-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 1.2rem;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: opacity 0.2s ease, border-color 0.2s ease;
+}
+
+.ruler-modal-close:hover {
+  opacity: 0.9;
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+.ruler-modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ruler-modal-input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 220, 140, 0.6);
+  background: rgba(10, 8, 4, 0.7);
+  color: #fff3c7;
+  font-family: var(--theme-font);
+  font-size: 1rem;
+}
+
+.ruler-modal-hint {
+  color: rgba(255, 210, 210, 0.85);
+  font-size: 0.85rem;
+}
+
+.ruler-modal-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ruler-modal-btn {
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 220, 140, 0.55);
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff3c7;
+  font-weight: 700;
+  font-family: var(--theme-font);
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.ruler-modal-btn.primary {
+  background: linear-gradient(135deg, rgba(255, 210, 120, 0.7), rgba(175, 110, 30, 0.8));
+  color: #2b1602;
+}
+
+.ruler-modal-btn:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.18);
+}

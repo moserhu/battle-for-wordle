@@ -67,24 +67,30 @@
   overflow: hidden;
 }
 
-.dash-king-crown {
-  width: 54px;
-  height: 54px;
-  display: grid;
-  place-items: center;
-  font-size: 1.8rem;
-  border-radius: 14px;
-  background: linear-gradient(145deg, rgba(255, 236, 170, 0.9), rgba(255, 198, 88, 0.7));
-  border: 1px solid rgba(255, 245, 210, 0.8);
-  box-shadow:
-    0 6px 18px rgba(255, 209, 88, 0.3),
-    inset 0 0 10px rgba(255, 255, 255, 0.6);
+.dash-king-banner::before {
+  content: "👑";
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 5.4rem;
+  line-height: 1;
+  transform: translateY(1px) scale(1.2);
+  opacity: 0.35;
+  pointer-events: none;
+  color: rgba(255, 220, 150, 0.9);
+  text-shadow:
+    0 10px 30px rgba(255, 200, 120, 0.2),
+    0 0 40px rgba(255, 230, 170, 0.25);
 }
 
 .dash-king-text {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  position: relative;
+  z-index: 2;
 }
 
 .dash-king-title {
@@ -92,6 +98,9 @@
   letter-spacing: 0.2em;
   font-size: 0.72rem;
   color: #3a2207;
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.2;
 }
 
 .dash-king-name {
@@ -114,6 +123,28 @@
   filter: blur(2px);
   opacity: 0.8;
   pointer-events: none;
+}
+
+.dash-king-edit {
+  margin-left: auto;
+  position: relative;
+  z-index: 2;
+  background: rgba(20, 18, 12, 0.35);
+  border: 1px solid rgba(255, 220, 140, 0.6);
+  color: #2b1602;
+  font-family: var(--theme-font);
+  font-weight: 700;
+  padding: 6px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.dash-king-edit:hover {
+  background: rgba(255, 255, 255, 0.35);
+  transform: translateY(-1px);
 }
 
 .dash-header-inner {
@@ -422,12 +453,6 @@
 
   .dash-king-banner {
     gap: 10px;
-  }
-
-  .dash-king-crown {
-    width: 46px;
-    height: 46px;
-    font-size: 1.5rem;
   }
 
   .dash-king-name {

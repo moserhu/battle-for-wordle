@@ -858,14 +858,14 @@ def get_campaign_day(campaign_id: int):
 def get_campaign_progress(campaign_id: int):
     with get_db() as conn:
         row = conn.execute(
-            "SELECT name, start_date, invite_code, cycle_length, king FROM campaigns WHERE id = %s",
+            "SELECT name, start_date, invite_code, cycle_length, king, ruler_id, ruler_title FROM campaigns WHERE id = %s",
             (campaign_id,)
         ).fetchone()
 
     if not row:
         raise HTTPException(status_code=404, detail="Campaign not found")
 
-    name, start_date_str, invite_code, cycle_length, king = row
+    name, start_date_str, invite_code, cycle_length, king, ruler_id, ruler_title = row
     start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
     today = datetime.now(ZoneInfo("America/Chicago")).date()
     delta = (today - start_date).days
@@ -875,7 +875,9 @@ def get_campaign_progress(campaign_id: int):
         "day": min(delta + 1, cycle_length),
         "total": cycle_length,
         "invite_code": invite_code,
-        "king": king
+        "king": king,
+        "ruler_id": ruler_id,
+        "ruler_title": ruler_title
     }
 
 def get_campaign_streak(user_id: int, campaign_id: int):
@@ -1017,9 +1019,11 @@ def handle_campaign_end(campaign_id: int):
             # Persist reigning king for the next cycle.
             conn.execute("""
                 UPDATE campaigns
-                SET king = %s
+                SET king = %s,
+                    ruler_id = %s,
+                    ruler_title = COALESCE(ruler_title, 'Current Ruler')
                 WHERE id = %s
-            """, (first_name, campaign_id))
+            """, (first_name, user_id, campaign_id))
 
             # 1a. Record global high score entries for all members
             for member_user_id, member_score, member_display_name, member_first, member_last, *_ in standings:
@@ -1083,7 +1087,7 @@ def handle_campaign_end(campaign_id: int):
 def update_campaign_ruler(campaign_id: int):
     with get_db() as conn:
         row = conn.execute("""
-            SELECT u.first_name
+            SELECT u.id, u.first_name
             FROM campaign_members cm
             JOIN users u ON u.id = cm.user_id
             WHERE cm.campaign_id = %s
@@ -1096,11 +1100,41 @@ def update_campaign_ruler(campaign_id: int):
 
         conn.execute("""
             UPDATE campaigns
-            SET king = %s
+            SET king = %s,
+                ruler_id = %s,
+                ruler_title = COALESCE(ruler_title, 'Current Ruler')
             WHERE id = %s
-        """, (row[0], campaign_id))
+        """, (row[1], row[0], campaign_id))
 
     return {"status": "ruler updated"}
+
+def update_campaign_ruler_title(user_id: int, campaign_id: int, title: str):
+    title = title.strip()
+    if not title:
+        raise HTTPException(status_code=400, detail="Title cannot be empty")
+    if len(title) > 30:
+        raise HTTPException(status_code=400, detail="Title must be 30 characters or fewer")
+
+    with get_db() as conn:
+        row = conn.execute("""
+            SELECT ruler_id
+            FROM campaigns
+            WHERE id = %s
+        """, (campaign_id,)).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Campaign not found")
+
+        ruler_id = row[0]
+        if ruler_id != user_id:
+            raise HTTPException(status_code=403, detail="Only the current ruler can edit this title")
+
+        conn.execute("""
+            UPDATE campaigns
+            SET ruler_title = %s
+            WHERE id = %s
+        """, (title, campaign_id))
+
+    return {"status": "updated", "ruler_title": title}
 
 
 def has_campaign_finished_for_day(campaign_id: int):

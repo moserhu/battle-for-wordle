@@ -7,6 +7,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import '../styles/GameScreen.css';
 import confetti from 'canvas-confetti';
 import { useAuth } from '../auth/AuthProvider';
+import RulerTitleModal from '../components/RulerTitleModal';
 
 const API_BASE = process.env.REACT_APP_API_URL || `${window.location.protocol}//${window.location.hostname}`;
 
@@ -72,6 +73,8 @@ export default function GameScreen() {
     activated: false,
     usedThisWeek: false
   });
+  const [rulerTitle, setRulerTitle] = useState('Current Ruler');
+  const [showRulerModal, setShowRulerModal] = useState(false);
   
   const triggerShake = useCallback(() => {
   setShake(true);
@@ -138,6 +141,7 @@ export default function GameScreen() {
       const campaignDay = await dayRes.json();
       const progress = await stateRes.json();
       setCampaignDay(campaignDay);
+      setRulerTitle(campaignDay?.ruler_title || 'Current Ruler');
       const memberRes = await fetch(`${API_BASE}/api/campaign/self_member`, {
         method: "POST",
         headers: {
@@ -194,6 +198,27 @@ export default function GameScreen() {
 
     resetAndFetch();
   }, [campaignId, user, loading, token]);
+
+  const isRuler = campaignDay?.ruler_id && user?.user_id === campaignDay.ruler_id;
+
+  const handleEditRulerTitle = () => {
+    setShowRulerModal(true);
+  };
+
+  const handleSaveRulerTitle = async (nextTitle) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/campaign/ruler_title`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ campaign_id: Number(campaignId), title: nextTitle })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setRulerTitle(data.ruler_title);
+        setShowRulerModal(false);
+      }
+    } catch {}
+  };
   
   const checkIfCampaignShouldEnd = useCallback(async () => {
     const res = await fetch(`${API_BASE}/api/campaign/finished_today`, {
@@ -459,14 +484,29 @@ const submitGuess = async () => {
             >
               🏕 Basecamp
             </button>
-            <section className="game-king-banner game-top-half" aria-live="polite">
-              <div className="game-king-crown">👑</div>
-              <div className="game-king-text">
-                <div className="game-king-title">Current Ruler</div>
-                <div className="game-king-name">{campaignDay?.king || 'Uncrowned'}</div>
-              </div>
-              <div className="game-king-glow" aria-hidden="true" />
-            </section>
+        <section className="game-king-banner game-top-half" aria-live="polite">
+          <div className="game-king-text">
+            <div className="game-king-title">{rulerTitle}</div>
+            <div className="game-king-name">{campaignDay?.king || 'Uncrowned'}</div>
+          </div>
+          <div className="game-king-glow" aria-hidden="true" />
+          {isRuler && (
+            <button
+              className="game-king-edit"
+              onClick={handleEditRulerTitle}
+              type="button"
+              aria-label="Edit ruler title"
+            >
+              ✎
+            </button>
+          )}
+        </section>
+        <RulerTitleModal
+          visible={showRulerModal}
+          initialTitle={rulerTitle}
+          onSave={handleSaveRulerTitle}
+          onClose={() => setShowRulerModal(false)}
+        />
           </div>
     {gameOver && !showTroopModal && (
             <div className="share-button-container">

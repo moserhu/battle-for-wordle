@@ -9,6 +9,8 @@ def init_db():
     with psycopg.connect(db_url) as conn:
         conn.execute("SELECT 1")
         conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS king TEXT")
+        conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS ruler_id INTEGER")
+        conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS ruler_title TEXT")
         conn.execute("ALTER TABLE global_high_scores ADD COLUMN IF NOT EXISTS campaign_length INTEGER")
         conn.execute("""
             CREATE TABLE IF NOT EXISTS campaign_streaks (
