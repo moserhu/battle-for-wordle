@@ -128,6 +128,10 @@ def get_campaign_members(data: CampaignOnly, current_user: dict = Depends(get_cu
 def get_self_member(data: models.CampaignOnly, current_user: dict = Depends(get_current_user)):
     return crud.get_self_member(data.campaign_id, current_user["user_id"])
 
+@app.post("/api/campaign/streak")
+def get_campaign_streak(data: models.CampaignOnly, current_user: dict = Depends(get_current_user)):
+    return crud.get_campaign_streak(current_user["user_id"], data.campaign_id)
+
 @app.post("/api/campaign/update_member")
 def update_campaign_member(data: models.CampaignAndUserOnly, current_user: dict = Depends(get_current_user)):
     return crud.update_campaign_member(data.campaign_id, current_user["user_id"], data.display_name, data.color)

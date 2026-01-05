@@ -324,6 +324,35 @@ def initialize_campaign_words(campaign_id: int, num_days: int, conn):
             (campaign_id, day, word)
         )
 
+def update_campaign_streak(conn, user_id: int, campaign_id: int, date_str: str):
+    row = conn.execute("""
+        SELECT streak, last_completed_date
+        FROM campaign_streaks
+        WHERE user_id = %s AND campaign_id = %s
+    """, (user_id, campaign_id)).fetchone()
+
+    if row:
+        streak, last_completed_date = row
+        if last_completed_date == date_str:
+            return
+        if last_completed_date:
+            last_date = datetime.strptime(last_completed_date, "%Y-%m-%d").date()
+            today_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+            yesterday = today_date - timedelta(days=1)
+            new_streak = streak + 1 if last_date == yesterday else 1
+        else:
+            new_streak = 1
+        conn.execute("""
+            UPDATE campaign_streaks
+            SET streak = %s, last_completed_date = %s
+            WHERE user_id = %s AND campaign_id = %s
+        """, (new_streak, date_str, user_id, campaign_id))
+    else:
+        conn.execute("""
+            INSERT INTO campaign_streaks (user_id, campaign_id, streak, last_completed_date)
+            VALUES (%s, %s, %s, %s)
+        """, (user_id, campaign_id, 1, date_str))
+
 
 def get_daily_word(campaign_id: int):
     today = datetime.now(ZoneInfo("America/Chicago")).date()
@@ -384,7 +413,7 @@ def validate_guess(word: str, user_id: int, campaign_id: int):
     today = datetime.now(ZoneInfo("America/Chicago")).strftime("%Y-%m-%d")
 
     with get_db() as conn:
-        conn.execute("BEGIN IMMEDIATE")
+        conn.execute("BEGIN")
 
         # NEW: if this exact word was already guessed today, bail out without mutating state
         dup = conn.execute("""
@@ -555,6 +584,9 @@ def validate_guess(word: str, user_id: int, campaign_id: int):
             int(new_game_over)
         ))
 
+        if new_game_over:
+            update_campaign_streak(conn, user_id, campaign_id, today)
+
         return {
             "result": result,
             "correct": correct,
@@ -629,6 +661,16 @@ def get_campaign_progress(campaign_id: int):
         "invite_code": invite_code,
         "king": king
     }
+
+def get_campaign_streak(user_id: int, campaign_id: int):
+    with get_db() as conn:
+        row = conn.execute("""
+            SELECT streak
+            FROM campaign_streaks
+            WHERE user_id = %s AND campaign_id = %s
+        """, (user_id, campaign_id)).fetchone()
+
+    return {"streak": row[0] if row else 0}
 
 def get_leaderboard(campaign_id: int):
     today = datetime.now(ZoneInfo("America/Chicago")).strftime("%Y-%m-%d")
@@ -717,11 +759,12 @@ def get_saved_progress(user_id: int, campaign_id: int):
 
 def handle_campaign_end(campaign_id: int):
     with get_db() as conn:
-        # 1. Get winner with campaign + user info
-        winner_row = conn.execute("""
+        # 1. Get standings with campaign + user info
+        standings = conn.execute("""
             SELECT 
                 cm.user_id,
                 cm.score,
+                cm.display_name,
                 u.first_name,
                 u.last_name,
                 c.name,
@@ -732,11 +775,10 @@ def handle_campaign_end(campaign_id: int):
             JOIN campaigns c ON c.id = cm.campaign_id
             WHERE cm.campaign_id = %s
             ORDER BY cm.score DESC
-            LIMIT 1
-        """, (campaign_id,)).fetchone()
+        """, (campaign_id,)).fetchall()
 
-        if winner_row:
-            user_id, score, first_name, last_name, camp_name, start_date_str, cycle_length = winner_row
+        if standings:
+            user_id, score, display_name, first_name, last_name, camp_name, start_date_str, cycle_length = standings[0]
 
             # Determine when this “season” ended
             start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
@@ -746,8 +788,6 @@ def handle_campaign_end(campaign_id: int):
             # If campaign is ended early via API, use today; otherwise use natural final day.
             ended_on = min(today, final_day)
 
-            player_name = f"{first_name} {last_name}".strip()
-
             # Persist reigning king for the next cycle.
             conn.execute("""
                 UPDATE campaigns
@@ -755,19 +795,30 @@ def handle_campaign_end(campaign_id: int):
                 WHERE id = %s
             """, (first_name, campaign_id))
 
-            # 1a. Record global high score entry
-            conn.execute("""
-                INSERT INTO global_high_scores (
-                    user_id, campaign_id, player_name, campaign_name, troops, ended_on
-                ) VALUES (%s, %s, %s, %s, %s, %s)
-            """, (
-                user_id,
-                campaign_id,
-                player_name,
-                camp_name,
-                score,
-                ended_on.strftime("%Y-%m-%d")
-            ))
+            # 1a. Record global high score entries for all members
+            for member_user_id, member_score, member_display_name, member_first, member_last, *_ in standings:
+                if not member_score or member_score <= 0:
+                    continue
+                player_name = (member_display_name or f"{member_first} {member_last}").strip()
+                conn.execute("""
+                    INSERT INTO global_high_scores (
+                        user_id,
+                        campaign_id,
+                        player_name,
+                        campaign_name,
+                        troops,
+                        ended_on,
+                        campaign_length
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+                """, (
+                    member_user_id,
+                    campaign_id,
+                    player_name,
+                    camp_name,
+                    member_score,
+                    ended_on.strftime("%Y-%m-%d"),
+                    cycle_length
+                ))
 
             # 1b. Update winner’s campaign_wins
             conn.execute("""
@@ -957,9 +1008,11 @@ def get_global_leaderboard():
                 campaign_name TEXT NOT NULL,
                 troops INTEGER NOT NULL,
                 ended_on TEXT NOT NULL,
+                campaign_length INTEGER,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        conn.execute("ALTER TABLE global_high_scores ADD COLUMN IF NOT EXISTS campaign_length INTEGER")
         # ✅ 1) Seed dummy data if the table is empty
         count = conn.execute("SELECT COUNT(*) FROM global_high_scores").fetchone()[0]
 
@@ -971,19 +1024,20 @@ def get_global_leaderboard():
                     player_name,
                     campaign_name,
                     troops,
-                    ended_on
-                ) VALUES (%s, %s, %s, %s, %s, %s)
+                    ended_on,
+                    campaign_length
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s)
             """, [
-                (None, None, "Sir Lexicon",    "Season of Shadows",      150, "2025-01-01"),
-                (None, None, "Count Vowel",    "Vowels of Valor",        130, "2025-02-10"),
-                (None, None, "Duke Consonant", "Consonant Crusade",      120, "2025-03-05"),
-                (None, None, "Baron Bigram",   "Siege of Syllables",     110, "2025-04-18"),
-                (None, None, "Lady Syllable",  "Whispers of Wordsmiths", 100, "2025-05-22"),
-                (None, None, "Lord Trigram",   "Trigram Trials",          95, "2025-06-15"),
-                (None, None, "Knight Rhyme",   "Rhymes of Ruin",          90, "2025-07-03"),
-                (None, None, "Dame Diction",   "Diction Dominion",        85, "2025-08-09"),
-                (None, None, "Countess Clue",  "Clue of Crowns",          80, "2025-09-12"),
-                (None, None, "Viscount Verb",  "Verbs of Valor",          75, "2025-10-01"),
+                (None, None, "Sir Lexicon",    "Season of Shadows",      150, "2025-01-01", 7),
+                (None, None, "Count Vowel",    "Vowels of Valor",        130, "2025-02-10", 5),
+                (None, None, "Duke Consonant", "Consonant Crusade",      120, "2025-03-05", 3),
+                (None, None, "Baron Bigram",   "Siege of Syllables",     110, "2025-04-18", 7),
+                (None, None, "Lady Syllable",  "Whispers of Wordsmiths", 100, "2025-05-22", 5),
+                (None, None, "Lord Trigram",    "Trigram Trials",         95, "2025-06-15", 3),
+                (None, None, "Knight Rhyme",   "Rhymes of Ruin",          90, "2025-07-03", 7),
+                (None, None, "Dame Diction",   "Diction Dominion",        85, "2025-08-09", 5),
+                (None, None, "Countess Clue",  "Clue of Crowns",          80, "2025-09-12", 3),
+                (None, None, "Viscount Verb",  "Verbs of Valor",          75, "2025-10-01", 5),
             ])
             conn.commit()
 
@@ -993,7 +1047,8 @@ def get_global_leaderboard():
                 player_name,
                 campaign_name,
                 troops,
-                ended_on
+                ended_on,
+                campaign_length
             FROM global_high_scores
             ORDER BY troops DESC, ended_on DESC
             LIMIT 10
@@ -1005,7 +1060,8 @@ def get_global_leaderboard():
             "player_name": row[0],
             "campaign_name": row[1],
             "best_troops": row[2],
-            "ended_on": row[3]
+            "ended_on": row[3],
+            "campaign_length": row[4]
         }
         for row in rows
     ]
