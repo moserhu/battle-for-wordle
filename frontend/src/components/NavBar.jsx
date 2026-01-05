@@ -2,7 +2,7 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faLandmark, faUserShield, faRightFromBracket } from '@fortawesome/free-solid-svg-icons';
+import { faHouse, faLandmark, faUserShield, faRightFromBracket } from '@fortawesome/free-solid-svg-icons';
 import '../styles/NavBar.css';
 import { useAuth } from '../auth/AuthProvider';  // ⬅️ add this
 
@@ -43,10 +43,19 @@ export default function NavBar() {
 
         <div className="nav-icons">
           <button
-            className={`icon-btn ${isActive('/home') || isActive('/home') ? 'active' : ''}`}
+            className={`icon-btn ${isActive('/home') ? 'active' : ''}`}
+            aria-label="Home"
+            title="Home"
+            onClick={() => navigate('/home')}
+          >
+            <FontAwesomeIcon icon={faHouse} />
+          </button>
+
+          <button
+            className={`icon-btn ${isActive('/campaigns') ? 'active' : ''}`}
             aria-label="Campaigns"
             title="Campaigns"
-            onClick={() => navigate('/home')}
+            onClick={() => navigate('/campaigns')}
           >
             <FontAwesomeIcon icon={faLandmark} />
           </button>

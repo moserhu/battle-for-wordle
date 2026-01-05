@@ -37,6 +37,10 @@ export default function Campaigns() {
 
       const data = await res.json();
       if (res.ok && Array.isArray(data)) {
+        if (data.length === 1 && data[0]?.campaign_id) {
+          navigate(`/campaign/${data[0].campaign_id}`);
+          return;
+        }
         setCampaigns(data);
       } else {
         setCampaigns([]);
@@ -46,7 +50,7 @@ export default function Campaigns() {
     if (!loading && token) {
       fetchCampaigns();
     }
-  }, [user, token, loading]);
+  }, [user, token, loading, navigate]);
 
   if (loading) return null;
 

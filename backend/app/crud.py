@@ -58,7 +58,10 @@ def login_user(email, password):
             if isinstance(stored_pw, memoryview):
                 stored_pw = stored_pw.tobytes()
             elif isinstance(stored_pw, str):
-                stored_pw = stored_pw.encode('utf-8')
+                if stored_pw.startswith("\\x"):
+                    stored_pw = bytes.fromhex(stored_pw[2:])
+                else:
+                    stored_pw = stored_pw.encode('utf-8')
 
             if bcrypt.checkpw(password.encode('utf-8'), stored_pw):
                 return {"user_id": user[0], "first_name": user[1]}
@@ -607,14 +610,14 @@ def get_campaign_day(campaign_id: int):
 def get_campaign_progress(campaign_id: int):
     with get_db() as conn:
         row = conn.execute(
-            "SELECT name, start_date, invite_code, cycle_length FROM campaigns WHERE id = %s",
+            "SELECT name, start_date, invite_code, cycle_length, king FROM campaigns WHERE id = %s",
             (campaign_id,)
         ).fetchone()
 
     if not row:
         raise HTTPException(status_code=404, detail="Campaign not found")
 
-    name, start_date_str, invite_code, cycle_length = row
+    name, start_date_str, invite_code, cycle_length, king = row
     start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
     today = datetime.now(ZoneInfo("America/Chicago")).date()
     delta = (today - start_date).days
@@ -623,7 +626,8 @@ def get_campaign_progress(campaign_id: int):
         "name": name,
         "day": min(delta + 1, cycle_length),
         "total": cycle_length,
-        "invite_code": invite_code
+        "invite_code": invite_code,
+        "king": king
     }
 
 def get_leaderboard(campaign_id: int):
@@ -743,6 +747,13 @@ def handle_campaign_end(campaign_id: int):
             ended_on = min(today, final_day)
 
             player_name = f"{first_name} {last_name}".strip()
+
+            # Persist reigning king for the next cycle.
+            conn.execute("""
+                UPDATE campaigns
+                SET king = %s
+                WHERE id = %s
+            """, (first_name, campaign_id))
 
             # 1a. Record global high score entry
             conn.execute("""
@@ -892,12 +903,22 @@ def get_campaign_members(campaign_id: int, requester_id: int):
         return [{"user_id": r[0], "name": r[1]} for r in rows]
 
 def get_self_member(campaign_id: int, user_id: int):
+    today = datetime.now(ZoneInfo("America/Chicago")).strftime("%Y-%m-%d")
     with get_db() as conn:
         row = conn.execute("""
-            SELECT display_name, color, double_down_activated, double_down_used_week, double_down_date
-            FROM campaign_members
-            WHERE campaign_id = %s AND user_id = %s
-        """, (campaign_id, user_id)).fetchone()
+            SELECT cm.display_name,
+                   cm.color,
+                   cm.double_down_activated,
+                   cm.double_down_used_week,
+                   cm.double_down_date,
+                   COALESCE(dp.completed, 0) as daily_completed
+            FROM campaign_members cm
+            LEFT JOIN campaign_daily_progress dp
+              ON dp.user_id = cm.user_id
+             AND dp.campaign_id = cm.campaign_id
+             AND dp.date = %s
+            WHERE cm.campaign_id = %s AND cm.user_id = %s
+        """, (today, campaign_id, user_id)).fetchone()
 
         if not row:
             raise HTTPException(status_code=404, detail="Membership not found")
@@ -907,7 +928,8 @@ def get_self_member(campaign_id: int, user_id: int):
             "color": row[1],
             "double_down_activated": row[2],
             "double_down_used_week": row[3],
-            "double_down_date": row[4]
+            "double_down_date": row[4],
+            "daily_completed": row[5]
         }
 
 def update_campaign_member(campaign_id: int, user_id: int, display_name: str, color: str):

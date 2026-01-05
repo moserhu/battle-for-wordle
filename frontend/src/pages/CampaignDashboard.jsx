@@ -100,15 +100,6 @@ export default function CampaignDashboard() {
         setCampaignMeta(prog || null);
         setIsFinalDay(prog?.day >= prog?.total);
 
-        // finished today?
-        const endRes = await fetch(`${API_BASE}/api/campaign/finished_today`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ campaign_id: Number(cid) })
-        });
-        const ended = await endRes.json();
-        setCampaignEnded(Boolean(ended?.ended));
-
         // self member (double down, etc.)
         const selfRes = await fetch(`${API_BASE}/api/campaign/self_member`, {
           method: 'POST',
@@ -118,6 +109,7 @@ export default function CampaignDashboard() {
         const self = await selfRes.json();
         setDoubleDownActivated(self?.double_down_activated === 1 || self?.double_down_activated === true);
         setDoubleDownUsed(self?.double_down_used_week === 1 || self?.double_down_used_week === true);
+        setCampaignEnded(self?.daily_completed === 1 || self?.daily_completed === true);
 
         // streak (best-effort; ignore if missing)
         try {
@@ -186,17 +178,6 @@ export default function CampaignDashboard() {
 
   return (
     <div className="dash-wrapper">
-      {/* Back button above banner */}
-      <div className="dash-back-row">
-        <button
-          className="btn back-btn"
-          onClick={() => navigate('/campaigns')}
-          aria-label="Go back"
-        >
-          ← Back
-        </button>
-      </div>
-
       {/* TOP: Banner with title + actions */}
       <header className="dash-header">
         <div className="dash-header-inner">
@@ -237,6 +218,15 @@ export default function CampaignDashboard() {
           coins={coins}
         />
       </div>
+
+      <section className="dash-king-banner" aria-live="polite">
+        <div className="dash-king-crown">👑</div>
+        <div className="dash-king-text">
+          <div className="dash-king-title">Reigning King</div>
+          <div className="dash-king-name">{campaignMeta?.king || 'Uncrowned'}</div>
+        </div>
+        <div className="dash-king-glow" aria-hidden="true" />
+      </section>
 
       <section className="dash-surface">
         <div className="dash-surface-header">

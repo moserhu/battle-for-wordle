@@ -8,4 +8,5 @@ def init_db():
     # We assume schema is already migrated; just validate connectivity.
     with psycopg.connect(db_url) as conn:
         conn.execute("SELECT 1")
+        conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS king TEXT")
     print("✅ Database connection verified!")

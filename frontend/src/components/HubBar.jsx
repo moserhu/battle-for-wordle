@@ -82,7 +82,7 @@ export default function HubBar({
         </div>
         {campaignEnded && (
           <div className="stat-subtle">
-            Campaign ended — reset at midnight
+            Completed for today — reset at midnight
           </div>
         )}
       </div>

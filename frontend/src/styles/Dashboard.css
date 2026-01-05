@@ -26,22 +26,6 @@
   z-index: -1;
 }
 
-/* Back button row above the banner */
-.dash-back-row {
-  width: 100%;
-  max-width: 1100px;
-  display: flex;
-  justify-content: flex-start;
-  margin-bottom: 6px;
-}
-
-/* Smaller themed back button */
-.back-btn {
-  padding: 4px 10px;
-  font-size: 0.9rem;
-}
-
-
 /* Header Banner */
 .dash-header {
   width: 100%;
@@ -59,6 +43,77 @@
   box-shadow: var(--theme-shadow-card);
   margin-bottom: 16px;
   backdrop-filter: blur(6px);
+}
+
+/* Reigning King banner */
+.dash-king-banner {
+  width: 100%;
+  max-width: 1100px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  margin-bottom: 18px;
+  border-radius: 18px;
+  background:
+    radial-gradient(120% 160% at 10% 10%, #ffe48f, #d49b2c 55%),
+    radial-gradient(140% 140% at 90% 0%, #fff3d1, #b5771c 60%),
+    linear-gradient(135deg, #f3c15b, #8a5513);
+  border: 2px solid #f6d487;
+  box-shadow:
+    0 10px 30px rgba(15, 10, 6, 0.55),
+    inset 0 0 22px rgba(255, 232, 164, 0.35);
+  overflow: hidden;
+}
+
+.dash-king-crown {
+  width: 54px;
+  height: 54px;
+  display: grid;
+  place-items: center;
+  font-size: 1.8rem;
+  border-radius: 14px;
+  background: linear-gradient(145deg, rgba(255, 236, 170, 0.9), rgba(255, 198, 88, 0.7));
+  border: 1px solid rgba(255, 245, 210, 0.8);
+  box-shadow:
+    0 6px 18px rgba(255, 209, 88, 0.3),
+    inset 0 0 10px rgba(255, 255, 255, 0.6);
+}
+
+.dash-king-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dash-king-title {
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-size: 0.72rem;
+  color: #3a2207;
+}
+
+.dash-king-name {
+  font-family: var(--theme-font-accent);
+  font-size: 1.4rem;
+  color: #2b1602;
+  text-shadow:
+    0 2px 0 rgba(255, 250, 236, 0.6),
+    0 3px 12px rgba(42, 24, 6, 0.45);
+}
+
+.dash-king-glow {
+  position: absolute;
+  right: -40px;
+  top: -60px;
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 237, 170, 0.45), transparent 60%);
+  filter: blur(2px);
+  opacity: 0.8;
+  pointer-events: none;
 }
 
 .dash-header-inner {
@@ -338,6 +393,10 @@
     margin-bottom: 12px;
   }
 
+  .dash-king-banner {
+    padding: 14px 14px;
+  }
+
   .dash-surface-header {
     flex-direction: column;
     align-items: flex-start;
@@ -359,5 +418,19 @@
 
   .dash-panel {
     padding: 14px 16px;
+  }
+
+  .dash-king-banner {
+    gap: 10px;
+  }
+
+  .dash-king-crown {
+    width: 46px;
+    height: 46px;
+    font-size: 1.5rem;
+  }
+
+  .dash-king-name {
+    font-size: 1.15rem;
   }
 }

@@ -441,18 +441,28 @@ const submitGuess = async () => {
     <div className="game-wrapper">
       <div className="game-content">
         <div className="game-inner">
-          <button
-          className="back-btn"
-          onClick={() => {
-            if (campaignId) {
-              navigate(`/campaign/${campaignId}`); 
-            } else {
-              navigate('/campaigns');               
-            }
-          }}
-        >
-          🏕 Back to Basecamp
-        </button>
+          <div className="game-top-row">
+            <button
+              className="back-btn game-top-half"
+              onClick={() => {
+                if (campaignId) {
+                  navigate(`/campaign/${campaignId}`);
+                } else {
+                  navigate('/campaigns');
+                }
+              }}
+            >
+              🏕 Basecamp
+            </button>
+            <section className="game-king-banner game-top-half" aria-live="polite">
+              <div className="game-king-crown">👑</div>
+              <div className="game-king-text">
+                <div className="game-king-title">Reigning King</div>
+                <div className="game-king-name">{campaignDay?.king || 'Uncrowned'}</div>
+              </div>
+              <div className="game-king-glow" aria-hidden="true" />
+            </section>
+          </div>
     {gameOver && !showTroopModal && (
             <div className="share-button-container">
               <button
