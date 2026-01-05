@@ -353,6 +353,28 @@ def update_campaign_streak(conn, user_id: int, campaign_id: int, date_str: str):
             VALUES (%s, %s, %s, %s)
         """, (user_id, campaign_id, 1, date_str))
 
+def update_campaign_coins(conn, user_id: int, campaign_id: int, date_str: str, coins_to_add: int):
+    row = conn.execute("""
+        SELECT coins, last_awarded_date
+        FROM campaign_coins
+        WHERE user_id = %s AND campaign_id = %s
+    """, (user_id, campaign_id)).fetchone()
+
+    if row:
+        _, last_awarded_date = row
+        if last_awarded_date == date_str:
+            return
+        conn.execute("""
+            UPDATE campaign_coins
+            SET coins = coins + %s, last_awarded_date = %s
+            WHERE user_id = %s AND campaign_id = %s
+        """, (coins_to_add, date_str, user_id, campaign_id))
+    else:
+        conn.execute("""
+            INSERT INTO campaign_coins (user_id, campaign_id, coins, last_awarded_date)
+            VALUES (%s, %s, %s, %s)
+        """, (user_id, campaign_id, coins_to_add, date_str))
+
 
 def get_daily_word(campaign_id: int):
     today = datetime.now(ZoneInfo("America/Chicago")).date()
@@ -387,6 +409,14 @@ def validate_guess(word: str, user_id: int, campaign_id: int):
         3: 40,
         4: 30,
         5: 10
+    }
+    coins_by_row = {
+        0: 6,
+        1: 5,
+        2: 4,
+        3: 3,
+        4: 2,
+        5: 1
     }
 
     if word.lower() not in VALID_WORDS:
@@ -586,6 +616,11 @@ def validate_guess(word: str, user_id: int, campaign_id: int):
 
         if new_game_over:
             update_campaign_streak(conn, user_id, campaign_id, today)
+            if correct:
+                coins_to_add = coins_by_row.get(current_row, 1)
+            else:
+                coins_to_add = 2
+            update_campaign_coins(conn, user_id, campaign_id, today, coins_to_add)
 
         return {
             "result": result,
@@ -671,6 +706,16 @@ def get_campaign_streak(user_id: int, campaign_id: int):
         """, (user_id, campaign_id)).fetchone()
 
     return {"streak": row[0] if row else 0}
+
+def get_campaign_coins(user_id: int, campaign_id: int):
+    with get_db() as conn:
+        row = conn.execute("""
+            SELECT coins
+            FROM campaign_coins
+            WHERE user_id = %s AND campaign_id = %s
+        """, (user_id, campaign_id)).fetchone()
+
+    return {"coins": row[0] if row else 0}
 
 def get_leaderboard(campaign_id: int):
     today = datetime.now(ZoneInfo("America/Chicago")).strftime("%Y-%m-%d")
@@ -854,6 +899,27 @@ def handle_campaign_end(campaign_id: int):
 
         return {"status": "campaign reset", "new_start_date": today_str}
 
+def update_campaign_ruler(campaign_id: int):
+    with get_db() as conn:
+        row = conn.execute("""
+            SELECT u.first_name
+            FROM campaign_members cm
+            JOIN users u ON u.id = cm.user_id
+            WHERE cm.campaign_id = %s
+            ORDER BY cm.score DESC
+            LIMIT 1
+        """, (campaign_id,)).fetchone()
+
+        if not row:
+            return {"status": "no members"}
+
+        conn.execute("""
+            UPDATE campaigns
+            SET king = %s
+            WHERE id = %s
+        """, (row[0], campaign_id))
+
+    return {"status": "ruler updated"}
 
 
 def has_campaign_finished_for_day(campaign_id: int):

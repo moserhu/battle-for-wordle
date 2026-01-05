@@ -43,6 +43,36 @@
   box-shadow: var(--theme-shadow-card);
 }
 
+.double-down-card,
+.coins-card {
+  position: relative;
+}
+
+.dd-info-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid var(--theme-border-muted);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(233, 243, 255, 0.7);
+  font-family: var(--theme-font-accent);
+  font-size: 0.8rem;
+  line-height: 1;
+  text-transform: none;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: opacity 0.2s ease, border-color 0.2s ease;
+}
+
+.dd-info-btn:hover {
+  opacity: 0.9;
+  border-color: var(--theme-border-strong);
+}
+
 .stat-title {
   color: var(--theme-text-accent);
   font-size: 0.95rem;
@@ -195,5 +225,14 @@
   .stat-pill {
     padding: 4px 6px;
     font-size: 0.75rem;
+  }
+
+  .dd-info-btn {
+    width: 20px;
+    height: 20px;
+    font-size: 0.7rem;
+    top: auto;
+    bottom: 6px;
+    right: 6px;
   }
 }

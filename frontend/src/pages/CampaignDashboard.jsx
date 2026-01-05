@@ -124,10 +124,12 @@ export default function CampaignDashboard() {
           }
         } catch {}
 
-        // coins/currency (placeholder endpoint)
+        // coins/currency (campaign-specific)
         try {
-          const cc = await fetch(`${API_BASE}/api/user/currency`, {
-            headers: { 'Authorization': `Bearer ${token}` }
+          const cc = await fetch(`${API_BASE}/api/campaign/coins`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ campaign_id: Number(cid) })
           });
           if (cc.ok) {
             const cj = await cc.json();
@@ -222,7 +224,7 @@ export default function CampaignDashboard() {
       <section className="dash-king-banner" aria-live="polite">
         <div className="dash-king-crown">👑</div>
         <div className="dash-king-text">
-          <div className="dash-king-title">Reigning King</div>
+          <div className="dash-king-title">Current Ruler</div>
           <div className="dash-king-name">{campaignMeta?.king || 'Uncrowned'}</div>
         </div>
         <div className="dash-king-glow" aria-hidden="true" />

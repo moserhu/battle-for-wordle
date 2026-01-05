@@ -19,4 +19,13 @@ def init_db():
                 PRIMARY KEY (user_id, campaign_id)
             )
         """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS campaign_coins (
+                user_id INTEGER NOT NULL,
+                campaign_id INTEGER NOT NULL,
+                coins INTEGER NOT NULL DEFAULT 0,
+                last_awarded_date TEXT,
+                PRIMARY KEY (user_id, campaign_id)
+            )
+        """)
     print("✅ Database connection verified!")

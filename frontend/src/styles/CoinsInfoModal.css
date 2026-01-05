@@ -1,0 +1,40 @@
+.coins-table {
+  width: 100%;
+  margin-top: 1rem;
+  border-collapse: collapse;
+  font-family: var(--theme-font-accent);
+  color: var(--theme-text-primary);
+}
+
+.coins-table th,
+.coins-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--theme-border-muted);
+  text-align: left;
+}
+
+.coins-table th {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.75rem;
+  color: var(--theme-text-accent);
+}
+
+.coins-table td:last-child,
+.coins-table th:last-child {
+  text-align: right;
+}
+
+.dd-modal .coins-failure-note {
+  margin-top: 12px;
+  color: #ffe8e8;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  background: linear-gradient(135deg, rgba(60, 5, 5, 0.9), rgba(120, 15, 15, 0.7));
+  border: 1px solid rgba(255, 140, 140, 0.35);
+  padding: 8px 10px;
+  border-radius: 10px;
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.7),
+    0 0 12px rgba(180, 30, 30, 0.35);
+}

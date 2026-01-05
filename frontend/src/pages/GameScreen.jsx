@@ -273,15 +273,20 @@ export default function GameScreen() {
       .join("\n");
   
       const nameLine = campaignDay?.name
-      ? `🏰 B4W: ${campaignDay.name} — https://battleforwordle.com`
-      : `🏰 Battle for Wordle — https://battleforwordle.com`;    
+      ? `🏰 B4W: ${campaignDay.name}`
+      : `🏰 Battle for Wordle`;    
       
     const solvedRow = results.findIndex(r => r?.every(cell => cell === "correct"));
     const didSolve = solvedRow !== -1;
   
+    const didDoubleDown = doubleDownStatus.activated;
     const resultLine = didSolve
-      ? `⚔️ Solved in ${solvedRow + 1}/6`
-      : `❌ Failed - Disappointment to their King`;
+      ? (didDoubleDown
+          ? `⚔️ Double Down Victory`
+          : `⚔️ Solved in ${solvedRow + 1}/6`)
+      : (didDoubleDown
+          ? `💀 Double Down Defeat`
+          : `❌ Failed - Disappointment to their Ruler`);
     
     return `${nameLine}\n${resultLine}\n\n${board}`;
   }
@@ -457,7 +462,7 @@ const submitGuess = async () => {
             <section className="game-king-banner game-top-half" aria-live="polite">
               <div className="game-king-crown">👑</div>
               <div className="game-king-text">
-                <div className="game-king-title">Reigning King</div>
+                <div className="game-king-title">Current Ruler</div>
                 <div className="game-king-name">{campaignDay?.king || 'Uncrowned'}</div>
               </div>
               <div className="game-king-glow" aria-hidden="true" />

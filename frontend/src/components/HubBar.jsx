@@ -1,6 +1,8 @@
 // frontend/src/components/HubBar.jsx
-import React from 'react';
+import React, { useState } from 'react';
 import '../styles/HubBar.css';
+import DoubleDownModal from './DoubleDownModal';
+import CoinsInfoModal from './CoinsInfoModal';
 
 export default function HubBar({
   campaignDay,
@@ -14,6 +16,9 @@ export default function HubBar({
   doubleDownUsed,
   doubleDownActivated,
 }) {
+  const [showDoubleDownInfo, setShowDoubleDownInfo] = useState(false);
+  const [showCoinsInfo, setShowCoinsInfo] = useState(false);
+
   return (
     <section className="hub-bar">
       {/* Status Effects */}
@@ -30,10 +35,17 @@ export default function HubBar({
       </div>
 
       {/* Coins */}
-      <div className="stat-card">
+      <div className="stat-card coins-card">
         <div className="stat-title">💰 Coins</div>
         <div className="stat-value">{coins ?? 0}</div>
-        <div className="stat-subtle">Economy coming soon</div>
+        <button
+          className="dd-info-btn"
+          type="button"
+          aria-label="Coins info"
+          onClick={() => setShowCoinsInfo(true)}
+        >
+          i
+        </button>
       </div>
 
       {/* Completion */}
@@ -53,7 +65,7 @@ export default function HubBar({
       </div>
 
       {/* Double Down */}
-      <div className="stat-card">
+      <div className="stat-card double-down-card">
         <div className="stat-title">⚔️ Double Down</div>
         {doubleDownUsed ? (
           <div className="stat-pill used">Used</div>
@@ -62,6 +74,14 @@ export default function HubBar({
         ) : (
           <div className="stat-pill available">Available</div>
         )}
+        <button
+          className="dd-info-btn"
+          type="button"
+          aria-label="Double Down info"
+          onClick={() => setShowDoubleDownInfo(true)}
+        >
+          i
+        </button>
       </div>
 
       {/* Timer */}
@@ -86,6 +106,17 @@ export default function HubBar({
           </div>
         )}
       </div>
+
+      <DoubleDownModal
+        visible={showDoubleDownInfo}
+        onAccept={() => {}}
+        onDecline={() => setShowDoubleDownInfo(false)}
+        showActions={false}
+      />
+      <CoinsInfoModal
+        visible={showCoinsInfo}
+        onClose={() => setShowCoinsInfo(false)}
+      />
     </section>
   );
 }

@@ -1,0 +1,48 @@
+// frontend/src/components/CoinsInfoModal.jsx
+import React from "react";
+import { createPortal } from "react-dom";
+import "../styles/DoubleDownModal.css";
+import "../styles/CoinsInfoModal.css";
+
+export default function CoinsInfoModal({ visible, onClose }) {
+  if (!visible) return null;
+
+  const handleBackdropClick = (event) => {
+    if (event.target === event.currentTarget && onClose) {
+      onClose();
+    }
+  };
+
+  const modal = (
+    <div className="dd-modal-backdrop" onClick={handleBackdropClick}>
+      <div className="dd-modal">
+        <h2>Coins</h2>
+        <p>
+          Coins are used in the Store to purchase items, buffs, and debuffs.
+          Earn coins by completing the daily word.
+        </p>
+        <table className="coins-table">
+          <thead>
+            <tr>
+              <th>Result</th>
+              <th>Coins</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>1st guess</td><td>6</td></tr>
+            <tr><td>2nd guess</td><td>5</td></tr>
+            <tr><td>3rd guess</td><td>4</td></tr>
+            <tr><td>4th guess</td><td>3</td></tr>
+            <tr><td>5th guess</td><td>2</td></tr>
+            <tr><td>6th guess</td><td>1</td></tr>
+          </tbody>
+        </table>
+        <p className="coins-failure-note">
+          Being a failure grants you 2 pity coins, you scab.
+        </p>
+      </div>
+    </div>
+  );
+
+  return createPortal(modal, document.body);
+}
