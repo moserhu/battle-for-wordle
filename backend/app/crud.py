@@ -339,9 +339,15 @@ def update_campaign_streak(conn, user_id: int, campaign_id: int, date_str: str):
             last_date = datetime.strptime(last_completed_date, "%Y-%m-%d").date()
             today_date = datetime.strptime(date_str, "%Y-%m-%d").date()
             yesterday = today_date - timedelta(days=1)
-            new_streak = streak + 1 if last_date == yesterday else 1
+            if last_date == yesterday:
+                new_streak = streak + 1
+                recovery_days = None
+            else:
+                new_streak = 1
+                recovery_days = (today_date - last_date).days - 1
         else:
             new_streak = 1
+            recovery_days = None
         conn.execute("""
             UPDATE campaign_streaks
             SET streak = %s, last_completed_date = %s
@@ -352,6 +358,30 @@ def update_campaign_streak(conn, user_id: int, campaign_id: int, date_str: str):
             INSERT INTO campaign_streaks (user_id, campaign_id, streak, last_completed_date)
             VALUES (%s, %s, %s, %s)
         """, (user_id, campaign_id, 1, date_str))
+        new_streak = 1
+        recovery_days = None
+
+    stats_row = conn.execute("""
+        SELECT current_streak, longest_streak
+        FROM user_campaign_stats
+        WHERE user_id = %s AND campaign_id = %s
+    """, (user_id, campaign_id)).fetchone()
+    if stats_row:
+        _, longest_streak = stats_row
+        updated_longest = max(longest_streak, new_streak)
+        conn.execute("""
+            UPDATE user_campaign_stats
+            SET current_streak = %s,
+                longest_streak = %s,
+                streak_recovery_days = %s
+            WHERE user_id = %s AND campaign_id = %s
+        """, (new_streak, updated_longest, recovery_days, user_id, campaign_id))
+    else:
+        conn.execute("""
+            INSERT INTO user_campaign_stats (
+                user_id, campaign_id, current_streak, longest_streak, streak_recovery_days
+            ) VALUES (%s, %s, %s, %s, %s)
+        """, (user_id, campaign_id, new_streak, new_streak, recovery_days))
 
 def update_campaign_coins(conn, user_id: int, campaign_id: int, date_str: str, coins_to_add: int):
     row = conn.execute("""
@@ -495,6 +525,13 @@ def validate_guess(word: str, user_id: int, campaign_id: int):
             current_row = 0
             game_over = False
 
+        if current_row == 0:
+            conn.execute("""
+                INSERT INTO campaign_first_guesses (user_id, campaign_id, date, word)
+                VALUES (%s, %s, %s, %s)
+                ON CONFLICT (user_id, campaign_id, date) DO NOTHING
+            """, (user_id, campaign_id, today, guess))
+
         if game_over or current_row >= 6:
             raise HTTPException(status_code=403, detail="You've already played today")
 
@@ -564,6 +601,13 @@ def validate_guess(word: str, user_id: int, campaign_id: int):
                     WHERE user_id = %s AND campaign_id = %s
                 """, (score_to_add, user_id, campaign_id))
 
+            conn.execute("""
+                INSERT INTO campaign_daily_troops (user_id, campaign_id, date, troops)
+                VALUES (%s, %s, %s, %s)
+                ON CONFLICT (user_id, campaign_id, date) DO UPDATE
+                SET troops = campaign_daily_troops.troops + EXCLUDED.troops
+            """, (user_id, campaign_id, today, score_to_add))
+
         elif new_game_over and is_double_down:
             conn.execute("""
                 UPDATE campaign_members
@@ -621,6 +665,143 @@ def validate_guess(word: str, user_id: int, campaign_id: int):
             else:
                 coins_to_add = 2
             update_campaign_coins(conn, user_id, campaign_id, today, coins_to_add)
+
+            guesses_used = (current_row + 1) if correct else max_rows
+            used_double_down = 1 if is_double_down else 0
+            double_down_success = 1 if (is_double_down and correct and current_row <= 2) else 0
+            base_troops = points_by_row.get(current_row, 0)
+            double_down_bonus = (score_to_add - base_troops) if double_down_success else 0
+            troops_earned = score_to_add if correct else 0
+
+            first_guess_row = conn.execute("""
+                SELECT word
+                FROM campaign_first_guesses
+                WHERE user_id = %s AND campaign_id = %s AND date = %s
+            """, (user_id, campaign_id, today)).fetchone()
+            first_guess_word = first_guess_row[0] if first_guess_row else None
+            completed_at = datetime.now(ZoneInfo("America/Chicago"))
+
+            conn.execute("""
+                INSERT INTO campaign_user_daily_results (
+                    user_id,
+                    campaign_id,
+                    date,
+                    word,
+                    guesses_used,
+                    solved,
+                    first_guess_word,
+                    used_double_down,
+                    double_down_success,
+                    double_down_bonus_troops,
+                    troops_earned,
+                coins_earned,
+                completed_at
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (user_id, campaign_id, date) DO NOTHING
+            """, (
+                user_id,
+                campaign_id,
+                today,
+                secret,
+                guesses_used,
+                int(correct),
+                first_guess_word,
+                used_double_down,
+                double_down_success,
+                double_down_bonus,
+                troops_earned,
+                coins_to_add,
+                completed_at
+            ))
+
+            conn.execute("""
+                INSERT INTO global_word_stats (
+                    word,
+                    attempts,
+                    solves,
+                    fails,
+                    first_seen,
+                    last_seen
+                ) VALUES (%s, 1, %s, %s, %s, %s)
+                ON CONFLICT (word) DO UPDATE
+                SET attempts = global_word_stats.attempts + 1,
+                    solves = global_word_stats.solves + EXCLUDED.solves,
+                    fails = global_word_stats.fails + EXCLUDED.fails,
+                    last_seen = EXCLUDED.last_seen
+            """, (
+                secret,
+                1 if correct else 0,
+                0 if correct else 1,
+                today,
+                today
+            ))
+
+            stats_row = conn.execute("""
+                SELECT total_solves, total_fails, total_guesses_on_solves,
+                       total_days_played, double_down_used, double_down_success,
+                       double_down_bonus_troops, coins_earned_total
+                FROM user_campaign_stats
+                WHERE user_id = %s AND campaign_id = %s
+            """, (user_id, campaign_id)).fetchone()
+
+            solves_add = 1 if correct else 0
+            fails_add = 0 if correct else 1
+            guesses_on_solves_add = guesses_used if correct else 0
+            dd_used_add = used_double_down
+            dd_success_add = double_down_success
+            dd_bonus_add = double_down_bonus
+
+            if stats_row:
+                total_solves, total_fails, total_guesses_on_solves, total_days_played, dd_used, dd_success, dd_bonus, coins_total = stats_row
+                conn.execute("""
+                    UPDATE user_campaign_stats
+                    SET total_solves = %s,
+                        total_fails = %s,
+                        total_guesses_on_solves = %s,
+                        total_days_played = %s,
+                        double_down_used = %s,
+                        double_down_success = %s,
+                        double_down_bonus_troops = %s,
+                        coins_earned_total = %s
+                    WHERE user_id = %s AND campaign_id = %s
+                """, (
+                    total_solves + solves_add,
+                    total_fails + fails_add,
+                    total_guesses_on_solves + guesses_on_solves_add,
+                    total_days_played + 1,
+                    dd_used + dd_used_add,
+                    dd_success + dd_success_add,
+                    dd_bonus + dd_bonus_add,
+                    coins_total + coins_to_add,
+                    user_id,
+                    campaign_id
+                ))
+            else:
+                conn.execute("""
+                    INSERT INTO user_campaign_stats (
+                        user_id,
+                        campaign_id,
+                        total_solves,
+                        total_fails,
+                        total_guesses_on_solves,
+                        total_days_played,
+                        double_down_used,
+                        double_down_success,
+                        double_down_bonus_troops,
+                        coins_earned_total
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, (
+                    user_id,
+                    campaign_id,
+                    solves_add,
+                    fails_add,
+                    guesses_on_solves_add,
+                    1,
+                    dd_used_add,
+                    dd_success_add,
+                    dd_bonus_add,
+                    coins_to_add
+                ))
 
         return {
             "result": result,
