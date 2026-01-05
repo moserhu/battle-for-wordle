@@ -1062,7 +1062,8 @@ def update_campaign_member(campaign_id: int, user_id: int, display_name: str, co
 
         return {"status": "updated", "display_name": display_name, "color": color}
     
-def get_global_leaderboard():
+def get_global_leaderboard(limit: int = 10):
+    limit = max(1, min(int(limit), 100))
     with get_db() as conn:
         # Ensure table exists (in case migration missed it)
         conn.execute("""
@@ -1117,8 +1118,8 @@ def get_global_leaderboard():
                 campaign_length
             FROM global_high_scores
             ORDER BY troops DESC, ended_on DESC
-            LIMIT 10
-        """).fetchall()
+            LIMIT %s
+        """, (limit,)).fetchall()
 
     # ✅ 3) Shape for the frontend
     return [

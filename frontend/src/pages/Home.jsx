@@ -65,7 +65,6 @@ export default function Home() {
           <div className="home-card home-leaderboard-card" id="home-leaderboard">
             <div className="home-section-header">
               <h2>Global Leaderboard</h2>
-              <span className="home-section-badge">Top 10</span>
             </div>
             <GlobalLeaderboard />
           </div>
@@ -80,11 +79,11 @@ export default function Home() {
               Welcome, {user?.first_name || 'Player'}! Check out all the latest updates below:
             </p>
             <ul className="home-news-list">
-              <li>Checkout layout 2.0</li>
-              <li>Economy system on the way</li>
-              <li>🛠️ Stores coming soon</li>
-              <li>Each campaign will have its own dedicated dashboard</li>
-              <li>Beware of the CLOWN</li>
+              <li>Current Ruler banners now crown each campaign</li>
+              <li>Campaign streaks track daily consistency and unlock shop perks</li>
+              <li>Coins economy is live with per-guess rewards and pity coins</li>
+              <li>Info modals explain Double Down, Coins, and Streaks</li>
+              <li>Global leaderboard now toggles Top 10, 50, and 100</li>
             </ul>
           </div>
         </aside>

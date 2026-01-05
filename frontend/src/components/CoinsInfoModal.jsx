@@ -16,6 +16,14 @@ export default function CoinsInfoModal({ visible, onClose }) {
   const modal = (
     <div className="dd-modal-backdrop" onClick={handleBackdropClick}>
       <div className="dd-modal">
+        <button
+          className="dd-modal-close"
+          type="button"
+          aria-label="Close"
+          onClick={onClose}
+        >
+          −
+        </button>
         <h2>Coins</h2>
         <p>
           Coins are used in the Store to purchase items, buffs, and debuffs.

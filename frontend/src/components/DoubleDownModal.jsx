@@ -15,6 +15,14 @@ export default function DoubleDownModal({ visible, onAccept, onDecline, showActi
   const modal = (
     <div className="dd-modal-backdrop" onClick={handleBackdropClick}>
       <div className="dd-modal">
+        <button
+          className="dd-modal-close"
+          type="button"
+          aria-label="Close"
+          onClick={onDecline}
+        >
+          −
+        </button>
         <h2>Double Down?</h2>
         <p>
           You can only use <strong>Double Down once per week</strong>.

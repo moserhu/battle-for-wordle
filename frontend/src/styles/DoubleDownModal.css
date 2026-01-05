@@ -24,6 +24,30 @@
     font-family: var(--theme-font);
     color: var(--theme-text-primary);
     box-shadow: var(--theme-shadow-strong);
+    position: relative;
+  }
+
+  .dd-modal-close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 1.2rem;
+    line-height: 1;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    transition: opacity 0.2s ease, border-color 0.2s ease;
+  }
+
+  .dd-modal-close:hover {
+    opacity: 0.9;
+    border-color: rgba(255, 255, 255, 0.6);
   }
   
   .dd-modal h2 {

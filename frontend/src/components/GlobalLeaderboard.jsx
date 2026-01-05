@@ -10,6 +10,7 @@ export default function GlobalLeaderboard() {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [limit, setLimit] = useState(10);
 
   useEffect(() => {
     if (authLoading) return;
@@ -21,7 +22,7 @@ export default function GlobalLeaderboard() {
 
     const fetchGlobalLeaderboard = async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/leaderboard/global`, {
+        const res = await fetch(`${API_BASE}/api/leaderboard/global?limit=${limit}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -48,7 +49,7 @@ export default function GlobalLeaderboard() {
     };
 
     fetchGlobalLeaderboard();
-  }, [token, authLoading]);
+  }, [token, authLoading, limit]);
 
   if (loading) {
     return <p className="glb-status">Loading leaderboard…</p>;
@@ -62,9 +63,33 @@ export default function GlobalLeaderboard() {
     return <p className="glb-status">No campaigns completed yet. Be the first to claim glory!</p>;
   }
 
+  const formatDate = (value) => {
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return value;
+    return parsed.toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  };
+
   return (
-    <ol className="global-leaderboard">
-      {entries.slice(0, 10).map((entry, index) => (
+    <>
+      <div className="glb-controls">
+        <span className="glb-label">Show</span>
+        {[10, 50, 100].map((value) => (
+          <button
+            key={value}
+            type="button"
+            className={`glb-toggle ${limit === value ? 'active' : ''}`}
+            onClick={() => setLimit(value)}
+          >
+            Top {value}
+          </button>
+        ))}
+      </div>
+      <ol className="global-leaderboard">
+        {entries.map((entry, index) => (
         <li key={`${entry.player_name}-${entry.ended_on}-${index}`} className="global-lb-row">
           <div className="glb-rank">
             {index === 0 ? '👑' : `#${index + 1}`}
@@ -72,19 +97,18 @@ export default function GlobalLeaderboard() {
           <div className="glb-main">
             <div className="glb-name">{entry.player_name}</div>
             <div className="glb-sub">
-              Best season: <span className="glb-campaign">{entry.campaign_name}</span>
-              {entry.ended_on && (
-                <>
-                  {' '}— <span className="glb-date">ended {entry.ended_on}</span>
-                </>
-              )}
+              <span className="glb-campaign">{entry.campaign_name}</span>
             </div>
+            {entry.ended_on && (
+              <div className="glb-sub glb-date">{formatDate(entry.ended_on)}</div>
+            )}
           </div>
           <div className="glb-score">
             {entry.best_troops} <span className="glb-score-label">troops</span>
           </div>
         </li>
-      ))}
-    </ol>
+        ))}
+      </ol>
+    </>
   );
 }

@@ -48,8 +48,8 @@ def get_leaderboard(data: CampaignOnly):
     return crud.get_leaderboard(data.campaign_id)
 
 @app.get("/api/leaderboard/global")
-def get_global_leaderboard(current_user: dict = Depends(get_current_user)):
-    return crud.get_global_leaderboard()
+def get_global_leaderboard(limit: int = 10, current_user: dict = Depends(get_current_user)):
+    return crud.get_global_leaderboard(limit)
 
 @app.post("/api/register")
 def register(user: models.UserRegister):

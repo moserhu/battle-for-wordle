@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import '../styles/HubBar.css';
 import DoubleDownModal from './DoubleDownModal';
 import CoinsInfoModal from './CoinsInfoModal';
+import StreakInfoModal from './StreakInfoModal';
 
 export default function HubBar({
   campaignDay,
@@ -18,6 +19,7 @@ export default function HubBar({
 }) {
   const [showDoubleDownInfo, setShowDoubleDownInfo] = useState(false);
   const [showCoinsInfo, setShowCoinsInfo] = useState(false);
+  const [showStreakInfo, setShowStreakInfo] = useState(false);
 
   return (
     <section className="hub-bar">
@@ -29,9 +31,17 @@ export default function HubBar({
       </div>
 
       {/* Streak */}
-      <div className="stat-card">
+      <div className="stat-card streak-card">
         <div className="stat-title">🔥 Streak</div>
         <div className="stat-value">{streak ?? 0} days</div>
+        <button
+          className="dd-info-btn"
+          type="button"
+          aria-label="Streak info"
+          onClick={() => setShowStreakInfo(true)}
+        >
+          i
+        </button>
       </div>
 
       {/* Coins */}
@@ -100,11 +110,6 @@ export default function HubBar({
             </>
           )}
         </div>
-        {campaignEnded && (
-          <div className="stat-subtle">
-            Completed for today — reset at midnight
-          </div>
-        )}
       </div>
 
       <DoubleDownModal
@@ -116,6 +121,10 @@ export default function HubBar({
       <CoinsInfoModal
         visible={showCoinsInfo}
         onClose={() => setShowCoinsInfo(false)}
+      />
+      <StreakInfoModal
+        visible={showStreakInfo}
+        onClose={() => setShowStreakInfo(false)}
       />
     </section>
   );
