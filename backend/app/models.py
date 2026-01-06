@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from typing import Optional
 
 class GuessRequest(BaseModel):
     word: str
@@ -6,6 +7,7 @@ class GuessRequest(BaseModel):
 class GuessWithMeta(BaseModel):
     word: str
     campaign_id: int
+    day: Optional[int] = None
 
 class UserLogin(BaseModel):
     email: str  
@@ -23,6 +25,7 @@ class CampaignIDOnly(BaseModel):
 
 class CampaignOnly(BaseModel):
     campaign_id: int
+    day: Optional[int] = None
 
 class CampaignRulerTitle(BaseModel):
     campaign_id: int

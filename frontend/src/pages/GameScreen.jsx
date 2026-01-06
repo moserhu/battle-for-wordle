@@ -57,6 +57,7 @@ export default function GameScreen() {
   const [gameOver, setGameOver] = useState(false);
   const [letterStatus, setLetterStatus] = useState({});
   const [campaignDay, setCampaignDay] = useState(null);
+  const [selectedDay, setSelectedDay] = useState(null);
   const [campaignEnded, setCampaignEnded] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
   const [showTroopModal, setShowTroopModal] = useState(false);
@@ -75,6 +76,7 @@ export default function GameScreen() {
   });
   const [rulerTitle, setRulerTitle] = useState('Current Ruler');
   const [showRulerModal, setShowRulerModal] = useState(false);
+  const [loadingDay, setLoadingDay] = useState(false);
   
   const triggerShake = useCallback(() => {
   setShake(true);
@@ -110,6 +112,7 @@ export default function GameScreen() {
     if (!campaignId || !user || loading) return;
 
     const resetAndFetch = async () => {
+      setLoadingDay(true);
       setGuesses(EMPTY_GRID);
       setResults(Array(6).fill(null));
       setCurrentRow(0);
@@ -119,29 +122,32 @@ export default function GameScreen() {
       setShowTroopModal(false);
       setTroopsEarned(0);
 
-      const [dayRes, stateRes] = await Promise.all([
-        fetch(`${API_BASE}/api/campaign/progress`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ campaign_id: campaignId }),
-        }),
-        fetch(`${API_BASE}/api/game/state`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ campaign_id: campaignId }),
-        }),              
-      ]);
+      const dayRes = await fetch(`${API_BASE}/api/campaign/progress`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ campaign_id: campaignId }),
+      });
 
       const campaignDay = await dayRes.json();
-      const progress = await stateRes.json();
       setCampaignDay(campaignDay);
       setRulerTitle(campaignDay?.ruler_title || 'Current Ruler');
+      const dayToLoad = selectedDay ?? campaignDay?.day;
+      if (selectedDay === null && dayToLoad) {
+        setSelectedDay(dayToLoad);
+      }
+
+      const stateRes = await fetch(`${API_BASE}/api/game/state`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ campaign_id: campaignId, day: dayToLoad }),
+      });
+      const progress = await stateRes.json();
       const memberRes = await fetch(`${API_BASE}/api/campaign/self_member`, {
         method: "POST",
         headers: {
@@ -194,12 +200,21 @@ export default function GameScreen() {
     const nextCol = guessRow.findIndex((l) => l === "");
     setCurrentCol(nextCol === -1 ? 5 : nextCol);
 
+      setLoadingDay(false);
     };
 
     resetAndFetch();
-  }, [campaignId, user, loading, token]);
+  }, [campaignId, user, loading, token, selectedDay]);
+
+  useEffect(() => {
+    if (campaignDay?.day && selectedDay === null) {
+      setSelectedDay(campaignDay.day);
+    }
+  }, [campaignDay, selectedDay]);
 
   const isRuler = campaignDay?.ruler_id && user?.user_id === campaignDay.ruler_id;
+  const canGoBack = selectedDay && selectedDay > 1;
+  const canGoForward = selectedDay && campaignDay?.day && selectedDay < campaignDay.day;
 
   const handleEditRulerTitle = () => {
     setShowRulerModal(true);
@@ -351,7 +366,7 @@ const submitGuess = async () => {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ word: guess, campaign_id }),
+      body: JSON.stringify({ word: guess, campaign_id, day: selectedDay }),
     });
 
     if (res.status === 204) {
@@ -411,7 +426,7 @@ const submitGuess = async () => {
       setTroopsEarned(awardedTroops);
       setShowTroopModal(true);
 
-      if (isFinalCampaignDay(campaignDay)) {
+      if (isFinalCampaignDay(campaignDay) && selectedDay === campaignDay?.day) {
         await checkIfCampaignShouldEnd();
       }
       return;
@@ -440,7 +455,7 @@ const submitGuess = async () => {
 };
   
   const handleKeyPress = (key) => {
-    if (gameOver || campaignEnded) return;
+    if (gameOver || campaignEnded || loadingDay) return;
   
     // Clear error on any input
     if (errorMsg) setErrorMsg(null);
@@ -484,7 +499,7 @@ const submitGuess = async () => {
             >
               🏕 Basecamp
             </button>
-        <section className="game-king-banner game-top-half" aria-live="polite">
+            <section className="game-king-banner game-top-half" aria-live="polite">
           <div className="game-king-text">
             <div className="game-king-title">{rulerTitle}</div>
             <div className="game-king-name">{campaignDay?.king || 'Uncrowned'}</div>
@@ -500,7 +515,7 @@ const submitGuess = async () => {
               ✎
             </button>
           )}
-        </section>
+            </section>
         <RulerTitleModal
           visible={showRulerModal}
           initialTitle={rulerTitle}
@@ -508,39 +523,70 @@ const submitGuess = async () => {
           onClose={() => setShowRulerModal(false)}
         />
           </div>
-    {gameOver && !showTroopModal && (
-            <div className="share-button-container">
-              <button
-                className="share-btn"
-                onClick={() => {
-                  const shareText = generateBattleShareText(guesses, results, campaignDay);
-                  if (navigator.share) {
-                    navigator.share({ text: shareText }).catch((err) => {
-                      if (err.name !== "AbortError") {
-                        console.error("Share failed:", err);
-                      }
-                    });
-                  } else {
-                    navigator.clipboard.writeText(shareText);
-                    alert("📋 Copied result to clipboard!");
-                  }
-                }}
-              >
-                📤 Share Your Result
-              </button>
+          <div className="game-day-carousel">
+            <button
+              className="day-arrow"
+              type="button"
+              onClick={() => canGoBack && setSelectedDay(selectedDay - 1)}
+              disabled={!canGoBack}
+              aria-label="Previous day"
+            >
+              ‹
+            </button>
+            <div className="day-label">
+              Day {selectedDay || campaignDay?.day || 1} of {campaignDay?.total || '?'}
             </div>
-          )}
-          {/* Re-inserted core game components */}
-          <div className={`grid-outer ${shake ? 'shake' : ''}`}>
-            <WordGrid
-              guesses={guesses}
-              results={results}
-              currentRow={currentRow}
-              currentCol={currentCol}
-              maxVisibleRows={doubleDownStatus.activated ? 3 : 6}
-            />
+            <button
+              className="day-arrow"
+              type="button"
+              onClick={() => canGoForward && setSelectedDay(selectedDay + 1)}
+              disabled={!canGoForward}
+              aria-label="Next day"
+            >
+              ›
+            </button>
           </div>
-          <Keyboard letterStatus={letterStatus} onKeyPress={handleKeyPress} />
+          <div className="game-play-area">
+            {loadingDay && (
+              <div className="day-loading">
+                <div className="day-loading-spinner" />
+                <div className="day-loading-text">Loading day…</div>
+              </div>
+            )}
+            {gameOver && !showTroopModal && (
+              <div className="share-button-container">
+                <button
+                  className="share-btn"
+                  onClick={() => {
+                    const shareText = generateBattleShareText(guesses, results, campaignDay);
+                    if (navigator.share) {
+                      navigator.share({ text: shareText }).catch((err) => {
+                        if (err.name !== "AbortError") {
+                          console.error("Share failed:", err);
+                        }
+                      });
+                    } else {
+                      navigator.clipboard.writeText(shareText);
+                      alert("📋 Copied result to clipboard!");
+                    }
+                  }}
+                >
+                  📤 Share Your Result
+                </button>
+              </div>
+            )}
+            {/* Re-inserted core game components */}
+            <div className={`grid-outer ${shake ? 'shake' : ''}`}>
+              <WordGrid
+                guesses={guesses}
+                results={results}
+                currentRow={currentRow}
+                currentCol={currentCol}
+                maxVisibleRows={doubleDownStatus.activated ? 3 : 6}
+              />
+            </div>
+            <Keyboard letterStatus={letterStatus} onKeyPress={handleKeyPress} />
+          </div>
   
          
         </div>

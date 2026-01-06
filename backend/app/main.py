@@ -37,11 +37,11 @@ async def startup_event():
 
 @app.post("/api/word/reveal")
 def reveal_word(data: models.CampaignOnly):
-    return {"word": crud.get_daily_word(data.campaign_id)}
+    return {"word": crud.get_daily_word(data.campaign_id, data.day)}
 
 @app.post("/api/guess")
 def guess_with_meta(data: models.GuessWithMeta, current_user: dict = Depends(get_current_user)):
-    return crud.validate_guess(data.word, current_user["user_id"], data.campaign_id)
+    return crud.validate_guess(data.word, current_user["user_id"], data.campaign_id, data.day)
 
 @app.post("/api/leaderboard")
 def get_leaderboard(data: CampaignOnly):
@@ -89,7 +89,7 @@ def end_campaign(data: CampaignOnly):
 
 @app.post("/api/game/state")
 def fetch_game_state(data: models.CampaignOnly, current_user: dict = Depends(get_current_user)):
-    return crud.get_saved_progress(current_user["user_id"], data.campaign_id)
+    return crud.get_saved_progress(current_user["user_id"], data.campaign_id, data.day)
 
 @app.get("/api/user/info")
 def get_user_info(current_user: dict = Depends(get_current_user)):

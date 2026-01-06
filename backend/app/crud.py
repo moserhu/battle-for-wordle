@@ -396,9 +396,10 @@ def update_campaign_coins(conn, user_id: int, campaign_id: int, date_str: str, c
             return
         conn.execute("""
             UPDATE campaign_coins
-            SET coins = coins + %s, last_awarded_date = %s
+            SET coins = coins + %s,
+                last_awarded_date = GREATEST(COALESCE(last_awarded_date, %s), %s)
             WHERE user_id = %s AND campaign_id = %s
-        """, (coins_to_add, date_str, user_id, campaign_id))
+        """, (coins_to_add, date_str, date_str, user_id, campaign_id))
     else:
         conn.execute("""
             INSERT INTO campaign_coins (user_id, campaign_id, coins, last_awarded_date)
@@ -406,24 +407,12 @@ def update_campaign_coins(conn, user_id: int, campaign_id: int, date_str: str, c
         """, (user_id, campaign_id, coins_to_add, date_str))
 
 
-def get_daily_word(campaign_id: int):
-    today = datetime.now(ZoneInfo("America/Chicago")).date()
-
+def get_daily_word(campaign_id: int, day_override: int | None = None):
     with get_db() as conn:
-        row = conn.execute(
-            "SELECT start_date FROM campaigns WHERE id = %s",
-            (campaign_id,)
-        ).fetchone()
-        if not row:
-            raise HTTPException(status_code=404, detail="Campaign not found")
-
-        start_date = datetime.strptime(row[0], "%Y-%m-%d").date()
-        delta_days = (today - start_date).days
-        day = delta_days + 1  # Day 1-based
-
+        _, _, _, target_day, _ = resolve_campaign_day(conn, campaign_id, day_override)
         word_row = conn.execute(
             "SELECT word FROM campaign_words WHERE campaign_id = %s AND day = %s",
-            (campaign_id, day)
+            (campaign_id, target_day)
         ).fetchone()
 
     if not word_row:
@@ -431,7 +420,33 @@ def get_daily_word(campaign_id: int):
 
     return word_row[0]
 
-def validate_guess(word: str, user_id: int, campaign_id: int):
+def resolve_campaign_day(conn, campaign_id: int, day_override: int | None):
+    row = conn.execute("""
+        SELECT start_date, cycle_length
+        FROM campaigns
+        WHERE id = %s
+    """, (campaign_id,)).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    start_date = datetime.strptime(row[0], "%Y-%m-%d").date()
+    cycle_length = row[1]
+    today = datetime.now(ZoneInfo("America/Chicago")).date()
+    current_day = min((today - start_date).days + 1, cycle_length)
+
+    if day_override is None:
+        target_day = current_day
+    else:
+        if day_override < 1 or day_override > cycle_length:
+            raise HTTPException(status_code=400, detail="Invalid campaign day")
+        if day_override > current_day:
+            raise HTTPException(status_code=403, detail="Future days are locked")
+        target_day = day_override
+
+    target_date = start_date + timedelta(days=target_day - 1)
+    return start_date, cycle_length, current_day, target_day, target_date
+
+def validate_guess(word: str, user_id: int, campaign_id: int, day_override: int | None = None):
     points_by_row = {
         0: 150,
         1: 100,
@@ -452,27 +467,47 @@ def validate_guess(word: str, user_id: int, campaign_id: int):
     if word.lower() not in VALID_WORDS:
         raise HTTPException(status_code=204, detail="Invalid word")
 
-    secret = get_daily_word(campaign_id)
-    guess = word.lower()
-    result = ['absent'] * 5
-    secret_counts = Counter(secret)
-
-    for i in range(5):
-        if guess[i] == secret[i]:
-            result[i] = 'correct'
-            secret_counts[guess[i]] -= 1
-
-    for i in range(5):
-        if result[i] == 'correct':
-            continue
-        if guess[i] in secret_counts and secret_counts[guess[i]] > 0:
-            result[i] = 'present'
-            secret_counts[guess[i]] -= 1
-
-    correct = all(r == 'correct' for r in result)
-    today = datetime.now(ZoneInfo("America/Chicago")).strftime("%Y-%m-%d")
-
     with get_db() as conn:
+        _, cycle_length, current_day, target_day, target_date = resolve_campaign_day(
+            conn, campaign_id, day_override
+        )
+
+        if target_day < current_day:
+            completed_row = conn.execute("""
+                SELECT completed
+                FROM campaign_daily_progress
+                WHERE user_id = %s AND campaign_id = %s AND date = %s
+            """, (user_id, campaign_id, target_date.strftime("%Y-%m-%d"))).fetchone()
+            if completed_row and completed_row[0]:
+                raise HTTPException(status_code=403, detail="That day is already completed")
+
+        secret_row = conn.execute(
+            "SELECT word FROM campaign_words WHERE campaign_id = %s AND day = %s",
+            (campaign_id, target_day)
+        ).fetchone()
+        if not secret_row:
+            raise HTTPException(status_code=404, detail="No word assigned for that day")
+        secret = secret_row[0]
+
+        guess = word.lower()
+        result = ['absent'] * 5
+        secret_counts = Counter(secret)
+
+        for i in range(5):
+            if guess[i] == secret[i]:
+                result[i] = 'correct'
+                secret_counts[guess[i]] -= 1
+
+        for i in range(5):
+            if result[i] == 'correct':
+                continue
+            if guess[i] in secret_counts and secret_counts[guess[i]] > 0:
+                result[i] = 'present'
+                secret_counts[guess[i]] -= 1
+
+        correct = all(r == 'correct' for r in result)
+        target_date_str = target_date.strftime("%Y-%m-%d")
+
         conn.execute("BEGIN")
 
         # NEW: if this exact word was already guessed today, bail out without mutating state
@@ -480,29 +515,21 @@ def validate_guess(word: str, user_id: int, campaign_id: int):
             SELECT 1
             FROM campaign_guesses
             WHERE user_id = %s AND campaign_id = %s AND date = %s AND word = %s
-        """, (user_id, campaign_id, today, guess)).fetchone()
+        """, (user_id, campaign_id, target_date_str, guess)).fetchone()
         if dup:
             return {
-                "result": result,      
+                "result": result,
                 "correct": correct,
                 "word": secret,
                 "duplicate": True
             }
-        
-        # Check if it's past 8 PM on final day
-        campaign_row = conn.execute("SELECT start_date, cycle_length FROM campaigns WHERE id = %s", (campaign_id,)).fetchone()
-        if not campaign_row:
-            raise HTTPException(status_code=404, detail="Campaign not found")
 
-        start_date = datetime.strptime(campaign_row[0], "%Y-%m-%d").date()
-        cycle_length = campaign_row[1]
-        today_date = datetime.now(ZoneInfo("America/Chicago")).date()
-        delta_days = (today_date - start_date).days
-        is_final_day = (delta_days + 1) == cycle_length
+        # Check if it's past 8 PM on final day
+        is_final_day = current_day == cycle_length
         now_ct = datetime.now(ZoneInfo("America/Chicago"))
         cutoff_time = now_ct.replace(hour=20, minute=0, second=0, microsecond=0)
 
-        if is_final_day and now_ct >= cutoff_time:
+        if target_day == current_day and is_final_day and now_ct >= cutoff_time:
             raise HTTPException(status_code=403, detail="Campaign ended for the day. No more guesses allowed after 8 PM.")
 
         # Fetch progress
@@ -510,7 +537,7 @@ def validate_guess(word: str, user_id: int, campaign_id: int):
             SELECT guesses, results, letter_status, current_row, game_over
             FROM campaign_guess_states
             WHERE user_id = %s AND campaign_id = %s AND date = %s
-        """, (user_id, campaign_id, today)).fetchone()
+        """, (user_id, campaign_id, target_date_str)).fetchone()
 
         if row:
             guesses = json.loads(row[0])
@@ -530,7 +557,7 @@ def validate_guess(word: str, user_id: int, campaign_id: int):
                 INSERT INTO campaign_first_guesses (user_id, campaign_id, date, word)
                 VALUES (%s, %s, %s, %s)
                 ON CONFLICT (user_id, campaign_id, date) DO NOTHING
-            """, (user_id, campaign_id, today, guess))
+            """, (user_id, campaign_id, target_date_str, guess))
 
         if game_over or current_row >= 6:
             raise HTTPException(status_code=403, detail="You've already played today")
@@ -585,7 +612,7 @@ def validate_guess(word: str, user_id: int, campaign_id: int):
                             double_down_used_week = 1,
                             double_down_date = %s
                         WHERE user_id = %s AND campaign_id = %s
-                    """, (score_to_add, today, user_id, campaign_id))
+                    """, (score_to_add, target_date_str, user_id, campaign_id))
                 else:
                     conn.execute("""
                         UPDATE campaign_members
@@ -593,7 +620,7 @@ def validate_guess(word: str, user_id: int, campaign_id: int):
                             double_down_used_week = 1,
                             double_down_date = %s
                         WHERE user_id = %s AND campaign_id = %s
-                    """, (today, user_id, campaign_id))
+                    """, (target_date_str, user_id, campaign_id))
             else:
                 conn.execute("""
                     UPDATE campaign_members
@@ -606,7 +633,7 @@ def validate_guess(word: str, user_id: int, campaign_id: int):
                 VALUES (%s, %s, %s, %s)
                 ON CONFLICT (user_id, campaign_id, date) DO UPDATE
                 SET troops = campaign_daily_troops.troops + EXCLUDED.troops
-            """, (user_id, campaign_id, today, score_to_add))
+            """, (user_id, campaign_id, target_date_str, score_to_add))
 
         elif new_game_over and is_double_down:
             conn.execute("""
@@ -615,14 +642,13 @@ def validate_guess(word: str, user_id: int, campaign_id: int):
                     double_down_used_week = 1,
                     double_down_date = %s
                 WHERE user_id = %s AND campaign_id = %s
-            """, (today, user_id, campaign_id))
+            """, (target_date_str, user_id, campaign_id))
 
         # Save to guesses table
         conn.execute("""
             INSERT INTO campaign_guesses (user_id, campaign_id, word, date)
             VALUES (%s, %s, %s, %s)
-        """, (user_id, campaign_id, guess, today))
-
+        """, (user_id, campaign_id, guess, target_date_str))
 
         # Save full state
         conn.execute("""
@@ -637,7 +663,7 @@ def validate_guess(word: str, user_id: int, campaign_id: int):
                 current_row = EXCLUDED.current_row,
                 game_over = EXCLUDED.game_over
         """, (
-            user_id, campaign_id, today,
+            user_id, campaign_id, target_date_str,
             json.dumps(guesses),
             json.dumps(results_data),
             json.dumps(letter_status),
@@ -654,17 +680,18 @@ def validate_guess(word: str, user_id: int, campaign_id: int):
         """, (
             user_id,
             campaign_id,
-            today,
+            target_date_str,
             int(new_game_over)
         ))
 
         if new_game_over:
-            update_campaign_streak(conn, user_id, campaign_id, today)
+            if target_day == current_day:
+                update_campaign_streak(conn, user_id, campaign_id, target_date_str)
             if correct:
                 coins_to_add = coins_by_row.get(current_row, 1)
             else:
                 coins_to_add = 2
-            update_campaign_coins(conn, user_id, campaign_id, today, coins_to_add)
+            update_campaign_coins(conn, user_id, campaign_id, target_date_str, coins_to_add)
 
             guesses_used = (current_row + 1) if correct else max_rows
             used_double_down = 1 if is_double_down else 0
@@ -677,7 +704,7 @@ def validate_guess(word: str, user_id: int, campaign_id: int):
                 SELECT word
                 FROM campaign_first_guesses
                 WHERE user_id = %s AND campaign_id = %s AND date = %s
-            """, (user_id, campaign_id, today)).fetchone()
+            """, (user_id, campaign_id, target_date_str)).fetchone()
             first_guess_word = first_guess_row[0] if first_guess_row else None
             completed_at = datetime.now(ZoneInfo("America/Chicago"))
 
@@ -694,14 +721,14 @@ def validate_guess(word: str, user_id: int, campaign_id: int):
                     double_down_success,
                     double_down_bonus_troops,
                     troops_earned,
-                coins_earned,
-                completed_at
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            ON CONFLICT (user_id, campaign_id, date) DO NOTHING
+                    coins_earned,
+                    completed_at
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (user_id, campaign_id, date) DO NOTHING
             """, (
                 user_id,
                 campaign_id,
-                today,
+                target_date_str,
                 secret,
                 guesses_used,
                 int(correct),
@@ -732,8 +759,8 @@ def validate_guess(word: str, user_id: int, campaign_id: int):
                 secret,
                 1 if correct else 0,
                 0 if correct else 1,
-                today,
-                today
+                target_date_str,
+                target_date_str
             ))
 
             stats_row = conn.execute("""
@@ -932,40 +959,42 @@ def get_leaderboard(campaign_id: int):
         for row in rows
     ]
 
-def get_saved_progress(user_id: int, campaign_id: int):
-    today = datetime.now(ZoneInfo("America/Chicago")).strftime("%Y-%m-%d")
-
+def get_saved_progress(user_id: int, campaign_id: int, day_override: int | None = None):
     with get_db() as conn:
-        # Check if Double Down was activated on a previous day but not completed
-        row = conn.execute("""
-            SELECT double_down_activated, double_down_date
-            FROM campaign_members
-            WHERE user_id = %s AND campaign_id = %s
-        """, (user_id, campaign_id)).fetchone()
+        _, _, current_day, target_day, target_date = resolve_campaign_day(conn, campaign_id, day_override)
+        target_date_str = target_date.strftime("%Y-%m-%d")
 
-        if row and row[0] == 1 and row[1] and row[1] < today:
-            # Check if player completed the game on that day
-            completed = conn.execute("""
-                SELECT completed FROM campaign_daily_progress
-                WHERE user_id = %s AND campaign_id = %s AND date = %s
-            """, (user_id, campaign_id, row[1])).fetchone()
+        if target_day == current_day:
+            # Check if Double Down was activated on a previous day but not completed
+            row = conn.execute("""
+                SELECT double_down_activated, double_down_date
+                FROM campaign_members
+                WHERE user_id = %s AND campaign_id = %s
+            """, (user_id, campaign_id)).fetchone()
 
-            if not completed or not completed[0]:
-                # mark Double Down as used
-                conn.execute("""
-                    UPDATE campaign_members
-                    SET double_down_activated = 0,
-                        double_down_used_week = 1,
-                        double_down_date = %s
-                    WHERE user_id = %s AND campaign_id = %s
-                """, (today, user_id, campaign_id))
+            if row and row[0] == 1 and row[1] and row[1] < target_date_str:
+                # Check if player completed the game on that day
+                completed = conn.execute("""
+                    SELECT completed FROM campaign_daily_progress
+                    WHERE user_id = %s AND campaign_id = %s AND date = %s
+                """, (user_id, campaign_id, row[1])).fetchone()
 
-        # Fetch today's saved progress
+                if not completed or not completed[0]:
+                    # mark Double Down as used
+                    conn.execute("""
+                        UPDATE campaign_members
+                        SET double_down_activated = 0,
+                            double_down_used_week = 1,
+                            double_down_date = %s
+                        WHERE user_id = %s AND campaign_id = %s
+                    """, (target_date_str, user_id, campaign_id))
+
+        # Fetch saved progress
         row = conn.execute("""
             SELECT guesses, results, letter_status, current_row, game_over
             FROM campaign_guess_states
             WHERE user_id = %s AND campaign_id = %s AND date = %s
-        """, (user_id, campaign_id, today)).fetchone()
+        """, (user_id, campaign_id, target_date_str)).fetchone()
 
     if row:
         return {
@@ -1061,7 +1090,7 @@ def handle_campaign_end(campaign_id: int):
         today_str = datetime.now(ZoneInfo("America/Chicago")).strftime("%Y-%m-%d")
         conn.execute("UPDATE campaigns SET start_date = %s WHERE id = %s", (today_str, campaign_id))
 
-        # 3. Clear old campaign data
+        # 3. Clear old campaign gameplay data (keep stats tables)
         conn.execute("DELETE FROM campaign_guesses WHERE campaign_id = %s", (campaign_id,))
         conn.execute("DELETE FROM campaign_guess_states WHERE campaign_id = %s", (campaign_id,))
         conn.execute("DELETE FROM campaign_daily_progress WHERE campaign_id = %s", (campaign_id,))
