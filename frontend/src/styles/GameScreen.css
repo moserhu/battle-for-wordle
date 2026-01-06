@@ -77,11 +77,18 @@
   color: #fff3c7;
 }
 
+.day-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
 .day-label {
   font-family: var(--theme-font-accent);
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  font-size: 0.75rem;
+  font-size: 1rem;
+  text-align: center;
 }
 
 .day-arrow {
@@ -107,6 +114,27 @@
 .day-arrow:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+.day-info-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 220, 140, 0.5);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 243, 199, 0.85);
+  font-family: var(--theme-font-accent);
+  font-size: 0.85rem;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: opacity 0.2s ease, border-color 0.2s ease;
+  margin-left: -4px;
+}
+
+.day-info-btn:hover {
+  opacity: 0.9;
+  border-color: rgba(255, 220, 140, 0.8);
 }
 
 .game-top-half {

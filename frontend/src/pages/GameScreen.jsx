@@ -8,6 +8,7 @@ import '../styles/GameScreen.css';
 import confetti from 'canvas-confetti';
 import { useAuth } from '../auth/AuthProvider';
 import RulerTitleModal from '../components/RulerTitleModal';
+import DayReplayInfoModal from '../components/DayReplayInfoModal';
 
 const API_BASE = process.env.REACT_APP_API_URL || `${window.location.protocol}//${window.location.hostname}`;
 
@@ -77,6 +78,7 @@ export default function GameScreen() {
   const [rulerTitle, setRulerTitle] = useState('Current Ruler');
   const [showRulerModal, setShowRulerModal] = useState(false);
   const [loadingDay, setLoadingDay] = useState(false);
+  const [showDayReplayInfo, setShowDayReplayInfo] = useState(false);
   
   const triggerShake = useCallback(() => {
   setShake(true);
@@ -175,7 +177,8 @@ export default function GameScreen() {
         if (
           doubleDownData.double_down_activated === 1 &&
           !doubleDownData.double_down_used_week &&
-          (progress.current_row === 0 || typeof progress.current_row !== "number")
+          (progress.current_row === 0 || typeof progress.current_row !== "number") &&
+          dayToLoad === campaignDay?.day
         ) {
           setShowDoubleDownModal(true);
         }        
@@ -533,9 +536,19 @@ const submitGuess = async () => {
             >
               ‹
             </button>
-            <div className="day-label">
-              Day {selectedDay || campaignDay?.day || 1} of {campaignDay?.total || '?'}
+            <div className="day-center">
+              <div className="day-label">
+                Day {selectedDay || campaignDay?.day || 1} of {campaignDay?.total || '?'}
+              </div>
             </div>
+            <button
+              className="day-info-btn"
+              type="button"
+              aria-label="Day replay info"
+              onClick={() => setShowDayReplayInfo(true)}
+            >
+              i
+            </button>
             <button
               className="day-arrow"
               type="button"
@@ -587,6 +600,10 @@ const submitGuess = async () => {
             </div>
             <Keyboard letterStatus={letterStatus} onKeyPress={handleKeyPress} />
           </div>
+          <DayReplayInfoModal
+            visible={showDayReplayInfo}
+            onClose={() => setShowDayReplayInfo(false)}
+          />
   
          
         </div>

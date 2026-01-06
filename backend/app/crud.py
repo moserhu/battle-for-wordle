@@ -589,7 +589,7 @@ def validate_guess(word: str, user_id: int, campaign_id: int, day_override: int 
             FROM campaign_members
             WHERE user_id = %s AND campaign_id = %s
         """, (user_id, campaign_id)).fetchone()
-        is_double_down = dd_row and dd_row[0] == 1
+        is_double_down = dd_row and dd_row[0] == 1 and target_day == current_day
         max_rows = 3 if is_double_down else 6
         new_game_over = correct or current_row + 1 == max_rows
 

@@ -280,8 +280,7 @@ export default function CampaignDashboard() {
             {/* Recap */}
             <div className="dash-panel">
               <div className="dash-panel-header">
-                <h2>Yesterday’s Recap</h2>
-                <span className="dash-pill">Yesterday</span>
+                <h2>Recap</h2>
               </div>
               {recap?.date ? (
                 <div className="recap-block">
@@ -303,8 +302,7 @@ export default function CampaignDashboard() {
             {/* Leaderboard */}
             <div className="dash-panel">
               <div className="dash-panel-header">
-                <h2>Today’s Leaderboard</h2>
-                <span className="dash-pill">Today</span>
+                <h2>Leaderboard</h2>
               </div>
               {leaderboard.length === 0 ? (
                 <p>No scores yet.</p>

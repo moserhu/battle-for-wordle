@@ -242,12 +242,43 @@
   color: var(--theme-text-primary);
   font-family: inherit;
   margin-bottom: 8px;
+  box-sizing: border-box;
 }
 
 .campaigns-modal-input:focus {
   outline: none;
   border-color: var(--theme-accent-warm);
   box-shadow: 0 0 0 1px rgba(183, 211, 255, 0.5);
+}
+
+.cycle-length-options {
+  display: flex;
+  gap: 10px;
+  margin: 6px 0 8px;
+}
+
+.cycle-option {
+  flex: 1 1 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--theme-border);
+  background: var(--theme-surface-solid);
+  color: var(--theme-text-primary);
+  font-family: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+}
+
+.cycle-option:hover {
+  transform: translateY(-1px);
+  background: var(--theme-surface-strong);
+}
+
+.cycle-option.selected {
+  border-color: var(--theme-accent-warm-strong);
+  background: rgba(255, 215, 120, 0.2);
+  color: var(--theme-text-accent);
 }
 
 .campaigns-modal-actions {

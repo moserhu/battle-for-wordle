@@ -229,15 +229,18 @@ const handleJoin = async () => {
             <label className="campaigns-modal-label" htmlFor="cycleLength">
               Number of Days
             </label>
-            <input
-              id="cycleLength"
-              className="campaigns-modal-input"
-              type="number"
-              min="1"
-              max="30"
-              value={cycleLength}
-              onChange={(e) => setCycleLength(e.target.value)}
-            />
+            <div className="cycle-length-options" id="cycleLength">
+              {[3, 5, 7].map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  className={`cycle-option ${Number(cycleLength) === value ? 'selected' : ''}`}
+                  onClick={() => setCycleLength(value)}
+                >
+                  {value}
+                </button>
+              ))}
+            </div>
 
             <div className="campaigns-modal-actions">
               <button className="campaigns-modal-btn primary" onClick={handleCreate}>
