@@ -11,7 +11,10 @@ def init_db():
         conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS king TEXT")
         conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS ruler_id INTEGER")
         conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS ruler_title TEXT")
+        conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS is_admin_campaign BOOLEAN DEFAULT FALSE")
         conn.execute("ALTER TABLE global_high_scores ADD COLUMN IF NOT EXISTS campaign_length INTEGER")
+        conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE")
+        conn.execute("UPDATE users SET is_admin = TRUE WHERE id = 2")
         conn.execute("""
             CREATE TABLE IF NOT EXISTS campaign_streaks (
                 user_id INTEGER NOT NULL,
@@ -20,6 +23,29 @@ def init_db():
                 last_completed_date TEXT,
                 PRIMARY KEY (user_id, campaign_id)
             )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS campaign_streak_cycle (
+                user_id INTEGER NOT NULL,
+                campaign_id INTEGER NOT NULL,
+                streak INTEGER NOT NULL DEFAULT 0,
+                last_completed_date TEXT,
+                PRIMARY KEY (user_id, campaign_id)
+            )
+        """)
+        conn.execute("""
+            DO $$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1 FROM information_schema.tables
+                    WHERE table_name = 'campaign_streak_term'
+                ) AND NOT EXISTS (
+                    SELECT 1 FROM information_schema.tables
+                    WHERE table_name = 'campaign_streak_cycle'
+                ) THEN
+                    ALTER TABLE campaign_streak_term RENAME TO campaign_streak_cycle;
+                END IF;
+            END $$;
         """)
         conn.execute("""
             CREATE TABLE IF NOT EXISTS campaign_coins (
@@ -79,6 +105,75 @@ def init_db():
                 category TEXT NOT NULL,
                 cost INTEGER NOT NULL,
                 purchased_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS campaign_user_items (
+                user_id INTEGER NOT NULL,
+                campaign_id INTEGER NOT NULL,
+                item_key TEXT NOT NULL,
+                quantity INTEGER NOT NULL DEFAULT 0,
+                acquired_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (user_id, campaign_id, item_key)
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS campaign_user_status_effects (
+                user_id INTEGER NOT NULL,
+                campaign_id INTEGER NOT NULL,
+                effect_key TEXT NOT NULL,
+                effect_value TEXT,
+                applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                expires_at TIMESTAMP,
+                PRIMARY KEY (user_id, campaign_id, effect_key)
+            )
+        """)
+        conn.execute("ALTER TABLE campaign_user_status_effects ADD COLUMN IF NOT EXISTS active BOOLEAN DEFAULT TRUE")
+        conn.execute("""
+            UPDATE campaign_user_status_effects
+            SET active = TRUE
+            WHERE active IS NULL
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS campaign_shop_log (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                campaign_id INTEGER NOT NULL,
+                event_type TEXT NOT NULL,
+                item_key TEXT,
+                details TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS campaign_item_events (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                campaign_id INTEGER NOT NULL,
+                item_key TEXT NOT NULL,
+                target_user_id INTEGER,
+                event_type TEXT NOT NULL,
+                details TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS campaign_shop_rotation (
+                user_id INTEGER NOT NULL,
+                campaign_id INTEGER NOT NULL,
+                date TEXT NOT NULL,
+                items JSONB NOT NULL,
+                reshuffles INTEGER NOT NULL DEFAULT 0,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (user_id, campaign_id, date)
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS global_item_stats (
+                item_key TEXT PRIMARY KEY,
+                uses INTEGER NOT NULL DEFAULT 0,
+                targets INTEGER NOT NULL DEFAULT 0,
+                last_used_at TIMESTAMP
             )
         """)
         conn.execute("""
@@ -150,6 +245,32 @@ def init_db():
                 fails INTEGER NOT NULL DEFAULT 0,
                 first_seen TEXT,
                 last_seen TEXT
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS global_streak_stats (
+                id INTEGER PRIMARY KEY DEFAULT 1,
+                highest_streak INTEGER NOT NULL DEFAULT 0,
+                user_id INTEGER,
+                campaign_id INTEGER,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS global_user_streaks (
+                user_id INTEGER PRIMARY KEY,
+                highest_streak INTEGER NOT NULL DEFAULT 0,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS update_logs (
+                id SERIAL PRIMARY KEY,
+                date TEXT NOT NULL,
+                title TEXT NOT NULL,
+                items JSONB NOT NULL DEFAULT '[]'::jsonb,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
     print("✅ Database connection verified!")

@@ -12,6 +12,7 @@
     "axios": "^1.8.4",
     "canvas-confetti": "^1.9.3",
     "chart.js": "^4.4.9",
+    "framer-motion": "^12.26.1",
     "html2canvas": "^1.4.1",
     "jwt-decode": "^4.0.0",
     "react": "^19.1.0",

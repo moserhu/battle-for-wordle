@@ -66,7 +66,9 @@ def compute_campaign_daily_stats():
     stats_date = (today - timedelta(days=1)).strftime("%Y-%m-%d")
 
     with get_db() as conn:
-        campaign_ids = conn.execute("SELECT id FROM campaigns").fetchall()
+        campaign_ids = conn.execute("""
+            SELECT id FROM campaigns WHERE COALESCE(is_admin_campaign, FALSE) = FALSE
+        """).fetchall()
 
         for (campaign_id,) in campaign_ids:
             member_count = conn.execute("""
@@ -213,12 +215,15 @@ def compute_campaign_daily_word_stats():
 
     with get_db() as conn:
         rows = conn.execute("""
-            SELECT campaign_id, word,
-                   SUM(CASE WHEN solved = 1 THEN 1 ELSE 0 END) AS solved_count,
-                   SUM(CASE WHEN solved = 0 THEN 1 ELSE 0 END) AS failed_count
-            FROM campaign_user_daily_results
-            WHERE date = %s AND word IS NOT NULL
-            GROUP BY campaign_id, word
+            SELECT cudr.campaign_id, cudr.word,
+                   SUM(CASE WHEN cudr.solved = 1 THEN 1 ELSE 0 END) AS solved_count,
+                   SUM(CASE WHEN cudr.solved = 0 THEN 1 ELSE 0 END) AS failed_count
+            FROM campaign_user_daily_results cudr
+            JOIN campaigns c ON c.id = cudr.campaign_id
+            WHERE cudr.date = %s
+              AND cudr.word IS NOT NULL
+              AND COALESCE(c.is_admin_campaign, FALSE) = FALSE
+            GROUP BY cudr.campaign_id, cudr.word
         """, (stats_date,)).fetchall()
 
         for campaign_id, word, solved_count, failed_count in rows:
@@ -249,26 +254,35 @@ def compute_global_daily_stats():
 
     with get_db() as conn:
         total_guesses = conn.execute("""
-            SELECT COUNT(*) FROM campaign_guesses WHERE date = %s
+            SELECT COUNT(*)
+            FROM campaign_guesses cg
+            JOIN campaigns c ON c.id = cg.campaign_id
+            WHERE cg.date = %s AND COALESCE(c.is_admin_campaign, FALSE) = FALSE
         """, (stats_date,)).fetchone()[0]
 
         total_players = conn.execute("""
-            SELECT COUNT(DISTINCT user_id)
-            FROM campaign_user_daily_results
-            WHERE date = %s
+            SELECT COUNT(DISTINCT cudr.user_id)
+            FROM campaign_user_daily_results cudr
+            JOIN campaigns c ON c.id = cudr.campaign_id
+            WHERE cudr.date = %s AND COALESCE(c.is_admin_campaign, FALSE) = FALSE
         """, (stats_date,)).fetchone()[0]
 
         total_campaigns_completed = conn.execute("""
             SELECT COUNT(*)
-            FROM campaign_daily_stats
-            WHERE date = %s AND member_count > 0 AND completed_count = member_count
+            FROM campaign_daily_stats cds
+            JOIN campaigns c ON c.id = cds.campaign_id
+            WHERE cds.date = %s
+              AND cds.member_count > 0
+              AND cds.completed_count = cds.member_count
+              AND COALESCE(c.is_admin_campaign, FALSE) = FALSE
         """, (stats_date,)).fetchone()[0]
 
         guess_counts = conn.execute("""
-            SELECT guesses_used, COUNT(*)
-            FROM campaign_user_daily_results
-            WHERE date = %s
-            GROUP BY guesses_used
+            SELECT cudr.guesses_used, COUNT(*)
+            FROM campaign_user_daily_results cudr
+            JOIN campaigns c ON c.id = cudr.campaign_id
+            WHERE cudr.date = %s AND COALESCE(c.is_admin_campaign, FALSE) = FALSE
+            GROUP BY cudr.guesses_used
         """, (stats_date,)).fetchall()
         guess_map = {row[0]: row[1] for row in guess_counts}
 

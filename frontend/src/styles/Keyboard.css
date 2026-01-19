@@ -6,6 +6,25 @@
     padding: 0 8px; /* horizontal breathing room */
     box-sizing: border-box;
   }
+
+  .keyboard-container.blood-ink {
+    --keyboard-correct: #8d1e2a;
+  }
+
+  .keyboard-key.jester-dance {
+    animation-name: jester-dance;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+  }
+
+  @keyframes jester-dance {
+    0% { transform: translate(0, 0) rotate(0deg); }
+    20% { transform: translate(1px, -2px) rotate(2deg); }
+    40% { transform: translate(-2px, 1px) rotate(-2deg); }
+    60% { transform: translate(2px, 2px) rotate(1.5deg); }
+    80% { transform: translate(-1px, -1px) rotate(-1deg); }
+    100% { transform: translate(0, 0) rotate(0deg); }
+  }
   
   .keyboard-row {
     display: grid;
@@ -59,6 +78,53 @@
     background-color: var(--keyboard-key-bg);
     color: var(--keyboard-key-text);
   }
+
+  .keyboard-key:disabled {
+    cursor: not-allowed;
+    opacity: 1;
+  }
+
+  .keyboard-key.sealed-letter {
+    background: linear-gradient(160deg, rgba(92, 35, 130, 0.9), rgba(40, 18, 70, 0.95));
+    color: #e7d6ff;
+    position: relative;
+  }
+
+  .keyboard-key.sealed-letter::after {
+    content: "₪";
+    position: absolute;
+    font-size: 1.6rem;
+    opacity: 0.35;
+    color: #f3d26a;
+  }
+
+  .keyboard-key.void-letter {
+    background-color: #0b0b0f;
+    color: #a98bff;
+    position: relative;
+    text-shadow: 0 0 6px rgba(140, 90, 255, 0.5);
+  }
+
+  .keyboard-key.void-letter::before,
+  .keyboard-key.void-letter::after {
+    content: "";
+    position: absolute;
+    width: 70%;
+    height: 2px;
+    background: #c33434;
+    top: 50%;
+    left: 15%;
+    transform-origin: center;
+  }
+
+  .keyboard-key.void-letter::before {
+    transform: translateY(-50%) rotate(35deg);
+  }
+
+  .keyboard-key.void-letter::after {
+    transform: translateY(-50%) rotate(-35deg);
+  }
+
 
 
   

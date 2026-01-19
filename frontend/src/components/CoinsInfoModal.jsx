@@ -37,16 +37,12 @@ export default function CoinsInfoModal({ visible, onClose }) {
             </tr>
           </thead>
           <tbody>
-            <tr><td>1st guess</td><td>6</td></tr>
-            <tr><td>2nd guess</td><td>5</td></tr>
-            <tr><td>3rd guess</td><td>4</td></tr>
-            <tr><td>4th guess</td><td>3</td></tr>
-            <tr><td>5th guess</td><td>2</td></tr>
-            <tr><td>6th guess</td><td>1</td></tr>
+            <tr><td>Complete the word</td><td>4</td></tr>
+            <tr><td>Fail the word</td><td>8</td></tr>
           </tbody>
         </table>
         <p className="coins-failure-note">
-          Being a failure grants you 2 pity coins, you scab.
+          Failures pay more than success. Spend wisely.
         </p>
       </div>
     </div>

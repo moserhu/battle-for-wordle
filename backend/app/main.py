@@ -4,8 +4,10 @@ from app import models, crud
 from app.models import CampaignOnly
 from fastapi import Depends
 from app.auth import get_current_user
+from app.admin.routes import router as admin_router
+from app.updates.routes import router as updates_router
 from app.auth import create_access_token
-from app.models import UserOnly, UpdateUserInfo, CampaignAndUserOnly
+from app.models import UserOnly, UpdateUserInfo, CampaignAndUserOnly, ShopPurchase, UseItemRequest, ItemTargetRequest
 from prometheus_fastapi_instrumentator import Instrumentator
 
 from app.scheduler import start_scheduler
@@ -69,7 +71,12 @@ def login(user: models.UserLogin):
 
 @app.post("/api/campaign/create")
 def create_campaign(camp: models.NewCampaign, current_user: dict = Depends(get_current_user)):
-    return crud.create_campaign(camp.name, current_user["user_id"], camp.cycle_length)
+    return crud.create_campaign(
+        camp.name,
+        current_user["user_id"],
+        camp.cycle_length,
+        bool(camp.is_admin_campaign)
+    )
 
 @app.post("/api/campaign/join")
 def join_campaign(data: models.JoinCampaign, current_user: dict = Depends(get_current_user)):
@@ -128,6 +135,30 @@ def get_campaign_members(data: CampaignOnly, current_user: dict = Depends(get_cu
 def get_self_member(data: models.CampaignOnly, current_user: dict = Depends(get_current_user)):
     return crud.get_self_member(data.campaign_id, current_user["user_id"])
 
+@app.post("/api/campaign/targets")
+def get_campaign_targets(data: models.CampaignOnly, current_user: dict = Depends(get_current_user)):
+    return crud.get_targetable_members(data.campaign_id, current_user["user_id"])
+
+@app.post("/api/campaign/targets/item")
+def get_campaign_targets_for_item(data: ItemTargetRequest, current_user: dict = Depends(get_current_user)):
+    return crud.get_targetable_members_with_item_status(
+        data.campaign_id,
+        current_user["user_id"],
+        data.item_key
+    )
+
+@app.post("/api/campaign/items/active")
+def get_active_item_effects(data: models.CampaignOnly, current_user: dict = Depends(get_current_user)):
+    return crud.get_active_target_effects(current_user["user_id"], data.campaign_id)
+
+@app.post("/api/campaign/items/status")
+def get_item_status_effects(data: models.CampaignOnly, current_user: dict = Depends(get_current_user)):
+    return crud.get_current_status_effects(current_user["user_id"], data.campaign_id)
+
+@app.post("/api/campaign/items/mercy/redeem")
+def redeem_candle_of_mercy(data: models.CampaignOnly, current_user: dict = Depends(get_current_user)):
+    return crud.redeem_candle_of_mercy(current_user["user_id"], data.campaign_id)
+
 @app.post("/api/campaign/streak")
 def get_campaign_streak(data: models.CampaignOnly, current_user: dict = Depends(get_current_user)):
     return crud.get_campaign_streak(current_user["user_id"], data.campaign_id)
@@ -151,3 +182,32 @@ def activate_double_down(data: CampaignOnly, current_user: dict = Depends(get_cu
 @app.post("/api/user/acknowledge_update")
 def acknowledge_update(current_user: dict = Depends(get_current_user)):
     return crud.acknowledge_update(current_user["user_id"])
+
+@app.post("/api/campaign/shop/state")
+def get_campaign_shop_state(data: CampaignOnly, current_user: dict = Depends(get_current_user)):
+    return crud.get_shop_state(current_user["user_id"], data.campaign_id)
+
+@app.post("/api/campaign/shop/purchase")
+def purchase_shop_item(data: ShopPurchase, current_user: dict = Depends(get_current_user)):
+    return crud.purchase_item(current_user["user_id"], data.campaign_id, data.item_key)
+
+@app.post("/api/campaign/shop/reshuffle")
+def reshuffle_shop(data: CampaignOnly, current_user: dict = Depends(get_current_user)):
+    return crud.reshuffle_shop(current_user["user_id"], data.campaign_id)
+
+@app.post("/api/campaign/items/use")
+def use_campaign_item(data: UseItemRequest, current_user: dict = Depends(get_current_user)):
+    return crud.use_item(
+        current_user["user_id"],
+        data.campaign_id,
+        data.item_key,
+        data.target_user_id,
+        data.effect_payload
+    )
+
+@app.post("/api/campaign/items/hint")
+def get_campaign_hint(data: CampaignOnly, current_user: dict = Depends(get_current_user)):
+    return crud.get_current_day_hint(current_user["user_id"], data.campaign_id)
+
+app.include_router(admin_router)
+app.include_router(updates_router)

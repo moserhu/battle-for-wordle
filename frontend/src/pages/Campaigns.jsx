@@ -14,8 +14,10 @@ export default function Campaigns() {
   const [inviteCode, setInviteCode] = useState('');
   const [campaignName, setCampaignName] = useState('');
   const [cycleLength, setCycleLength] = useState(5);
+  const [isAdminCampaign, setIsAdminCampaign] = useState(false);
 
   const { user, token, isAuthenticated, loading } = useAuth();
+  const isAdmin = Boolean(user?.is_admin);
 
   useEffect(() => {
     if (!loading && (!isAuthenticated || !user?.user_id)) {
@@ -65,7 +67,8 @@ export default function Campaigns() {
     },
     body: JSON.stringify({
       name: campaignName,
-      cycle_length: parseInt(cycleLength)
+      cycle_length: parseInt(cycleLength),
+      is_admin_campaign: isAdmin ? isAdminCampaign : false
     })
   });
 
@@ -74,6 +77,7 @@ export default function Campaigns() {
     setShowCreateModal(false);
     setCampaignName('');
     setCycleLength(5);
+    setIsAdminCampaign(false);
     // navigate to the new campaign's game screen
     if (data.campaign_id) {
       navigate(`/game?campaign_id=${data.campaign_id}`);
@@ -121,7 +125,7 @@ const handleJoin = async () => {
           </p>
           <div className="hero-ctas">
             <button className="btn" onClick={() => setShowJoinModal(true)}>Join Campaign</button>
-            <button className="btn" onClick={() => setShowCreateModal(true)}>Create Campaign</button>
+            <button className="btn" onClick={() => { setShowCreateModal(true); setIsAdminCampaign(false); }}>Create Campaign</button>
           </div>
         </div>
       </section>
@@ -134,20 +138,46 @@ const handleJoin = async () => {
           {campaigns.length === 0 ? (
             <p>You’re not in any campaigns yet. Use the buttons above to get started.</p>
           ) : (
-            <div className="campaign-cards">
+            <div className="campaign-rows">
               {campaigns.map((camp) => (
-                <div className="campaign-card" key={camp.campaign_id}>
-                  <h3 className="campaign-title">{camp.name}</h3>
-                  <p className="campaign-day">📅 Day {camp.day} of {camp.total}</p>
-                  <p className="campaign-status">
-                    {camp.double_down_activated === 1 && camp.daily_completed === 0
-                      ? <span className="double-down-icon pulse">⚔️ Double Down Active</span>
-                      : (camp.is_finished ? '✅ Completed' : '❌ Not Completed')}
-                  </p>
-                  <div className="campaign-buttons">
-                    <button onClick={() => navigate(`/campaign/${camp.campaign_id}`)}>Base Camp</button>
-                    <button onClick={() => navigate(`/game?campaign_id=${camp.campaign_id}`)}>Play</button>
-                    <button onClick={() => navigate(`/leaderboard/${camp.campaign_id}`)}>Leaderboard</button>
+                <div
+                  className={`campaign-row${camp.is_admin_campaign ? " admin-campaign" : ""}`}
+                  key={camp.campaign_id}
+                >
+                  <div className="campaign-row-name">
+                    <span>{camp.name}</span>
+                  </div>
+                  <div className="campaign-row-status">
+                    Completed: {camp.daily_completed === 1 || camp.daily_completed === true ? "✅" : "❌"}
+                  </div>
+                  <div className="campaign-row-actions">
+                    <button
+                      className="campaign-row-action"
+                      onClick={() => navigate(`/game?campaign_id=${camp.campaign_id}`)}
+                      type="button"
+                      aria-label={`Play ${camp.name}`}
+                      title="Play"
+                    >
+                      <span className="campaign-action-icon">▶</span>
+                    </button>
+                    <button
+                      className="campaign-row-action"
+                      onClick={() => navigate(`/campaign/${camp.campaign_id}`)}
+                      type="button"
+                      aria-label={`Basecamp ${camp.name}`}
+                      title="Basecamp"
+                    >
+                      <span className="campaign-action-icon">⛺</span>
+                    </button>
+                    <button
+                      className="campaign-row-action"
+                      onClick={() => navigate(`/leaderboard/${camp.campaign_id}`)}
+                      type="button"
+                      aria-label={`Leaderboard ${camp.name}`}
+                      title="Leaderboard"
+                    >
+                      <span className="campaign-action-icon">🏆</span>
+                    </button>
                   </div>
                 </div>
               ))}
@@ -211,7 +241,7 @@ const handleJoin = async () => {
         <>
           <div
             className="campaigns-modal-overlay"
-            onClick={() => setShowCreateModal(false)}
+            onClick={() => { setShowCreateModal(false); setIsAdminCampaign(false); }}
           />
           <div className="campaigns-modal">
             <h3 className="campaigns-modal-title">Create Campaign</h3>
@@ -242,13 +272,24 @@ const handleJoin = async () => {
               ))}
             </div>
 
+            {isAdmin && (
+              <label className="campaigns-admin-toggle">
+                <input
+                  type="checkbox"
+                  checked={isAdminCampaign}
+                  onChange={(e) => setIsAdminCampaign(e.target.checked)}
+                />
+                Admin/Test Campaign (no global stats)
+              </label>
+            )}
+
             <div className="campaigns-modal-actions">
               <button className="campaigns-modal-btn primary" onClick={handleCreate}>
                 Create
               </button>
               <button
                 className="campaigns-modal-btn"
-                onClick={() => setShowCreateModal(false)}
+                onClick={() => { setShowCreateModal(false); setIsAdminCampaign(false); }}
               >
                 Cancel
               </button>

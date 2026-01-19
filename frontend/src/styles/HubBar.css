@@ -9,6 +9,45 @@
   margin: 0 auto;
 }
 
+.dash-wrapper.admin-theme .hub-bar .stat-card {
+  background: rgba(70, 14, 14, 0.7);
+  border-color: rgba(220, 120, 120, 0.35);
+  box-shadow: 0 6px 16px rgba(40, 8, 8, 0.4);
+}
+
+.dash-wrapper.admin-theme .hub-bar .stat-title {
+  color: #f2c3c3;
+}
+
+.dash-wrapper.admin-theme .hub-bar .stat-value {
+  color: #ffd3d3;
+}
+
+.dash-wrapper.admin-theme .hub-bar .stat-subtle {
+  color: rgba(246, 214, 214, 0.7);
+}
+
+.dash-wrapper.admin-theme .hub-bar .stat-pill {
+  background: rgba(90, 18, 18, 0.75);
+  border-color: rgba(220, 120, 120, 0.6);
+  color: #f6d6d6;
+}
+
+.dash-wrapper.admin-theme .hub-bar .dd-info-btn {
+  border-color: rgba(220, 120, 120, 0.45);
+  color: rgba(246, 214, 214, 0.8);
+}
+
+.dash-wrapper.admin-theme .hub-bar .invite-share-button {
+  background: rgba(120, 24, 24, 0.9);
+  border-color: rgba(220, 120, 120, 0.6);
+  color: #f6d6d6;
+}
+
+.dash-wrapper.admin-theme .hub-bar .invite-share-button:hover {
+  background: rgba(150, 32, 32, 0.95);
+}
+
 /* Invite box */
 
 .invite-slot {

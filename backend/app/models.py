@@ -16,6 +16,7 @@ class UserLogin(BaseModel):
 class NewCampaign(BaseModel):
     name: str
     cycle_length: int
+    is_admin_campaign: Optional[bool] = False
 
 class JoinCampaign(BaseModel):
     invite_code: str
@@ -56,3 +57,17 @@ class UpdateUserInfo(BaseModel):
 class KickRequest(BaseModel):
     campaign_id: int
     user_id: int
+
+class ShopPurchase(BaseModel):
+    campaign_id: int
+    item_key: str
+
+class UseItemRequest(BaseModel):
+    campaign_id: int
+    item_key: str
+    target_user_id: Optional[int] = None
+    effect_payload: Optional[dict] = None
+
+class ItemTargetRequest(BaseModel):
+    campaign_id: int
+    item_key: str

@@ -2,9 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Pie } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
-import throneBackground from '../assets/throne_background.png';
+import throneBackground from '../assets/scenes/throne_background.png';
 import '../styles/LeaderBoard.css';
-import defaultBackground from '../assets/B4W_BG.png';
+import defaultBackground from '../assets/branding/B4W_BG.png';
 import { useAuth } from '../auth/AuthProvider';
 
 const API_BASE = process.env.REACT_APP_API_URL || `${window.location.protocol}//${window.location.hostname}`;
@@ -19,6 +19,7 @@ export default function Leaderboard() {
   const [declaredWinner, setDeclaredWinner] = useState(null);
   const [loading, setLoading] = useState(true); // 🆕
   const [hasEnded, setHasEnded] = useState(false);
+  const [isAdminCampaign, setIsAdminCampaign] = useState(false);
   const { token } = useAuth();
   const [statusLoaded, setStatusLoaded] = useState(false);
 
@@ -53,6 +54,7 @@ export default function Leaderboard() {
         console.log("📌 isFinalDay:", isFinalDay, "pastCutoff:", pastCutoff, "inferredEnd:", inferredEnd);
   
         setHasEnded(inferredEnd);
+        setIsAdminCampaign(Boolean(progress?.is_admin_campaign));
       } catch (err) {
         console.error("❌ Error during fetchStatus:", err);
       } finally {
@@ -131,11 +133,18 @@ export default function Leaderboard() {
   
   if (loading || !statusLoaded) {
     return (
-      <div className="leaderboard-background" style={{ backgroundImage: `url(${defaultBackground})` }}>
+      <div
+        className={`leaderboard-background${isAdminCampaign ? " admin-theme" : ""}`}
+        style={{
+          backgroundImage: isAdminCampaign
+            ? "radial-gradient(circle at top, #5b1111 0%, #2a0707 55%, #160404 100%)"
+            : `url(${defaultBackground})`
+        }}
+      >
         <div className="loading-screen">
           <div className="swords-animation">
-            <img src={require('../assets/sword.png')} alt="Left Sword" className="sword left-sword" />
-            <img src={require('../assets/sword.png')} alt="Right Sword" className="sword right-sword" />
+            <img src={require('../assets/ui/sword.png')} alt="Left Sword" className="sword left-sword" />
+            <img src={require('../assets/ui/sword.png')} alt="Right Sword" className="sword right-sword" />
           </div>
         </div>
       </div>
@@ -144,11 +153,11 @@ export default function Leaderboard() {
   
   return (
     <div
-      className="leaderboard-background"
+      className={`leaderboard-background${isAdminCampaign ? " admin-theme" : ""}`}
       style={{
-        backgroundImage: `url(${
-          hasEnded && declaredWinner ? throneBackground : defaultBackground
-        })`,
+        backgroundImage: isAdminCampaign
+          ? "radial-gradient(circle at top, #5b1111 0%, #2a0707 55%, #160404 100%)"
+          : `url(${hasEnded && declaredWinner ? throneBackground : defaultBackground})`,
       }}
     >  
       {statusLoaded && hasEnded && declaredWinner !== null ? (

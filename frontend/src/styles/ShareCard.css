@@ -17,6 +17,10 @@
   padding-bottom: 10px;
 }
 
+.dash-wrapper.admin-theme .sharecard-code {
+  color: #ffd3d3;
+}
+
 .sharecard-buttons {
   display: flex;
   justify-content: center;

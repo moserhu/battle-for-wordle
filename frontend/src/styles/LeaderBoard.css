@@ -28,6 +28,43 @@
   z-index: 0;     
 }
 
+.leaderboard-background.admin-theme {
+  background: radial-gradient(circle at top, #5b1111 0%, #2a0707 55%, #160404 100%);
+}
+
+.leaderboard-background.admin-theme::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(90, 16, 16, 0.55) 30%,
+    rgba(12, 3, 3, 0.95) 100%
+  );
+  z-index: 0;
+}
+
+.leaderboard-background.admin-theme .leaderboard-container,
+.leaderboard-background.admin-theme .declared-winner-screen,
+.leaderboard-background.admin-theme .loading-screen {
+  position: relative;
+  z-index: 1;
+}
+
+.leaderboard-background.admin-theme .leaderboard-panel {
+  background: rgba(70, 14, 14, 0.8);
+  border: 1px solid rgba(220, 120, 120, 0.35);
+  color: #f6d6d6;
+}
+
+.leaderboard-background.admin-theme .leaderboard-panel h2 {
+  color: #f2c3c3;
+}
+
+.leaderboard-background.admin-theme .back-button {
+  background: rgba(120, 24, 24, 0.9);
+  border-color: rgba(220, 120, 120, 0.6);
+}
 .leaderboard-panel table td {
   vertical-align: middle;
   font-size: 1.2rem;
@@ -357,4 +394,3 @@
     padding: 8px 14px;
   }
 }
-

@@ -2,11 +2,3 @@
     reverse_proxy /api/* http://b4w-backend:8002
     reverse_proxy /* http://b4w-frontend
 }
-
-# Cache-control headers for static frontend (uncomment on Pi Caddyfile).
-#header /index.html {
-#    Cache-Control "no-cache, no-store, must-revalidate"
-#}
-#header /static/* {
-#    Cache-Control "public, max-age=31536000, immutable"
-#}

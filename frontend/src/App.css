@@ -83,17 +83,22 @@
   --nav-brand: var(--theme-text-accent);
   --nav-brand-hover: #dbe8ff;
 
-  --bg-home: url('./assets/winter_background_16_9.png');
-  --bg-home-mobile: url('./assets/winter_background_mobile.png');
-  --bg-campaigns: url('./assets/winter_background_16_9.png');
-  --bg-campaigns-mobile: url('./assets/winter_background_mobile.png');
-  --bg-dashboard: url('./assets/winter_camp.png');
-  --bg-account: url('./assets/winter_bedroom_background.png');
-  --bg-login: url('./assets/winter_throne_background.png');
-  --bg-game: url('./assets/snow_soldiers.png');
-  --bg-landing-portrait: url('./assets/landing_portrait.png');
-  --bg-landing-landscape: url('./assets/landing_landscape.png');
-  --bg-invite: url('./assets/parchment_texture.png');
+  --bg-home: url('./assets/winter/winter_background_16_9.png');
+  --bg-home-mobile: url('./assets/winter/winter_background_mobile.png');
+  --bg-campaigns: url('./assets/winter/winter_background_16_9.png');
+  --bg-campaigns-mobile: url('./assets/winter/winter_background_mobile.png');
+  --bg-dashboard: url('./assets/winter/winter_camp_16_9.png');
+  --bg-dashboard-mobile: url('./assets/winter/winter_camp_mobile.png');
+  --bg-shop: url('./assets/scenes/shop_16_9.png');
+  --bg-shop-mobile: url('./assets/scenes/shop_mobile.png');
+  --bg-inventory: url('./assets/scenes/inventory_16_9.png');
+  --bg-inventory-mobile: url('./assets/scenes/inventory_mobile.png');
+  --bg-account: url('./assets/winter/winter_bedroom_background.png');
+  --bg-login: url('./assets/winter/winter_throne_background.png');
+  --bg-game: url('./assets/winter/snow_soldiers.png');
+  --bg-landing-portrait: url('./assets/landing/landing_portrait.png');
+  --bg-landing-landscape: url('./assets/landing/landing_landscape.png');
+  --bg-invite: url('./assets/ui/parchment_texture.png');
 
   /* Home tokens (mapped to theme tokens) */
   --home-bg-image: var(--bg-home);

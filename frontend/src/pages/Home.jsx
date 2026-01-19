@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import GlobalLeaderboard from '../components/GlobalLeaderboard';
@@ -6,7 +6,9 @@ import '../styles/Home.css';
 
 export default function Home() {
   const navigate = useNavigate();
-  const { user, isAuthenticated, loading } = useAuth();
+  const { user, token, isAuthenticated, loading } = useAuth();
+  const [campaigns, setCampaigns] = useState([]);
+  const [campaignsLoading, setCampaignsLoading] = useState(false);
 
   // Auth gate
   useEffect(() => {
@@ -15,12 +17,37 @@ export default function Home() {
     }
   }, [isAuthenticated, user, loading, navigate]);
 
-  if (loading) return null;
+  useEffect(() => {
+    const fetchCampaigns = async () => {
+      if (!token || !user?.user_id) return;
+      setCampaignsLoading(true);
+      try {
+        const res = await fetch(`${process.env.REACT_APP_API_URL || `${window.location.protocol}//${window.location.hostname}`}/api/user/campaigns`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          }
+        });
+        const data = await res.json();
+        if (res.ok && Array.isArray(data)) {
+          setCampaigns(data);
+        } else {
+          setCampaigns([]);
+        }
+      } catch {
+        setCampaigns([]);
+      } finally {
+        setCampaignsLoading(false);
+      }
+    };
 
-  const scrollToSection = (id) => {
-    const el = document.getElementById(id);
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  };
+    if (!loading && token) {
+      fetchCampaigns();
+    }
+  }, [token, user, loading]);
+
+  if (loading) return null;
 
   return (
     <div className="home-wrapper">
@@ -33,33 +60,64 @@ export default function Home() {
               Daily campaigns. Rivalries. Glory. Rally your troops and claim the throne.
             </p>
           </div>
-          <div className="hero-ctas">
-            <button className="btn primary" onClick={() => navigate('/campaigns')}>
-              Go to Campaigns
-            </button>
-            <button className="btn ghost" onClick={() => navigate('/account')}>
-              Account
-            </button>
-            <button className="btn ghost" onClick={() => navigate('/campaigns?manage=1')}>
-              Create/Join
-            </button>
-          </div>
         </div>
       </section>
 
-      {/* QUICK ACTIONS */}
-      <div className="home-card home-quick-card">
-        <div className="home-quick-actions">
-          <button className="home-quick-btn" onClick={() => navigate('/campaigns')}>
-            Campaigns
-          </button>
-          <button className="home-quick-btn" onClick={() => scrollToSection('home-leaderboard')}>
-            Leaderboard
-          </button>
-          <button className="home-quick-btn" onClick={() => scrollToSection('home-updates')}>
-            Updates
+      {/* YOUR CAMPAIGNS */}
+      <div className="home-card home-campaigns-card">
+        <div className="home-section-header">
+          <h2>Your Campaigns</h2>
+          <button className="btn ghost" onClick={() => navigate('/campaigns')}>
+            Manage
           </button>
         </div>
+        {campaignsLoading ? (
+          <p>Loading campaigns...</p>
+        ) : campaigns.length === 0 ? (
+          <p>No campaigns yet. Create or join one below.</p>
+        ) : (
+          <div className="home-campaign-list">
+            {campaigns.map((camp) => (
+              <div
+                className={`home-campaign-row${camp.is_admin_campaign ? " admin-campaign" : ""}`}
+                key={camp.campaign_id}
+              >
+                <div className="home-campaign-name">
+                  <span>{camp.name}</span>
+                </div>
+                <div className="home-campaign-status">
+                  Completed: {camp.daily_completed === 1 || camp.daily_completed === true ? "✅" : "❌"}
+                </div>
+                <div className="home-campaign-actions">
+                  <button
+                    className="home-campaign-action"
+                    onClick={() => navigate(`/game?campaign_id=${camp.campaign_id}`)}
+                    aria-label={`Play ${camp.name}`}
+                    title="Play"
+                  >
+                    ▶ Play
+                  </button>
+                  <button
+                    className="home-campaign-action"
+                    onClick={() => navigate(`/campaign/${camp.campaign_id}`)}
+                    aria-label={`Basecamp ${camp.name}`}
+                    title="Basecamp"
+                  >
+                    ⛺ Basecamp
+                  </button>
+                  <button
+                    className="home-campaign-action"
+                    onClick={() => navigate(`/leaderboard/${camp.campaign_id}`)}
+                    aria-label={`Leaderboard ${camp.name}`}
+                    title="Leaderboard"
+                  >
+                    🏆 Leaderboard
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* CONTENT LAYOUT */}
@@ -70,6 +128,19 @@ export default function Home() {
               <h2>Global Leaderboard</h2>
             </div>
             <GlobalLeaderboard />
+          </div>
+          <div className="home-card home-actions-card">
+            <div className="home-section-header">
+              <h2>Account & Updates</h2>
+            </div>
+            <div className="home-actions-buttons">
+              <button className="btn" onClick={() => navigate('/account')}>
+                Account
+              </button>
+              <button className="btn ghost" onClick={() => navigate('/updates')}>
+                Update Logs
+              </button>
+            </div>
           </div>
         </div>
 

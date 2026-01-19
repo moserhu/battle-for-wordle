@@ -181,6 +181,7 @@ export default function CampaignDashboard() {
   const campaignName = campaignMeta?.name || 'Campaign';
   const rulerTitle = campaignMeta?.ruler_title || 'Current Ruler';
   const isRuler = campaignMeta?.ruler_id && user?.user_id === campaignMeta.ruler_id;
+  const isAdminCampaign = Boolean(campaignMeta?.is_admin_campaign);
 
   const handleEditRulerTitle = () => {
     setShowRulerModal(true);
@@ -202,7 +203,7 @@ export default function CampaignDashboard() {
   };
 
   return (
-    <div className="dash-wrapper">
+    <div className={`dash-wrapper${isAdminCampaign ? " admin-theme" : ""}`}>
       {/* TOP: Banner with title + actions */}
       <header className="dash-header">
         <div className="dash-header-inner">
@@ -222,8 +223,11 @@ export default function CampaignDashboard() {
             >
               <FontAwesomeIcon icon={faEnvelope} />
             </button>
-            <button className="btn disabled" title="Coming soon" disabled>
-              Store (Soon)
+            <button className="btn" onClick={() => navigate(`/campaign/${cid}/items`)}>
+              Inventory
+            </button>
+            <button className="btn btn-shop" onClick={() => navigate(`/campaign/${cid}/shop`)}>
+              Shop
             </button>
           </div>
         </div>

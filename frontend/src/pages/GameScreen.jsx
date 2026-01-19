@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import WordGrid from '../components/WordGrid';
 import Keyboard from '../components/Keyboard';
 import DoubleDownModal from "../components/DoubleDownModal";
@@ -6,9 +6,31 @@ import EditIdentityModal from "../components/EditIdentityModal";
 import { useNavigate, useLocation } from 'react-router-dom';
 import '../styles/GameScreen.css';
 import confetti from 'canvas-confetti';
+import { motion } from 'framer-motion';
 import { useAuth } from '../auth/AuthProvider';
 import RulerTitleModal from '../components/RulerTitleModal';
 import DayReplayInfoModal from '../components/DayReplayInfoModal';
+import AdminToolsModal from '../components/admin/AdminToolsModal';
+import {
+  applyAbsentLetters,
+  getCartographersLetters,
+  applyOracleCorrectLetter,
+  getOraclePlacement,
+  hasCandleOfMercy,
+  hasBloodOathInk,
+  hasExecutionersCut,
+  useClownJumpscare,
+  ClownOverlay,
+  useSpiderSwarm,
+  getSpiderMotionProps,
+} from '../components/items/basic';
+import {
+  useJesterDance,
+  getConeTurns,
+  decrementConeTurns,
+  shouldShowConeOverlay,
+  getConeOpacity
+} from '../components/items/spells';
 
 const API_BASE = process.env.REACT_APP_API_URL || `${window.location.protocol}//${window.location.hostname}`;
 
@@ -79,6 +101,28 @@ export default function GameScreen() {
   const [showRulerModal, setShowRulerModal] = useState(false);
   const [loadingDay, setLoadingDay] = useState(false);
   const [showDayReplayInfo, setShowDayReplayInfo] = useState(false);
+  const [hintScroll, setHintScroll] = useState(null);
+  const [targetEffects, setTargetEffects] = useState([]);
+  const [coneTurnsLeft, setConeTurnsLeft] = useState(0);
+  const [statusEffects, setStatusEffects] = useState([]);
+  const [hintPlaced, setHintPlaced] = useState(false);
+  const [showMercyModal, setShowMercyModal] = useState(false);
+  const [mercyBonus, setMercyBonus] = useState(0);
+  const [mercyBusy, setMercyBusy] = useState(false);
+  const [showAdminModal, setShowAdminModal] = useState(false);
+  const [adminRefresh, setAdminRefresh] = useState(0);
+  const [edictApplied, setEdictApplied] = useState(false);
+  const [dailyWord, setDailyWord] = useState("");
+  const { showClownOverlay, triggerClown } = useClownJumpscare();
+  const [showCampMenu, setShowCampMenu] = useState(false);
+  const [showSelfItemsModal, setShowSelfItemsModal] = useState(false);
+  const [selfItemsLoading, setSelfItemsLoading] = useState(false);
+  const [selfItemsError, setSelfItemsError] = useState('');
+  const [selfInventory, setSelfInventory] = useState([]);
+  const [selfItemsCatalog, setSelfItemsCatalog] = useState([]);
+  const [selfPayloadValues, setSelfPayloadValues] = useState({});
+  const [selfUseBusy, setSelfUseBusy] = useState('');
+  const campMenuRef = useRef(null);
   
   const triggerShake = useCallback(() => {
   setShake(true);
@@ -90,7 +134,101 @@ export default function GameScreen() {
       navigate('/login');
     }
   }, [isAuthenticated, loading, navigate]);
-  
+
+  useEffect(() => {
+    if (!showCampMenu) return;
+    const handleClick = (event) => {
+      if (campMenuRef.current && !campMenuRef.current.contains(event.target)) {
+        setShowCampMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [showCampMenu]);
+
+  const selfItemByKey = useMemo(() => {
+    const map = new Map();
+    selfItemsCatalog.forEach((item) => map.set(item.key, item));
+    return map;
+  }, [selfItemsCatalog]);
+
+  const selfUsableInventory = useMemo(() => (
+    selfInventory.filter((entry) => {
+      const item = selfItemByKey.get(entry.item_key);
+      return item && !item.requires_target && Number(entry.quantity) > 0;
+    })
+  ), [selfInventory, selfItemByKey]);
+
+  const loadSelfItems = useCallback(async () => {
+    if (!campaignId || !token) return;
+    setSelfItemsLoading(true);
+    setSelfItemsError('');
+    try {
+      const res = await fetch(`${API_BASE}/api/campaign/shop/state`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ campaign_id: campaignId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.detail || 'Failed to load items.');
+      }
+      setSelfItemsCatalog(Array.isArray(data?.items) ? data.items : []);
+      const inventoryRows = Array.isArray(data?.inventory) ? data.inventory : [];
+      setSelfInventory(inventoryRows.filter((entry) => Number(entry.quantity) > 0));
+    } catch (err) {
+      setSelfItemsError(err?.message || 'Failed to load items.');
+    } finally {
+      setSelfItemsLoading(false);
+    }
+  }, [campaignId, token]);
+
+  const openSelfItemsModal = () => {
+    setShowSelfItemsModal(true);
+    loadSelfItems();
+  };
+
+  const handleUseSelfItem = async (itemKey) => {
+    if (selfUseBusy) return;
+    const item = selfItemByKey.get(itemKey);
+    if (item?.payload_type) {
+      const rawValue = String(selfPayloadValues[itemKey] || '').trim().toLowerCase();
+      if (item.payload_type === 'letter' && (!rawValue || rawValue.length !== 1 || !/^[a-z]$/i.test(rawValue))) {
+        setSelfItemsError('Choose a single letter before using this item.');
+        return;
+      }
+      if (item.payload_type === 'word' && (!rawValue || rawValue.length !== 5 || !/^[a-z]{5}$/i.test(rawValue))) {
+        setSelfItemsError('Choose a 5-letter word before using this item.');
+        return;
+      }
+    }
+
+    setSelfUseBusy(itemKey);
+    setSelfItemsError('');
+    try {
+      const res = await fetch(`${API_BASE}/api/campaign/items/use`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          campaign_id: campaignId,
+          item_key: itemKey,
+          target_user_id: null,
+          effect_payload: item?.payload_type
+            ? { value: String(selfPayloadValues[itemKey] || '').trim().toLowerCase() }
+            : null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.detail || 'Use failed.');
+      }
+      await loadSelfItems();
+    } catch (err) {
+      setSelfItemsError(err?.message || 'Use failed.');
+    } finally {
+      setSelfUseBusy('');
+    }
+  };
   
   useEffect(() => {
     if (loading) return;
@@ -115,14 +253,20 @@ export default function GameScreen() {
 
     const resetAndFetch = async () => {
       setLoadingDay(true);
+      setHintScroll(null);
+      setTargetEffects([]);
+      setConeTurnsLeft(0);
+      setStatusEffects([]);
+      setHintPlaced(false);
       setGuesses(EMPTY_GRID);
-      setResults(Array(6).fill(null));
-      setCurrentRow(0);
-      setCurrentCol(0);
-      setGameOver(false);
-      setLetterStatus({});
-      setShowTroopModal(false);
-      setTroopsEarned(0);
+    setResults(Array(6).fill(null));
+    setCurrentRow(0);
+    setCurrentCol(0);
+    setGameOver(false);
+    setLetterStatus({});
+    setShowTroopModal(false);
+    setTroopsEarned(0);
+    setDailyWord("");
 
       const dayRes = await fetch(`${API_BASE}/api/campaign/progress`, {
         method: "POST",
@@ -149,7 +293,7 @@ export default function GameScreen() {
         },
         body: JSON.stringify({ campaign_id: campaignId, day: dayToLoad }),
       });
-      const progress = await stateRes.json();
+    const progress = await stateRes.json();
       const memberRes = await fetch(`${API_BASE}/api/campaign/self_member`, {
         method: "POST",
         headers: {
@@ -166,12 +310,49 @@ export default function GameScreen() {
         },
         body: JSON.stringify({ campaign_id: campaignId }),
       });
+      const hintRes = await fetch(`${API_BASE}/api/campaign/items/hint`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ campaign_id: campaignId }),
+      });
+      const effectsRes = await fetch(`${API_BASE}/api/campaign/items/active`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ campaign_id: campaignId }),
+      });
+      const statusRes = await fetch(`${API_BASE}/api/campaign/items/status`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ campaign_id: campaignId }),
+      });
       const doubleDownData = await doubleDownRes.json();
+      const hintData = await hintRes.json();
+      const effectsData = await effectsRes.json();
+      const statusData = await statusRes.json();
 
         setDoubleDownStatus({
           activated: doubleDownData.double_down_activated === 1,
           usedThisWeek: doubleDownData.double_down_used_week === 1
         });
+        if (hintData?.hint?.letter && hintData?.hint?.position) {
+          setHintScroll(hintData.hint);
+        }
+        if (effectsData?.effects && dayToLoad === campaignDay?.day) {
+          setTargetEffects(effectsData.effects);
+          setConeTurnsLeft(getConeTurns(effectsData.effects));
+        }
+        if (statusData?.effects) {
+          setStatusEffects(statusData.effects);
+        }
 
         // 🔒 SHOW ONLY if not used this week, not used today, and eligible to activate
         if (
@@ -195,6 +376,7 @@ export default function GameScreen() {
     setResults(Array.isArray(progress.results) ? progress.results : Array(6).fill(null));
     setLetterStatus(typeof progress.letter_status === "object" && progress.letter_status !== null ? progress.letter_status : {});
     setGameOver(typeof progress.game_over === "boolean" ? progress.game_over : false);
+    setDailyWord(progress?.word ? String(progress.word).toUpperCase() : "");
 
     const newRow = typeof progress.current_row === "number" ? progress.current_row : 0;
     setCurrentRow(newRow);
@@ -207,7 +389,7 @@ export default function GameScreen() {
     };
 
     resetAndFetch();
-  }, [campaignId, user, loading, token, selectedDay]);
+  }, [campaignId, user, loading, token, selectedDay, adminRefresh]);
 
   useEffect(() => {
     if (campaignDay?.day && selectedDay === null) {
@@ -215,9 +397,84 @@ export default function GameScreen() {
     }
   }, [campaignDay, selectedDay]);
 
+  useEffect(() => {
+    const letters = getCartographersLetters(statusEffects);
+    if (letters.length === 0) return;
+
+    setLetterStatus((prev) => applyAbsentLetters(prev, letters));
+  }, [statusEffects]);
+
+  useEffect(() => {
+    if (!hintScroll?.letter) return;
+    setLetterStatus((prev) => applyOracleCorrectLetter(prev, hintScroll.letter));
+  }, [hintScroll]);
+
+  useEffect(() => {
+    if (!hintScroll?.letter || hintPlaced) return;
+    const placement = getOraclePlacement(guesses, currentRow, hintScroll);
+    if (!placement) return;
+
+    setGuesses((prev) => {
+      const next = prev.map((row) => [...row]);
+      if (!next[placement.rowIndex]) return prev;
+      next[placement.rowIndex][placement.colIndex] = placement.letter;
+      return next;
+    });
+    setHintPlaced(true);
+  }, [hintScroll, hintPlaced, currentRow, guesses]);
+
+  const isCurrentDay = selectedDay === campaignDay?.day;
+  const getTargetPayload = useCallback(
+    (key) => targetEffects.find((entry) => entry.item_key === key)?.details?.payload?.value || null,
+    [targetEffects]
+  );
+  const edictWord = isCurrentDay ? getTargetPayload("edict_of_compulsion") : null;
+  const sealedLetter = isCurrentDay ? getTargetPayload("seal_of_silence") : null;
+  const voidbrandWord = isCurrentDay ? getTargetPayload("voidbrand") : null;
+  const edictSender = isCurrentDay
+    ? targetEffects.find((entry) => entry.item_key === "edict_of_compulsion")?.details?.sender_name
+    : null;
+
+  useEffect(() => {
+    setEdictApplied(false);
+  }, [campaignId, selectedDay, edictWord]);
+
+  useEffect(() => {
+    if (!edictWord || !isCurrentDay || gameOver || isSubmitting || edictApplied) return;
+    if (currentRow !== 0) {
+      setEdictApplied(true);
+      return;
+    }
+    const rowHasLetters = guesses[0]?.some((letter) => letter);
+    const rowHasResult = Boolean(results[0]);
+    if (rowHasLetters || rowHasResult) {
+      setEdictApplied(true);
+      return;
+    }
+    setEdictApplied(true);
+    submitGuess(edictWord);
+  }, [edictWord, isCurrentDay, gameOver, isSubmitting, edictApplied, currentRow, guesses, results]);
+
   const isRuler = campaignDay?.ruler_id && user?.user_id === campaignDay.ruler_id;
+  const isAdmin = Boolean(user?.is_admin);
+  const jesterDance = useJesterDance(targetEffects);
+  const spiderSwarm = useSpiderSwarm(targetEffects);
   const canGoBack = selectedDay && selectedDay > 1;
   const canGoForward = selectedDay && campaignDay?.day && selectedDay < campaignDay.day;
+  const baseMaxRows = isCurrentDay && doubleDownStatus.activated ? 3 : 6;
+  let maxVisibleRows = baseMaxRows;
+  const hasExecutioner = isCurrentDay && hasExecutionersCut(targetEffects);
+  if (hasExecutioner) {
+    maxVisibleRows = Math.max(1, maxVisibleRows - 1);
+  }
+  const executionerRow = hasExecutioner ? Math.max(0, baseMaxRows - 1) : null;
+  const sealActive = Boolean(sealedLetter) && currentRow < 2 && !gameOver;
+  const voidActive = Boolean(voidbrandWord) && currentRow === 0 && !gameOver;
+  const blockedLetters = new Set();
+  if (sealActive && sealedLetter) blockedLetters.add(String(sealedLetter).toLowerCase());
+  if (voidActive && voidbrandWord) {
+    String(voidbrandWord).split("").forEach((letter) => blockedLetters.add(letter.toLowerCase()));
+  }
 
   const handleEditRulerTitle = () => {
     setShowRulerModal(true);
@@ -237,6 +494,35 @@ export default function GameScreen() {
       }
     } catch {}
   };
+
+  const handleRedeemMercy = async () => {
+    if (mercyBusy) return;
+    setMercyBusy(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/campaign/items/mercy/redeem`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ campaign_id: campaignId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.detail || "Failed to redeem Candle of Mercy");
+      }
+      setMercyBonus(Number(data?.bonus ?? 10));
+      setStatusEffects((prev) => prev.filter((entry) => entry.effect_key !== "candle_of_mercy"));
+      setShowMercyModal(true);
+    } catch (err) {
+      console.error("Mercy redemption failed:", err);
+      alert(err?.message || "Failed to redeem Candle of Mercy");
+    } finally {
+      setMercyBusy(false);
+    }
+  };
+
+  const openAdminModal = () => setShowAdminModal(true);
   
   const checkIfCampaignShouldEnd = useCallback(async () => {
     const res = await fetch(`${API_BASE}/api/campaign/finished_today`, {
@@ -255,17 +541,11 @@ export default function GameScreen() {
   }, [campaignId, token]);
 
   useEffect(() => {
-    const interval = setInterval(async () => {
+    const interval = setInterval(() => {
       const isFinalDay = isFinalCampaignDay(campaignDay);
-  
       const newCutoffCountdown = getTimeUntilCutoffCT();
       const newMidnightCountdown = getTimeUntilMidnightCT();
-  
-      if (isFinalDay && !campaignEnded ) {
-        await checkIfCampaignShouldEnd();
-      }
-      
-      
+
       if (
         isFinalDay &&
         newCutoffCountdown.hours === 0 &&
@@ -275,7 +555,7 @@ export default function GameScreen() {
       ) {
         setCampaignEnded(true);
       }
-  
+
       if (
         newMidnightCountdown.hours === 0 &&
         newMidnightCountdown.minutes === 0 &&
@@ -283,7 +563,7 @@ export default function GameScreen() {
       ) {
         if (isFinalDay) {
           try {
-            await fetch(`${API_BASE}/api/campaign/end`, {
+            fetch(`${API_BASE}/api/campaign/end`, {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
@@ -298,9 +578,19 @@ export default function GameScreen() {
         window.location.reload();
       }
     }, 1000);
-  
+
     return () => clearInterval(interval);
-  }, [campaignDay, campaignId, campaignEnded, checkIfCampaignShouldEnd, token]);
+  }, [campaignDay, campaignId, campaignEnded, token]);
+
+  useEffect(() => {
+    if (!isFinalCampaignDay(campaignDay) || campaignEnded) return;
+    const interval = setInterval(() => {
+      checkIfCampaignShouldEnd();
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [campaignDay, campaignEnded, checkIfCampaignShouldEnd]);
+
   
   function generateBattleShareText(guesses, results, campaignDay) {
     const board = guesses
@@ -339,15 +629,25 @@ export default function GameScreen() {
 //function to submit the guess
   // This function will be called when the user presses Enter
   // It will send the current guess to the server and update the results
-const submitGuess = async () => {
+const submitGuess = async (forcedGuess = null) => {
   if (isSubmitting || currentRow >= 6 || gameOver) return;
 
-  const guess = guesses[currentRow].join("").toLowerCase();
+  const guess = (forcedGuess ?? guesses[currentRow].join("")).toLowerCase();
   const campaign_id = campaignId;
   const user_id = user?.user_id;
 
   if (!user_id || !campaign_id || guess.length !== 5) {
     return;
+  }
+
+  if (forcedGuess) {
+    const forcedLetters = guess.toUpperCase().split("");
+    setGuesses((prev) => {
+      const next = prev.map((row) => [...row]);
+      next[currentRow] = forcedLetters;
+      return next;
+    });
+    setCurrentCol(5);
   }
 
   // 🔒 Client-side duplicate guard (prevents local double-entry)
@@ -416,8 +716,15 @@ const submitGuess = async () => {
     }
     setLetterStatus(newStatus);
 
+    if (data.clown_triggered) {
+      triggerClown();
+    }
+
     if (data.result.every(r => r === "correct")) {
       setGameOver(true);
+      if (data.word) {
+        setDailyWord(String(data.word).toUpperCase());
+      }
 
       let baseTroops = [150, 100, 60, 40, 30, 10][currentRow];
       const awardedTroops = doubleDownStatus.activated && currentRow <= 2 ? baseTroops * 2 : baseTroops;
@@ -435,17 +742,24 @@ const submitGuess = async () => {
       return;
     }
 
+    if (coneTurnsLeft > 0) {
+      setConeTurnsLeft((prev) => decrementConeTurns(prev));
+    }
+
     const maxAttempts = doubleDownStatus.activated ? 3 : 6;
     if (currentRow + 1 === maxAttempts) {
       setGameOver(true);
       setFailedWord(data.word.toUpperCase());
+      setDailyWord(data.word.toUpperCase());
       setTimeout(() => setShowFailureModal(true), 300);
       return;
     }
 
     // Advance to next row
     setCurrentRow(currentRow + 1);
-    if (currentRow === 0 && !doubleDownStatus.activated && !doubleDownStatus.usedThisWeek) {
+    const shouldDelayDoubleDown = edictWord && edictApplied;
+    const doubleDownRow = shouldDelayDoubleDown ? 1 : 0;
+    if (currentRow === doubleDownRow && !doubleDownStatus.activated && !doubleDownStatus.usedThisWeek) {
       setTimeout(() => setShowDoubleDownModal(true), 400);
     }
     setCurrentCol(0);
@@ -458,11 +772,11 @@ const submitGuess = async () => {
 };
   
   const handleKeyPress = (key) => {
-    if (gameOver || campaignEnded || loadingDay) return;
+    if (gameOver || campaignEnded || loadingDay || isSubmitting) return;
   
     // Clear error on any input
     if (errorMsg) setErrorMsg(null);
-  
+
     if (key === '⌫') {
       if (currentCol > 0) {
         const newGuesses = [...guesses];
@@ -475,6 +789,13 @@ const submitGuess = async () => {
     submitGuess();
   }
     } else {
+      const lowerKey = key.toLowerCase();
+      if (blockedLetters.has(lowerKey)) {
+        setErrorMsg(voidActive ? "That letter is voidbranded." : "That letter is sealed.");
+        triggerShake();
+        setTimeout(() => setErrorMsg(null), 2000);
+        return;
+      }
       if (currentCol < 5) {
         const newGuesses = [...guesses];
         newGuesses[currentRow][currentCol] = key;
@@ -485,23 +806,75 @@ const submitGuess = async () => {
   };
 
   
+  const isAdminCampaign = Boolean(campaignDay?.is_admin_campaign);
+
   return (
-    <div className="game-wrapper">
+    <div className={`game-wrapper${isAdminCampaign ? " admin-theme" : ""}`}>
       <div className="game-content">
         <div className="game-inner">
+          {hasCandleOfMercy(statusEffects) && (
+            <div className="game-effect-banner">
+              Candle of Mercy: +10 troops if you fail today.
+            </div>
+          )}
+          {voidActive && (
+            <div className="game-effect-banner voidbrand-banner">
+              Voidbrand: <span className="voidbrand-word">{String(voidbrandWord).toUpperCase()}</span> is forbidden for your first guess.
+            </div>
+          )}
+          {hintScroll && (
+            <div className="game-hint-banner">
+              Oracle's Whisper: letter {hintScroll.letter} in position {hintScroll.position}
+            </div>
+          )}
           <div className="game-top-row">
-            <button
-              className="back-btn game-top-half"
-              onClick={() => {
-                if (campaignId) {
-                  navigate(`/campaign/${campaignId}`);
-                } else {
-                  navigate('/campaigns');
-                }
-              }}
-            >
-              🏕 Basecamp
-            </button>
+            <div className="camp-menu game-top-half" ref={campMenuRef}>
+              <button
+                className="back-btn camp-menu-button"
+                onClick={() => setShowCampMenu((prev) => !prev)}
+                type="button"
+              >
+                Command ▾
+              </button>
+              {showCampMenu && (
+                <div className="camp-menu-list">
+                  <button
+                    className="camp-menu-item"
+                    onClick={() => {
+                      setShowCampMenu(false);
+                      navigate(`/leaderboard/${campaignId}`);
+                    }}
+                    type="button"
+                  >
+                    Leaderboard 🏆
+                  </button>
+                  <button
+                    className="camp-menu-item"
+                    onClick={() => {
+                      setShowCampMenu(false);
+                      if (campaignId) {
+                        navigate(`/campaign/${campaignId}`);
+                      } else {
+                        navigate('/campaigns');
+                      }
+                    }}
+                    type="button"
+                  >
+                    Basecamp ⛺
+                  </button>
+                  <button
+                    className="camp-menu-item"
+                    onClick={() => {
+                      setShowCampMenu(false);
+                      openSelfItemsModal();
+                    }}
+                    type="button"
+                  >
+                    Use Items
+                  </button>
+                </div>
+              )}
+            </div>
             <section className="game-king-banner game-top-half" aria-live="polite">
           <div className="game-king-text">
             <div className="game-king-title">{rulerTitle}</div>
@@ -519,6 +892,15 @@ const submitGuess = async () => {
             </button>
           )}
             </section>
+            {isAdmin && isAdminCampaign && (
+              <button
+                className="admin-btn game-top-half"
+                onClick={openAdminModal}
+                type="button"
+              >
+                🛠 Admin
+              </button>
+            )}
         <RulerTitleModal
           visible={showRulerModal}
           initialTitle={rulerTitle}
@@ -560,32 +942,55 @@ const submitGuess = async () => {
             </button>
           </div>
           <div className="game-play-area">
+            {spiderSwarm.active && (
+              <div className="spider-swarm-layer">
+                {spiderSwarm.spiders.map((spider) => (
+                  <motion.div
+                    key={spider.id}
+                    className="spider-swarm-creature"
+                    {...getSpiderMotionProps(spider)}
+                  />
+                ))}
+              </div>
+            )}
+            {shouldShowConeOverlay(coneTurnsLeft, gameOver) && (
+              <div
+                className="cone-overlay"
+                style={{ opacity: getConeOpacity(currentRow, maxVisibleRows) }}
+              />
+            )}
+            <ClownOverlay show={showClownOverlay} />
             {loadingDay && (
               <div className="day-loading">
                 <div className="day-loading-spinner" />
                 <div className="day-loading-text">Loading day…</div>
               </div>
             )}
-            {gameOver && !showTroopModal && (
+            {gameOver && !showTroopModal && dailyWord && (
               <div className="share-button-container">
-                <button
-                  className="share-btn"
-                  onClick={() => {
-                    const shareText = generateBattleShareText(guesses, results, campaignDay);
-                    if (navigator.share) {
-                      navigator.share({ text: shareText }).catch((err) => {
-                        if (err.name !== "AbortError") {
-                          console.error("Share failed:", err);
-                        }
-                      });
-                    } else {
-                      navigator.clipboard.writeText(shareText);
-                      alert("📋 Copied result to clipboard!");
-                    }
-                  }}
-                >
-                  📤 Share Your Result
-                </button>
+                <div className="share-summary">
+                  <div className="share-word">
+                    Word of the day: <span className="daily-word-text">{dailyWord}</span>
+                  </div>
+                  <button
+                    className="share-btn share-compact"
+                    onClick={() => {
+                      const shareText = generateBattleShareText(guesses, results, campaignDay);
+                      if (navigator.share) {
+                        navigator.share({ text: shareText }).catch((err) => {
+                          if (err.name !== "AbortError") {
+                            console.error("Share failed:", err);
+                          }
+                        });
+                      } else {
+                        navigator.clipboard.writeText(shareText);
+                        alert("📋 Copied result to clipboard!");
+                      }
+                    }}
+                  >
+                    Share
+                  </button>
+                </div>
               </div>
             )}
             {/* Re-inserted core game components */}
@@ -595,15 +1000,97 @@ const submitGuess = async () => {
                 results={results}
                 currentRow={currentRow}
                 currentCol={currentCol}
-                maxVisibleRows={doubleDownStatus.activated ? 3 : 6}
+                maxVisibleRows={maxVisibleRows}
+                correctColor={hasBloodOathInk(targetEffects) ? "#8d1e2a" : undefined}
+                jesterDance={jesterDance.active}
+                jesterSeed={jesterDance.seed}
+                getJesterDanceStyle={jesterDance.getStyle}
+                edictRow={edictWord ? 0 : null}
+                executionerRow={executionerRow}
+                edictSender={edictSender}
               />
             </div>
-            <Keyboard letterStatus={letterStatus} onKeyPress={handleKeyPress} />
+            <Keyboard
+              letterStatus={letterStatus}
+              onKeyPress={handleKeyPress}
+              className={hasBloodOathInk(targetEffects) ? "blood-ink" : ""}
+              jesterDance={jesterDance.active}
+              jesterSeed={jesterDance.seed}
+              getJesterDanceStyle={jesterDance.getStyle}
+              sealedLetter={sealActive ? sealedLetter : null}
+              voidLetters={voidActive && voidbrandWord ? String(voidbrandWord).toUpperCase().split("") : []}
+            />
           </div>
           <DayReplayInfoModal
             visible={showDayReplayInfo}
             onClose={() => setShowDayReplayInfo(false)}
           />
+          {showSelfItemsModal && (
+            <div className="modal-overlay">
+              <div className="modal self-items-modal">
+                <div className="self-items-header">
+                  <h2>Inventory</h2>
+                  <button
+                    className="self-items-close"
+                    onClick={() => setShowSelfItemsModal(false)}
+                    type="button"
+                    aria-label="Close inventory"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <p className="self-items-subtitle">Use items that only affect you.</p>
+                {selfItemsError && <div className="self-items-error">{selfItemsError}</div>}
+                {selfItemsLoading ? (
+                  <div className="self-items-loading">Loading items...</div>
+                ) : (
+                  <div className="self-items-list">
+                    {selfUsableInventory.length === 0 ? (
+                      <div className="self-items-empty">No self-use items available.</div>
+                    ) : (
+                      selfUsableInventory.map((entry) => {
+                        const item = selfItemByKey.get(entry.item_key);
+                        const payloadType = item?.payload_type;
+                        return (
+                          <div key={entry.item_key} className="self-items-row">
+                            <div className="self-items-row-main">
+                              <div className="self-items-name">{item?.name || entry.item_key}</div>
+                              <div className="self-items-desc">{item?.description}</div>
+                            </div>
+                            <div className="self-items-row-actions">
+                              <div className="self-items-qty">x{entry.quantity}</div>
+                              {payloadType && (
+                                <input
+                                  className="self-items-input"
+                                  value={selfPayloadValues[entry.item_key] || ''}
+                                  onChange={(event) => {
+                                    const nextValue = event.target.value;
+                                    setSelfPayloadValues((prev) => ({
+                                      ...prev,
+                                      [entry.item_key]: nextValue,
+                                    }));
+                                  }}
+                                  placeholder={payloadType === 'letter' ? 'Letter' : 'Word'}
+                                  maxLength={payloadType === 'letter' ? 1 : 5}
+                                />
+                              )}
+                              <button
+                                className="troop-btn"
+                                onClick={() => handleUseSelfItem(entry.item_key)}
+                                disabled={selfUseBusy === entry.item_key}
+                              >
+                                {selfUseBusy === entry.item_key ? 'Using...' : 'Use'}
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
   
          
         </div>
@@ -678,6 +1165,16 @@ const submitGuess = async () => {
                 <button className="troop-btn close-btn" onClick={() => setShowFailureModal(false)}>
                    Accept Defeat
                 </button>
+                {hasCandleOfMercy(statusEffects) && (
+                  <button
+                    className="troop-btn"
+                    onClick={handleRedeemMercy}
+                    disabled={mercyBusy}
+                    title="Light the Candle of Mercy"
+                  >
+                    🕯️ Light
+                  </button>
+                )}
                 <button
                   className="troop-btn leaderboard-btn"
                   onClick={() => {
@@ -691,6 +1188,31 @@ const submitGuess = async () => {
             </div>
           </div>
         )}
+      {showMercyModal && (
+        <div className="modal-overlay">
+          <div className="modal troop-modal">
+            <h2>🕯️ Candle of Mercy</h2>
+            <p className="mercy-excerpt">
+              "In the ashes of defeat, the flame yet favors the fallen."
+            </p>
+            <p>You are rewarded <strong>{mercyBonus}</strong> troops.</p>
+            <div className="modal-buttons">
+              <button className="troop-btn close-btn" onClick={() => setShowMercyModal(false)}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      <AdminToolsModal
+        isOpen={showAdminModal}
+        onClose={() => setShowAdminModal(false)}
+        campaignId={campaignId}
+        token={token}
+        isAdmin={isAdmin}
+        isAdminCampaign={isAdminCampaign}
+        onSuccess={() => setAdminRefresh((prev) => prev + 1)}
+      />
         <DoubleDownModal
           visible={showDoubleDownModal}
           onAccept={async () => {
