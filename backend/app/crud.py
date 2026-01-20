@@ -1883,6 +1883,7 @@ def get_shop_state(user_id: int, campaign_id: int):
     return {
         "coins": coins,
         "items": rotated_items,
+        "catalog": list(catalog.values()),
         "inventory": inventory,
         "status_effects": status_effects,
         "shop_log": shop_log,

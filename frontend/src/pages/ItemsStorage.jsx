@@ -15,6 +15,22 @@ import voidbrandSprite from '../assets/items/voidbrand.png';
 import edictOfCompulsionSprite from '../assets/items/edict_of_compulsion.png';
 import executionersCutSprite from '../assets/items/executioners_cut.png';
 import sendInTheClownSprite from '../assets/items/clown.png';
+import {
+  oracleWhisper,
+  cartographersInsight,
+  candleOfMercy,
+  bloodOathInk,
+  spiderSwarm,
+  executionersCut,
+  edictOfCompulsion,
+  sendInTheClown,
+} from '../components/items/basic';
+import {
+  danceOfTheJester,
+  coneOfCold,
+  sealOfSilence,
+  voidbrand,
+} from '../components/items/spells';
 
 const API_BASE = process.env.REACT_APP_API_URL || `${window.location.protocol}//${window.location.hostname}`;
 
@@ -61,6 +77,25 @@ export default function ItemsStorage() {
   const itemByKey = useMemo(() => {
     const map = new Map();
     items.forEach((item) => map.set(item.key, item));
+    const fallbackItems = [
+      oracleWhisper,
+      cartographersInsight,
+      candleOfMercy,
+      bloodOathInk,
+      spiderSwarm,
+      executionersCut,
+      edictOfCompulsion,
+      sendInTheClown,
+      danceOfTheJester,
+      coneOfCold,
+      sealOfSilence,
+      voidbrand,
+    ];
+    fallbackItems.forEach((item) => {
+      if (item && !map.has(item.key)) {
+        map.set(item.key, item);
+      }
+    });
     return map;
   }, [items]);
 
@@ -95,7 +130,8 @@ export default function ItemsStorage() {
       }
 
       const state = await stateRes.json();
-      setItems(Array.isArray(state?.items) ? state.items : []);
+      const catalogItems = Array.isArray(state?.catalog) ? state.catalog : [];
+      setItems(catalogItems.length ? catalogItems : (Array.isArray(state?.items) ? state.items : []));
       setInventory(Array.isArray(state?.inventory) ? state.inventory : []);
       const inventoryRows = Array.isArray(state?.inventory) ? state.inventory : [];
       setInventory(inventoryRows.filter((entry) => Number(entry.quantity) > 0));
