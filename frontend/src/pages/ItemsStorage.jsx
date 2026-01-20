@@ -300,6 +300,13 @@ export default function ItemsStorage() {
                 ×
               </button>
             </div>
+            <div className="items-modal-tag-row">
+              {infoModalItem.affects_others ? (
+                <span className="items-modal-tag items-modal-tag--enemy">Target Enemy</span>
+              ) : (
+                <span className="items-modal-tag items-modal-tag--self">Target Self</span>
+              )}
+            </div>
             <div className="items-modal-body">
               <div className="items-modal-image">
                 {spriteByKey[infoModalItem.key] && (

@@ -403,6 +403,38 @@
   color: var(--theme-text-muted);
 }
 
+.items-modal-tag-row {
+  display: flex;
+  justify-content: flex-start;
+  margin: 2px 0 10px;
+}
+
+.items-modal-tag {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.items-modal-tag--enemy {
+  background: rgba(170, 40, 40, 0.9);
+  color: #fff1f1;
+  border: 1px solid rgba(255, 130, 130, 0.6);
+  box-shadow: 0 4px 10px rgba(130, 24, 24, 0.3);
+}
+
+.items-modal-tag--self {
+  background: rgba(42, 96, 170, 0.9);
+  color: #e8f3ff;
+  border: 1px solid rgba(140, 190, 255, 0.6);
+  box-shadow: 0 4px 10px rgba(30, 70, 130, 0.3);
+}
+
 .items-modal-error {
   margin: 6px 0 0;
   padding: 8px 10px;

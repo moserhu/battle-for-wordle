@@ -100,15 +100,13 @@ export default function HubBar({
           ⏳ {isFinalDay ? 'Ends In' : 'Next Word In'}
         </div>
         <div className="stat-value">
-          {isFinalDay ? (
-            <>
-              {cutoffCountdown.hours}h {cutoffCountdown.minutes}m {cutoffCountdown.seconds}s
-            </>
-          ) : (
-            <>
-              {midnightCountdown.hours}h {midnightCountdown.minutes}m {midnightCountdown.seconds}s
-            </>
-          )}
+          {(() => {
+            const countdown = isFinalDay ? cutoffCountdown : midnightCountdown;
+            if (countdown.hours === 0 && countdown.minutes < 10) {
+              return `${countdown.minutes}m ${countdown.seconds}s`;
+            }
+            return `${countdown.hours}h ${countdown.minutes}m`;
+          })()}
         </div>
       </div>
 

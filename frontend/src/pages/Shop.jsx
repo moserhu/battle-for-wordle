@@ -252,6 +252,13 @@ export default function Shop() {
                 ×
               </button>
             </div>
+            <div className="shop-modal-tag-row">
+              {selectedItem.affects_others ? (
+                <span className="shop-modal-tag shop-modal-tag--enemy">Target Enemy</span>
+              ) : (
+                <span className="shop-modal-tag shop-modal-tag--self">Target Self</span>
+              )}
+            </div>
             <div className="shop-modal-body">
               <div className="shop-modal-image">
                 {spriteByKey[selectedItem.key] && (
