@@ -6,9 +6,9 @@ from zoneinfo import ZoneInfo
 import json
 
 def reset_expired_campaigns():
-    print(f"[{datetime.now(ZoneInfo('America/Chicago'))}] Checking for expired campaigns...")
+    print(f"[{datetime.now(ZoneInfo('UTC'))}] Checking for expired campaigns...")
 
-    today = datetime.now(ZoneInfo("America/Chicago")).date()
+    today = datetime.now(ZoneInfo("UTC")).date()
 
     with get_db() as conn:
         campaigns = conn.execute("""
@@ -33,9 +33,9 @@ def reset_expired_campaigns():
                 handle_campaign_end(camp_id)
 
 def update_final_day_rulers():
-    print(f"[{datetime.now(ZoneInfo('America/Chicago'))}] Updating rulers for final-day campaigns...")
+    print(f"[{datetime.now(ZoneInfo('UTC'))}] Updating rulers for final-day campaigns...")
 
-    today = datetime.now(ZoneInfo("America/Chicago")).date()
+    today = datetime.now(ZoneInfo("UTC")).date()
 
     with get_db() as conn:
         campaigns = conn.execute("""
@@ -60,9 +60,9 @@ def update_final_day_rulers():
                 update_campaign_ruler(camp_id)
 
 def compute_campaign_daily_stats():
-    print(f"[{datetime.now(ZoneInfo('America/Chicago'))}] Computing campaign daily stats...")
+    print(f"[{datetime.now(ZoneInfo('UTC'))}] Computing campaign daily stats...")
 
-    today = datetime.now(ZoneInfo("America/Chicago")).date()
+    today = datetime.now(ZoneInfo("UTC")).date()
     stats_date = (today - timedelta(days=1)).strftime("%Y-%m-%d")
 
     with get_db() as conn:
@@ -208,9 +208,9 @@ def compute_campaign_daily_stats():
             ))
 
 def compute_campaign_daily_word_stats():
-    print(f"[{datetime.now(ZoneInfo('America/Chicago'))}] Computing campaign daily word stats...")
+    print(f"[{datetime.now(ZoneInfo('UTC'))}] Computing campaign daily word stats...")
 
-    today = datetime.now(ZoneInfo("America/Chicago")).date()
+    today = datetime.now(ZoneInfo("UTC")).date()
     stats_date = (today - timedelta(days=1)).strftime("%Y-%m-%d")
 
     with get_db() as conn:
@@ -247,9 +247,9 @@ def compute_campaign_daily_word_stats():
             ))
 
 def compute_global_daily_stats():
-    print(f"[{datetime.now(ZoneInfo('America/Chicago'))}] Computing global daily stats...")
+    print(f"[{datetime.now(ZoneInfo('UTC'))}] Computing global daily stats...")
 
-    today = datetime.now(ZoneInfo("America/Chicago")).date()
+    today = datetime.now(ZoneInfo("UTC")).date()
     stats_date = (today - timedelta(days=1)).strftime("%Y-%m-%d")
 
     with get_db() as conn:
@@ -326,10 +326,10 @@ def start_scheduler():
     scheduler = BackgroundScheduler()
     
     # Change to run every 1 minute for testing
-    scheduler.add_job(reset_expired_campaigns, CronTrigger(hour=0, minute=0, timezone="America/Chicago"))
-    scheduler.add_job(compute_campaign_daily_stats, CronTrigger(hour=0, minute=5, timezone="America/Chicago"))
-    scheduler.add_job(compute_campaign_daily_word_stats, CronTrigger(hour=0, minute=7, timezone="America/Chicago"))
-    scheduler.add_job(compute_global_daily_stats, CronTrigger(hour=0, minute=10, timezone="America/Chicago"))
-    scheduler.add_job(update_final_day_rulers, CronTrigger(hour=20, minute=0, timezone="America/Chicago"))
+    scheduler.add_job(reset_expired_campaigns, CronTrigger(hour=0, minute=0, timezone="UTC"))
+    scheduler.add_job(compute_campaign_daily_stats, CronTrigger(hour=0, minute=5, timezone="UTC"))
+    scheduler.add_job(compute_campaign_daily_word_stats, CronTrigger(hour=0, minute=7, timezone="UTC"))
+    scheduler.add_job(compute_global_daily_stats, CronTrigger(hour=0, minute=10, timezone="UTC"))
+    scheduler.add_job(update_final_day_rulers, CronTrigger(hour=20, minute=0, timezone="UTC"))
 
     scheduler.start()

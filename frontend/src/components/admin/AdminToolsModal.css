@@ -9,6 +9,25 @@
   box-shadow: var(--theme-shadow-strong);
 }
 
+.admin-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.admin-modal-header h2 {
+  margin: 0;
+}
+
+.admin-modal-close {
+  border: none;
+  background: transparent;
+  color: var(--theme-text-primary);
+  font-size: 1.4rem;
+  cursor: pointer;
+}
+
 .admin-hint {
   margin: 6px 0 10px;
   color: var(--theme-text-warm-muted);

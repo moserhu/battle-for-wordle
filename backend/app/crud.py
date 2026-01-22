@@ -89,7 +89,7 @@ def login_user(email, password):
 
 def create_campaign(name, user_id, cycle_length, is_admin_campaign: bool = False):
     code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
-    today = datetime.now(ZoneInfo("America/Chicago")).strftime("%Y-%m-%d")
+    today = datetime.now(ZoneInfo("UTC")).strftime("%Y-%m-%d")
 
     with get_db() as conn:
         if is_admin_campaign and not is_admin_user(conn, user_id):
@@ -211,7 +211,7 @@ def join_campaign_by_id(campaign_id, user_id):
             raise HTTPException(status_code=403, detail="Admin campaign access denied")
         start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
         expire_date = start_date + timedelta(days=cycle_length)
-        today = datetime.now(ZoneInfo("America/Chicago")).date()
+        today = datetime.now(ZoneInfo("UTC")).date()
 
         if today >= expire_date:
             raise HTTPException(status_code=410, detail="Invite expired")
@@ -252,7 +252,7 @@ def join_campaign_by_id(campaign_id, user_id):
         return {"message": "Joined campaign", "campaign_id": campaign_id}
 
 def get_user_campaigns(user_id: int):
-    today = datetime.now(ZoneInfo("America/Chicago")).date()
+    today = datetime.now(ZoneInfo("UTC")).date()
     today_str = today.strftime("%Y-%m-%d")
 
     with get_db() as conn:
@@ -598,7 +598,7 @@ def validate_guess(word: str, user_id: int, campaign_id: int, day_override: int 
 
         # Check if it's past 8 PM on final day
         is_final_day = current_day == cycle_length
-        now_ct = datetime.now(ZoneInfo("America/Chicago"))
+        now_ct = datetime.now(ZoneInfo("UTC"))
         cutoff_time = now_ct.replace(hour=20, minute=0, second=0, microsecond=0)
 
         if target_day == current_day and is_final_day and now_ct >= cutoff_time:
@@ -871,7 +871,7 @@ def validate_guess(word: str, user_id: int, campaign_id: int, day_override: int 
                 WHERE user_id = %s AND campaign_id = %s AND date = %s
             """, (user_id, campaign_id, target_date_str)).fetchone()
             first_guess_word = first_guess_row[0] if first_guess_row else None
-            completed_at = datetime.now(ZoneInfo("America/Chicago"))
+            completed_at = datetime.now(ZoneInfo("UTC"))
 
             conn.execute("""
                 INSERT INTO campaign_user_daily_results (
@@ -1005,7 +1005,7 @@ def validate_guess(word: str, user_id: int, campaign_id: int, day_override: int 
         }
 
 def activate_double_down(user_id: int, campaign_id: int):
-    today = datetime.now(ZoneInfo("America/Chicago")).strftime("%Y-%m-%d")
+    today = datetime.now(ZoneInfo("UTC")).strftime("%Y-%m-%d")
     with get_db() as conn:
         row = conn.execute("""
             SELECT double_down_used_week, double_down_activated
@@ -1043,7 +1043,7 @@ def get_campaign_day(campaign_id: int):
 
     start_date_str, cycle_length = row
     start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
-    today = datetime.now(ZoneInfo("America/Chicago")).date()
+    today = datetime.now(ZoneInfo("UTC")).date()
     delta = (today - start_date).days
 
     return {"day": delta + 1, "total": cycle_length}
@@ -1062,7 +1062,7 @@ def get_campaign_progress(campaign_id: int):
 
     name, start_date_str, invite_code, cycle_length, king, ruler_id, ruler_title, is_admin_campaign = row
     start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
-    today = datetime.now(ZoneInfo("America/Chicago")).date()
+    today = datetime.now(ZoneInfo("UTC")).date()
     delta = (today - start_date).days
 
     return {
@@ -1097,7 +1097,7 @@ def get_campaign_coins(user_id: int, campaign_id: int):
     return {"coins": row[0] if row else 0}
 
 def get_leaderboard(campaign_id: int):
-    today = datetime.now(ZoneInfo("America/Chicago")).strftime("%Y-%m-%d")
+    today = datetime.now(ZoneInfo("UTC")).strftime("%Y-%m-%d")
 
     with get_db() as conn:
         rows = conn.execute(
@@ -1217,7 +1217,7 @@ def handle_campaign_end(campaign_id: int):
             # Determine when this “season” ended
             start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
             final_day = start_date + timedelta(days=cycle_length - 1)
-            today = datetime.now(ZoneInfo("America/Chicago")).date()
+            today = datetime.now(ZoneInfo("UTC")).date()
 
             # If campaign is ended early via API, use today; otherwise use natural final day.
             ended_on = min(today, final_day)
@@ -1265,7 +1265,7 @@ def handle_campaign_end(campaign_id: int):
                 """, (user_id,))
 
         # 2. Reset campaign to start over
-        today_str = datetime.now(ZoneInfo("America/Chicago")).strftime("%Y-%m-%d")
+        today_str = datetime.now(ZoneInfo("UTC")).strftime("%Y-%m-%d")
         conn.execute("""
             UPDATE campaigns
             SET start_date = %s,
@@ -1358,7 +1358,7 @@ def has_campaign_finished_for_day(campaign_id: int):
         """, (campaign_id,)).fetchone()[0]
 
         # Total who completed today
-        today = datetime.now(ZoneInfo("America/Chicago")).strftime("%Y-%m-%d")
+        today = datetime.now(ZoneInfo("UTC")).strftime("%Y-%m-%d")
         finished_today = conn.execute("""
             SELECT COUNT(*) FROM campaign_daily_progress
             WHERE campaign_id = %s AND date = %s AND completed = 1
@@ -1448,7 +1448,7 @@ def get_campaign_members(campaign_id: int, requester_id: int):
         return [{"user_id": r[0], "name": r[1]} for r in rows]
 
 def get_self_member(campaign_id: int, user_id: int):
-    today = datetime.now(ZoneInfo("America/Chicago")).strftime("%Y-%m-%d")
+    today = datetime.now(ZoneInfo("UTC")).strftime("%Y-%m-%d")
     with get_db() as conn:
         row = conn.execute("""
             SELECT cm.display_name,
@@ -1588,7 +1588,7 @@ def get_active_target_effects(user_id: int, campaign_id: int):
 def get_current_status_effects(user_id: int, campaign_id: int):
     with get_db() as conn:
         _, _, _, target_day, _ = resolve_campaign_day(conn, campaign_id, None)
-        now_ct = datetime.now(ZoneInfo("America/Chicago"))
+        now_ct = datetime.now(ZoneInfo("UTC"))
         rows = conn.execute("""
             SELECT effect_key, effect_value, expires_at
             FROM campaign_user_status_effects
@@ -1872,7 +1872,10 @@ def get_shop_state(user_id: int, campaign_id: int):
         purchased_rows = conn.execute("""
             SELECT item_key
             FROM campaign_shop_log
-            WHERE user_id = %s AND campaign_id = %s AND event_type = %s AND DATE(created_at) = %s
+            WHERE user_id = %s
+              AND campaign_id = %s
+              AND event_type = %s
+              AND DATE(created_at AT TIME ZONE 'UTC') = %s
         """, (user_id, campaign_id, "purchase", today_str)).fetchall()
         purchased_items = [row[0] for row in purchased_rows if row[0]]
 
@@ -1902,7 +1905,11 @@ def purchase_item(user_id: int, campaign_id: int, item_key: str):
         purchased_row = conn.execute("""
             SELECT 1
             FROM campaign_shop_log
-            WHERE user_id = %s AND campaign_id = %s AND event_type = %s AND item_key = %s AND DATE(created_at) = %s
+            WHERE user_id = %s
+              AND campaign_id = %s
+              AND event_type = %s
+              AND item_key = %s
+              AND DATE(created_at AT TIME ZONE 'UTC') = %s
             LIMIT 1
         """, (user_id, campaign_id, "purchase", item_key, today_str)).fetchone()
         if purchased_row:

@@ -13,7 +13,7 @@ def resolve_campaign_day(conn, campaign_id: int, day_override: int | None):
 
     start_date = datetime.strptime(row[0], "%Y-%m-%d").date()
     cycle_length = row[1]
-    today = datetime.now(ZoneInfo("America/Chicago")).date()
+    today = datetime.now(ZoneInfo("UTC")).date()
     current_day = min((today - start_date).days + 1, cycle_length)
 
     if day_override is None:

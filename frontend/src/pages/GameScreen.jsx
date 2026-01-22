@@ -38,15 +38,15 @@ const EMPTY_GRID = Array.from({ length: 6 }, () => Array(5).fill(""));
 
 function getTimeUntilCutoffCT() {
   const now = new Date();
-  const nowCT = new Date(now.toLocaleString("en-US", { timeZone: "America/Chicago" }));
+  const nowCT = new Date(now.toLocaleString("en-US", { timeZone: "UTC" }));
   const cutoff = new Date(nowCT);
-  cutoff.setHours(20, 0, 0, 0); // 8 PM CT
+  cutoff.setHours(20, 0, 0, 0); // 8 PM UTC
   return getCountdownFrom(nowCT, cutoff);
 }
 
 function getTimeUntilMidnightCT() {
   const now = new Date();
-  const nowCT = new Date(now.toLocaleString("en-US", { timeZone: "America/Chicago" }));
+  const nowCT = new Date(now.toLocaleString("en-US", { timeZone: "UTC" }));
   const midnight = new Date(nowCT);
   midnight.setHours(24, 0, 0, 0);
   return getCountdownFrom(nowCT, midnight);
@@ -436,24 +436,21 @@ export default function GameScreen() {
     : null;
 
   useEffect(() => {
-    setEdictApplied(false);
-  }, [campaignId, selectedDay, edictWord]);
+    if (!isCurrentDay || !edictWord) return;
+    const row0 = guesses[0] || [];
+    const hasLetters = row0.some((letter) => letter);
+    const hasResults = Array.isArray(results[0]) && results[0].some((cell) => cell);
+    if (hasLetters || !hasResults) return;
+    setGuesses((prev) => {
+      const next = prev.map((row) => [...row]);
+      next[0] = String(edictWord).toUpperCase().split("").slice(0, 5);
+      return next;
+    });
+  }, [edictWord, isCurrentDay, guesses, results]);
 
   useEffect(() => {
-    if (!edictWord || !isCurrentDay || gameOver || isSubmitting || edictApplied) return;
-    if (currentRow !== 0) {
-      setEdictApplied(true);
-      return;
-    }
-    const rowHasLetters = guesses[0]?.some((letter) => letter);
-    const rowHasResult = Boolean(results[0]);
-    if (rowHasLetters || rowHasResult) {
-      setEdictApplied(true);
-      return;
-    }
-    setEdictApplied(true);
-    submitGuess(edictWord);
-  }, [edictWord, isCurrentDay, gameOver, isSubmitting, edictApplied, currentRow, guesses, results]);
+    setEdictApplied(false);
+  }, [campaignId, selectedDay, edictWord]);
 
   const isRuler = campaignDay?.ruler_id && user?.user_id === campaignDay.ruler_id;
   const isAdmin = Boolean(user?.is_admin);
@@ -629,8 +626,10 @@ export default function GameScreen() {
 //function to submit the guess
   // This function will be called when the user presses Enter
   // It will send the current guess to the server and update the results
-const submitGuess = async (forcedGuess = null) => {
-  if (isSubmitting || currentRow >= 6 || gameOver) return;
+const submitGuess = useCallback(async (forcedGuess = null) => {
+  const baseAttempts = doubleDownStatus.activated ? 3 : 6;
+  const maxAttempts = hasExecutioner ? Math.max(1, baseAttempts - 1) : baseAttempts;
+  if (isSubmitting || currentRow >= maxAttempts || gameOver) return;
 
   const guess = (forcedGuess ?? guesses[currentRow].join("")).toLowerCase();
   const campaign_id = campaignId;
@@ -746,7 +745,6 @@ const submitGuess = async (forcedGuess = null) => {
       setConeTurnsLeft((prev) => decrementConeTurns(prev));
     }
 
-    const maxAttempts = doubleDownStatus.activated ? 3 : 6;
     if (currentRow + 1 === maxAttempts) {
       setGameOver(true);
       setFailedWord(data.word.toUpperCase());
@@ -769,7 +767,43 @@ const submitGuess = async (forcedGuess = null) => {
   } finally {
     setIsSubmitting(false);
   }
-};
+}, [
+  doubleDownStatus,
+  hasExecutioner,
+  isSubmitting,
+  currentRow,
+  gameOver,
+  campaignId,
+  user?.user_id,
+  guesses,
+  selectedDay,
+  token,
+  results,
+  letterStatus,
+  triggerShake,
+  triggerClown,
+  coneTurnsLeft,
+  edictWord,
+  edictApplied,
+  campaignDay,
+  checkIfCampaignShouldEnd,
+]);
+
+  useEffect(() => {
+    if (!edictWord || !isCurrentDay || gameOver || isSubmitting || edictApplied) return;
+    if (currentRow !== 0) {
+      setEdictApplied(true);
+      return;
+    }
+    const rowHasLetters = guesses[0]?.some((letter) => letter);
+    const rowHasResult = Boolean(results[0]);
+    if (rowHasLetters || rowHasResult) {
+      setEdictApplied(true);
+      return;
+    }
+    setEdictApplied(true);
+    submitGuess(edictWord);
+  }, [edictWord, isCurrentDay, gameOver, isSubmitting, edictApplied, currentRow, guesses, results, submitGuess]);
   
   const handleKeyPress = (key) => {
     if (gameOver || campaignEnded || loadingDay || isSubmitting) return;

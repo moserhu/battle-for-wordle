@@ -166,7 +166,17 @@ export default function AdminToolsModal({
         onClick={(event) => event.stopPropagation()}
         role="presentation"
       >
-        <h2>Admin Tools</h2>
+        <div className="admin-modal-header">
+          <h2>Admin Tools</h2>
+          <button
+            className="admin-modal-close"
+            onClick={onClose}
+            type="button"
+            aria-label="Close admin tools"
+          >
+            ×
+          </button>
+        </div>
         <p className="admin-hint">Test effects and reset your state for today.</p>
 
         <div className="admin-section">

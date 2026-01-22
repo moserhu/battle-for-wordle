@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, date
 from zoneinfo import ZoneInfo
 
 def reset_expired_campaigns():
-    today = datetime.now(ZoneInfo("America/Chicago")).date()
+    today = datetime.now(ZoneInfo("UTC")).date()
 
     conn = get_db()
     campaigns = conn.execute("""

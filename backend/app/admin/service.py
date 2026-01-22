@@ -146,7 +146,7 @@ def admin_add_effect(user_id: int, campaign_id: int, effect_key: str, effect_pay
 
         _, _, _, _, target_date = resolve_campaign_day(conn, campaign_id, None)
         target_date_str = target_date.strftime("%Y-%m-%d")
-        today_str = datetime.now(ZoneInfo("America/Chicago")).strftime("%Y-%m-%d")
+        today_str = datetime.now(ZoneInfo("UTC")).strftime("%Y-%m-%d")
         effective_on = today_str if item.get("affects_others") else target_date_str
 
         if item.get("affects_others"):

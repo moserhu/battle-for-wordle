@@ -39,7 +39,6 @@ export default function ItemsStorage() {
   const navigate = useNavigate();
   const { token, user, isAuthenticated, loading } = useAuth();
 
-  const [campaignName, setCampaignName] = useState('Item Storage');
   const [inventory, setInventory] = useState([]);
   const [items, setItems] = useState([]);
   const [loadingPage, setLoadingPage] = useState(true);
@@ -120,7 +119,6 @@ export default function ItemsStorage() {
 
       if (progressRes.ok) {
         const progress = await progressRes.json();
-        if (progress?.name) setCampaignName(progress.name);
         setIsAdminCampaign(Boolean(progress?.is_admin_campaign));
       }
 
@@ -282,7 +280,6 @@ export default function ItemsStorage() {
                 ) : (
                   inventory.map((inv) => {
                     const item = itemByKey.get(inv.item_key);
-                    const requiresTarget = item?.requires_target;
                     return (
                       <div key={inv.item_key} className="items-card">
                         <div className="items-card-body">
