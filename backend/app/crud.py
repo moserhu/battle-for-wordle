@@ -599,7 +599,7 @@ def validate_guess(word: str, user_id: int, campaign_id: int, day_override: int 
         # Check if it's past midnight on final day
         is_final_day = current_day == cycle_length
         now_ct = datetime.now(ZoneInfo("America/Chicago"))
-        cutoff_time = now_ct.replace(hour=24, minute=0, second=0, microsecond=0)
+        cutoff_time = (now_ct + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
 
         if target_day == current_day and is_final_day and now_ct >= cutoff_time:
             raise HTTPException(status_code=403, detail="Campaign ended for the day. No more guesses allowed after midnight.")
