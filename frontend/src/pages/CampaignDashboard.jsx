@@ -23,15 +23,15 @@ function getCountdownFrom(now, target) {
 
 function getTimeUntilCutoffCT() {
   const now = new Date();
-  const nowCT = new Date(now.toLocaleString("en-US", { timeZone: "UTC" }));
+  const nowCT = new Date(now.toLocaleString("en-US", { timeZone: "America/Chicago" }));
   const cutoff = new Date(nowCT);
-  cutoff.setHours(20, 0, 0, 0); // 8 PM UTC
+  cutoff.setHours(24, 0, 0, 0); // midnight CT
   return getCountdownFrom(nowCT, cutoff);
 }
 
 function getTimeUntilMidnightCT() {
   const now = new Date();
-  const nowCT = new Date(now.toLocaleString("en-US", { timeZone: "UTC" }));
+  const nowCT = new Date(now.toLocaleString("en-US", { timeZone: "America/Chicago" }));
   const midnight = new Date(nowCT);
   midnight.setHours(24, 0, 0, 0);
   return getCountdownFrom(nowCT, midnight);
@@ -74,7 +74,7 @@ export default function CampaignDashboard() {
     }
   }, [isAuthenticated, user, loading, navigate]);
 
-  // ---- ticking timers (cutoff 8pm UTC, midnight reset) ----
+  // ---- ticking timers (midnight CT reset) ----
   useEffect(() => {
     const interval = setInterval(() => {
       setCutoffCountdown(getTimeUntilCutoffCT());

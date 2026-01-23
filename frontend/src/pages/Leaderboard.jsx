@@ -45,7 +45,7 @@ export default function Leaderboard() {
         console.log("✅ progress response:", progress);
   
         const now = new Date();
-        const nowCT = new Date(now.toLocaleString("en-US", { timeZone: "UTC" }));
+        const nowCT = new Date(now.toLocaleString("en-US", { timeZone: "America/Chicago" }));
   
         const isFinalDay = progress.day >= progress.total;
         const pastCutoff = nowCT.getHours() >= 20;
