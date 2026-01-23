@@ -346,6 +346,9 @@ export default function GameScreen() {
         if (hintData?.hint?.letter && hintData?.hint?.position) {
           setHintScroll(hintData.hint);
         }
+        const hasEdictEffect = Array.isArray(effectsData?.effects)
+          ? effectsData.effects.some((entry) => entry?.item_key === "edict_of_compulsion")
+          : false;
         if (effectsData?.effects && dayToLoad === campaignDay?.day) {
           setTargetEffects(effectsData.effects);
           setConeTurnsLeft(getConeTurns(effectsData.effects));
@@ -359,7 +362,8 @@ export default function GameScreen() {
           doubleDownData.double_down_activated === 1 &&
           !doubleDownData.double_down_used_week &&
           (progress.current_row === 0 || typeof progress.current_row !== "number") &&
-          dayToLoad === campaignDay?.day
+          dayToLoad === campaignDay?.day &&
+          !hasEdictEffect
         ) {
           setShowDoubleDownModal(true);
         }        

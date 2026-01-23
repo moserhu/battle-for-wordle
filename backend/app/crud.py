@@ -1875,8 +1875,11 @@ def get_shop_state(user_id: int, campaign_id: int):
             WHERE user_id = %s
               AND campaign_id = %s
               AND event_type = %s
-              AND DATE(created_at AT TIME ZONE 'America/Chicago') = %s
-        """, (user_id, campaign_id, "purchase", today_str)).fetchall()
+              AND (
+                (details::jsonb ? 'date' AND details::jsonb->>'date' = %s)
+                OR DATE(created_at AT TIME ZONE 'America/Chicago') = %s
+              )
+        """, (user_id, campaign_id, "purchase", today_str, today_str)).fetchall()
         purchased_items = [row[0] for row in purchased_rows if row[0]]
 
         rotation_keys = _get_or_create_shop_rotation(conn, user_id, campaign_id, today_str)
@@ -1909,9 +1912,12 @@ def purchase_item(user_id: int, campaign_id: int, item_key: str):
               AND campaign_id = %s
               AND event_type = %s
               AND item_key = %s
-              AND DATE(created_at AT TIME ZONE 'America/Chicago') = %s
+              AND (
+                (details::jsonb ? 'date' AND details::jsonb->>'date' = %s)
+                OR DATE(created_at AT TIME ZONE 'America/Chicago') = %s
+              )
             LIMIT 1
-        """, (user_id, campaign_id, "purchase", item_key, today_str)).fetchone()
+        """, (user_id, campaign_id, "purchase", item_key, today_str, today_str)).fetchone()
         if purchased_row:
             raise HTTPException(status_code=400, detail="You already bought this item today.")
 
@@ -1947,7 +1953,8 @@ def purchase_item(user_id: int, campaign_id: int, item_key: str):
         log_details = json.dumps({
             "name": item["name"],
             "cost": item["cost"],
-            "category": item["category"]
+            "category": item["category"],
+            "date": today_str
         })
         conn.execute("""
             INSERT INTO campaign_shop_log (user_id, campaign_id, event_type, item_key, details)
@@ -1968,9 +1975,15 @@ def reshuffle_shop(user_id: int, campaign_id: int, cost: int = 3):
         purchased_row = conn.execute("""
             SELECT 1
             FROM campaign_shop_log
-            WHERE user_id = %s AND campaign_id = %s AND event_type = %s AND DATE(created_at) = %s
+            WHERE user_id = %s
+              AND campaign_id = %s
+              AND event_type = %s
+              AND (
+                (details::jsonb ? 'date' AND details::jsonb->>'date' = %s)
+                OR DATE(created_at AT TIME ZONE 'America/Chicago') = %s
+              )
             LIMIT 1
-        """, (user_id, campaign_id, "purchase", today_str)).fetchone()
+        """, (user_id, campaign_id, "purchase", today_str, today_str)).fetchone()
         if purchased_row:
             raise HTTPException(status_code=400, detail="Cannot reshuffle after purchasing today.")
 
@@ -2004,7 +2017,7 @@ def reshuffle_shop(user_id: int, campaign_id: int, cost: int = 3):
                           updated_at = CURRENT_TIMESTAMP
         """, (user_id, campaign_id, today_str, json.dumps(selection)))
 
-        log_details = json.dumps({"cost": cost})
+        log_details = json.dumps({"cost": cost, "date": today_str})
         conn.execute("""
             INSERT INTO campaign_shop_log (user_id, campaign_id, event_type, details)
             VALUES (%s, %s, %s, %s)
