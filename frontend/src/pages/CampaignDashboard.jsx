@@ -3,8 +3,9 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import HubBar from '../components/HubBar';
-import ShareCard from '../components/ShareCard';
 import RulerTitleModal from '../components/RulerTitleModal';
+import ProfileModal from '../components/ProfileModal';
+import StreakInfoModal from '../components/StreakInfoModal';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faEnvelope } from '@fortawesome/free-solid-svg-icons';
 import '../styles/Dashboard.css';
@@ -54,6 +55,7 @@ export default function CampaignDashboard() {
   const [coins, setCoins] = useState(0); // placeholder
   const [doubleDownUsed, setDoubleDownUsed] = useState(false);
   const [doubleDownActivated, setDoubleDownActivated] = useState(false);
+  const [selfMember, setSelfMember] = useState(null);
 
   // timers
   const [cutoffCountdown, setCutoffCountdown] = useState(getTimeUntilCutoffCT());
@@ -64,8 +66,11 @@ export default function CampaignDashboard() {
   const [leaderboard, setLeaderboard] = useState([]);
 
   // invite modal
-  const [showInviteModal, setShowInviteModal] = useState(false);
   const [showRulerModal, setShowRulerModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showStreakInfo, setShowStreakInfo] = useState(false);
+  const [previewPlayer, setPreviewPlayer] = useState(null);
+  const [previewImageUrl, setPreviewImageUrl] = useState("");
 
   // ---- auth gate ----
   useEffect(() => {
@@ -109,6 +114,7 @@ export default function CampaignDashboard() {
           body: JSON.stringify({ campaign_id: Number(cid) })
         });
         const self = await selfRes.json();
+        setSelfMember(self);
         setDoubleDownActivated(self?.double_down_activated === 1 || self?.double_down_activated === true);
         setDoubleDownUsed(self?.double_down_used_week === 1 || self?.double_down_used_week === true);
         setCampaignEnded(self?.daily_completed === 1 || self?.daily_completed === true);
@@ -161,6 +167,7 @@ export default function CampaignDashboard() {
           if (l.ok) {
             const j = await l.json();
             lbData = Array.isArray(j.items) ? j.items : (Array.isArray(j) ? j : []);
+            console.log('[CampaignDashboard] leaderboard', lbData);
           }
         } catch {}
         setRecap(recapData);
@@ -182,6 +189,9 @@ export default function CampaignDashboard() {
   const rulerTitle = campaignMeta?.ruler_title || 'Current Ruler';
   const isRuler = campaignMeta?.ruler_id && user?.user_id === campaignMeta.ruler_id;
   const isAdminCampaign = Boolean(campaignMeta?.is_admin_campaign);
+  const displayName = selfMember?.display_name || user?.first_name || 'Player';
+  const profileImageUrl = selfMember?.profile_image_url || '';
+  const armyName = selfMember?.army_name || '';
 
   const handleEditRulerTitle = () => {
     setShowRulerModal(true);
@@ -207,44 +217,54 @@ export default function CampaignDashboard() {
       {/* TOP: Banner with title + actions */}
       <header className="dash-header">
         <div className="dash-header-inner">
-          
-          <h1 className="dash-title">
-            {campaignMeta?.name || 'Campaign Dashboard'}
-          </h1>
-
-          <div className="dash-header-right">
-            <button className="btn" onClick={() => navigate(`/game?campaign_id=${cid}`)}>
-              Play
-            </button>
-            <button
-              className="btn icon-btn"
-              title="Invite Players"
-              onClick={() => setShowInviteModal(true)}
-            >
-              <FontAwesomeIcon icon={faEnvelope} />
-            </button>
-            <button className="btn" onClick={() => navigate(`/campaign/${cid}/items`)}>
-              Inventory
-            </button>
-            <button className="btn btn-shop" onClick={() => navigate(`/campaign/${cid}/shop`)}>
-              Shop
-            </button>
+          <div className="dash-header-center-wrap">
+            <div className="dash-header-center compact">
+              <div className="dash-title-card">
+                <div className="dash-title-eyebrow">Kingdom of</div>
+                <h1 className="dash-title">
+                  {campaignMeta?.name || 'Campaign Dashboard'}
+                </h1>
+              </div>
+              <div className="dash-herald-card">
+                <button
+                  className="dash-profile-inline"
+                  onClick={() => setShowProfileModal(true)}
+                  type="button"
+                >
+                  <div className="dash-profile-image">
+                    {profileImageUrl ? <img src={profileImageUrl} alt="" /> : <span>?</span>}
+                  </div>
+                  <span className="dash-profile-label">Profile</span>
+                </button>
+                <div className="dash-herald-content">
+                  <div className="dash-herald-body">
+                    <div className="dash-herald-label">Hear ye</div>
+                    <div className="dash-herald-name">{displayName || 'Unknown Hero'}</div>
+                    <div className="dash-herald-army">
+                      {armyName ? `Commander of ${armyName}` : 'Commander of a wandering host'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </header>
 
       <div className="dash-hub-wrap">
         <HubBar
-          campaignId={cid}
-          campaignDay={campaignMeta}
-          cutoffCountdown={cutoffCountdown}
-          midnightCountdown={midnightCountdown}
-          isFinalDay={isFinalDay}
           campaignEnded={campaignEnded}
           doubleDownUsed={doubleDownUsed}
           doubleDownActivated={doubleDownActivated}
-          streak={streak}
           coins={coins}
+          onBattle={() => navigate(`/game?campaign_id=${cid}`)}
+          onInventory={() => navigate(`/campaign/${cid}/items`)}
+          onShop={() => navigate(`/campaign/${cid}/shop`)}
+          streak={streak}
+          cutoffCountdown={cutoffCountdown}
+          midnightCountdown={midnightCountdown}
+          isFinalDay={isFinalDay}
+          onStreakInfo={() => setShowStreakInfo(true)}
         />
       </div>
 
@@ -314,9 +334,28 @@ export default function CampaignDashboard() {
                 <ol className="leaderboard-list">
                   {leaderboard.map((p) => (
                     <li key={p.user_id || p.username} className="leaderboard-row">
-                      <span className="lb-name" style={{ color: p.color || 'inherit' }}>
-                        {p.display_name || p.username}
-                      </span>
+                      <div
+                        className="lb-player"
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => setPreviewPlayer(p)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            setPreviewPlayer(p);
+                          }
+                        }}
+                      >
+                        <div className="lb-avatar">
+                          {p.profile_image_url ? (
+                            <img src={p.profile_image_url} alt="" />
+                          ) : (
+                            <span>?</span>
+                          )}
+                        </div>
+                        <span className="lb-name" style={{ color: p.color || 'inherit' }}>
+                          {p.display_name || p.username}
+                        </span>
+                      </div>
                       <span className="lb-score">{p.score} troops</span>
                     </li>
                   ))}
@@ -329,37 +368,113 @@ export default function CampaignDashboard() {
               </div>
             </div>
 
-            {/* Tips */}
-            <div className="dash-panel dash-panel--full">
-              <div className="dash-panel-header">
-                <h2>Tips</h2>
-                <span className="dash-pill">Strategy</span>
-              </div>
-              <ul className="tips-list">
-                <li>Check yesterday’s recap to plan your opening word.</li>
-                <li>Use Double Down wisely—go aggressive if your lead is safe.</li>
-                <li>Try starting with words with lots of vowels</li>
-              </ul>
-            </div>
           </section>
         )}
       </section>
 
-      {/* Invite Modal */}
-      {showInviteModal && (
-        <div className="invite-modal-overlay">
-          <div className="invite-modal">
+      {showProfileModal && (
+        <ProfileModal
+          visible={showProfileModal}
+          token={token}
+          campaignId={cid}
+          displayName={displayName}
+          color={selfMember?.color || '#ffffff'}
+          profileImageUrl={profileImageUrl}
+          armyImageUrl={selfMember?.army_image_url || ''}
+          armyName={armyName}
+          onClose={() => setShowProfileModal(false)}
+          onUpdated={(updates) => {
+            setSelfMember((prev) => ({
+              ...(prev || {}),
+              ...(updates.profileImageUrl ? { profile_image_url: updates.profileImageUrl } : null),
+              ...(updates.armyImageUrl ? { army_image_url: updates.armyImageUrl } : null),
+              ...(updates.armyName ? { army_name: updates.armyName } : null),
+              ...(updates.displayName ? { display_name: updates.displayName } : null),
+              ...(updates.color ? { color: updates.color } : null),
+            }));
+            if (user?.user_id) {
+              setLeaderboard((prev) =>
+                prev.map((entry) =>
+                  entry.user_id === user.user_id
+                    ? {
+                        ...entry,
+                        ...(updates.profileImageUrl ? { profile_image_url: updates.profileImageUrl } : null),
+                        ...(updates.armyImageUrl ? { army_image_url: updates.armyImageUrl } : null),
+                        ...(updates.armyName ? { army_name: updates.armyName } : null),
+                        ...(updates.displayName ? { display_name: updates.displayName } : null),
+                        ...(updates.color ? { color: updates.color } : null),
+                      }
+                    : entry
+                )
+              );
+            }
+          }}
+        />
+      )}
+      <StreakInfoModal
+        visible={showStreakInfo}
+        onClose={() => setShowStreakInfo(false)}
+      />
+      {previewPlayer && (
+        <div className="dash-preview-overlay" onClick={() => setPreviewPlayer(null)}>
+          <div
+            className="dash-preview-card"
+            style={{
+              backgroundImage: previewPlayer.army_image_url
+                ? `url(${previewPlayer.army_image_url})`
+                : undefined,
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (previewPlayer.army_image_url) {
+                setPreviewImageUrl(previewPlayer.army_image_url);
+              }
+            }}
+          >
             <button
-              className="invite-modal-close"
-              onClick={() => setShowInviteModal(false)}
+              className="dash-preview-close"
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setPreviewPlayer(null);
+              }}
             >
               ×
             </button>
-            <ShareCard
-              campaignId={cid}
-              campaignName={campaignName}
-              inviteCode={inviteCode}
-            />
+            <div className="dash-preview-avatar">
+              {previewPlayer.profile_image_url ? (
+                <img
+                  src={previewPlayer.profile_image_url}
+                  alt=""
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setPreviewImageUrl(previewPlayer.profile_image_url);
+                  }}
+                />
+              ) : (
+                <span>?</span>
+              )}
+            </div>
+            <div className="dash-preview-name">
+              {previewPlayer.display_name || previewPlayer.username}
+            </div>
+            <div className="dash-preview-army-name">
+              {previewPlayer.army_name || "Unnamed Army"}
+            </div>
+          </div>
+        </div>
+      )}
+      {previewImageUrl && (
+        <div className="dash-image-overlay" onClick={() => setPreviewImageUrl("")}>
+          <div className="dash-image-card" onClick={(e) => e.stopPropagation()}>
+            <button
+              className="dash-image-close"
+              type="button"
+              onClick={() => setPreviewImageUrl("")}
+            >
+              ×
+            </button>
+            <img src={previewImageUrl} alt="Player preview" />
           </div>
         </div>
       )}

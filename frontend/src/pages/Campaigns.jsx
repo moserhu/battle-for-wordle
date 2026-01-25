@@ -1,7 +1,8 @@
 // frontend/src/pages/Campaigns.jsx
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
+import ShareCard from '../components/ShareCard';
 import '../styles/Campaigns.css'; // ✅ new stylesheet for this page
 
 const API_BASE = process.env.REACT_APP_API_URL || `${window.location.protocol}//${window.location.hostname}`;
@@ -11,13 +12,23 @@ export default function Campaigns() {
   const [campaigns, setCampaigns] = useState([]);
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteCampaign, setInviteCampaign] = useState(null);
+  const [showManageModal, setShowManageModal] = useState(false);
+  const [manageCampaign, setManageCampaign] = useState(null);
+  const [renameValue, setRenameValue] = useState('');
+  const [kickList, setKickList] = useState([]);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [confirmDeleteName, setConfirmDeleteName] = useState('');
   const [inviteCode, setInviteCode] = useState('');
   const [campaignName, setCampaignName] = useState('');
   const [cycleLength, setCycleLength] = useState(5);
   const [isAdminCampaign, setIsAdminCampaign] = useState(false);
+  const [ownedCampaigns, setOwnedCampaigns] = useState([]);
 
   const { user, token, isAuthenticated, loading } = useAuth();
   const isAdmin = Boolean(user?.is_admin);
+  const ownedIds = useMemo(() => new Set(ownedCampaigns.map((c) => c.id)), [ownedCampaigns]);
 
   useEffect(() => {
     if (!loading && (!isAuthenticated || !user?.user_id)) {
@@ -25,8 +36,7 @@ export default function Campaigns() {
     }
   }, [isAuthenticated, user, loading, navigate]);
 
-  useEffect(() => {
-    const fetchCampaigns = async () => {
+  const fetchCampaigns = useCallback(async () => {
       if (!user?.user_id) return;
       const searchParams = new URLSearchParams(window.location.search);
       const manageMode = searchParams.get('manage') === '1';
@@ -49,12 +59,32 @@ export default function Campaigns() {
       } else {
         setCampaigns([]);
       }
-    };
+  }, [user, token, navigate]);
 
+  const fetchOwnedCampaigns = useCallback(async () => {
+    if (!user?.user_id) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/campaigns/owned`, {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (res.ok && Array.isArray(data)) {
+        setOwnedCampaigns(data);
+      } else {
+        setOwnedCampaigns([]);
+      }
+    } catch {
+      setOwnedCampaigns([]);
+    }
+  }, [user, token]);
+
+  useEffect(() => {
     if (!loading && token) {
       fetchCampaigns();
+      fetchOwnedCampaigns();
     }
-  }, [user, token, loading, navigate]);
+  }, [user, token, loading, fetchCampaigns, fetchOwnedCampaigns]);
 
   if (loading) return null;
 
@@ -89,7 +119,7 @@ export default function Campaigns() {
   }
 };
 
-const handleJoin = async () => {
+  const handleJoin = async () => {
   const res = await fetch(`${API_BASE}/api/campaign/join`, {
     method: 'POST',
     headers: {
@@ -112,7 +142,85 @@ const handleJoin = async () => {
   } else {
     alert(data.detail || 'Join failed');
   }
-};
+  };
+
+  const handleRename = async () => {
+    if (!manageCampaign) return;
+    const res = await fetch(`${API_BASE}/api/campaign/update_name`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        campaign_id: manageCampaign.campaign_id,
+        name: renameValue,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      alert(data?.detail || 'Rename failed');
+      return;
+    }
+    await fetchCampaigns();
+    setShowManageModal(false);
+  };
+
+  const handleLoadMembers = async () => {
+    if (!manageCampaign) return;
+    const res = await fetch(`${API_BASE}/api/campaign/members`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ campaign_id: manageCampaign.campaign_id }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      setKickList(data);
+    } else {
+      alert(data?.detail || 'Failed to load members');
+    }
+  };
+
+  const handleKick = async (userId) => {
+    if (!manageCampaign) return;
+    const res = await fetch(`${API_BASE}/api/campaign/kick`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ campaign_id: manageCampaign.campaign_id, user_id: userId }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      setKickList((prev) => prev.filter((p) => p.user_id !== userId));
+    } else {
+      alert(data?.detail || 'Kick failed');
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!manageCampaign) return;
+    const res = await fetch(`${API_BASE}/api/campaign/delete`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ campaign_id: manageCampaign.campaign_id }),
+    });
+    if (res.ok) {
+      await fetchCampaigns();
+      await fetchOwnedCampaigns();
+      setShowManageModal(false);
+    } else {
+      const data = await res.json().catch(() => ({}));
+      alert(data?.detail || 'Delete failed');
+    }
+  };
 
   return (
     <div className="campaigns-wrapper">
@@ -153,6 +261,35 @@ const handleJoin = async () => {
                   <div className="campaign-row-actions">
                     <button
                       className="campaign-row-action"
+                      onClick={async () => {
+                        try {
+                          const res = await fetch(`${API_BASE}/api/campaign/progress`, {
+                            method: "POST",
+                            headers: {
+                              "Content-Type": "application/json",
+                              Authorization: `Bearer ${token}`,
+                            },
+                            body: JSON.stringify({ campaign_id: camp.campaign_id }),
+                          });
+                          const data = await res.json();
+                          if (res.ok) {
+                            setInviteCampaign({
+                              id: camp.campaign_id,
+                              name: camp.name,
+                              invite_code: data?.invite_code || "",
+                            });
+                            setShowInviteModal(true);
+                          }
+                        } catch {}
+                      }}
+                      type="button"
+                      aria-label={`Invite to ${camp.name}`}
+                      title="Invite"
+                    >
+                      <span className="campaign-action-icon">✉️</span>
+                    </button>
+                    <button
+                      className="campaign-row-action"
                       onClick={() => navigate(`/game?campaign_id=${camp.campaign_id}`)}
                       type="button"
                       aria-label={`Play ${camp.name}`}
@@ -178,6 +315,24 @@ const handleJoin = async () => {
                     >
                       <span className="campaign-action-icon">🏆</span>
                     </button>
+                    {ownedIds.has(camp.campaign_id) && (
+                      <button
+                        className="campaign-row-action"
+                        onClick={() => {
+                          setManageCampaign(camp);
+                          setRenameValue(camp.name || '');
+                          setKickList([]);
+                          setConfirmingDelete(false);
+                          setConfirmDeleteName('');
+                          setShowManageModal(true);
+                        }}
+                        type="button"
+                        aria-label={`Manage ${camp.name}`}
+                        title="Manage"
+                      >
+                        <span className="campaign-action-icon">⚙️</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -296,6 +451,99 @@ const handleJoin = async () => {
             </div>
           </div>
         </>
+      )}
+
+      {showInviteModal && inviteCampaign && (
+        <div className="campaigns-modal-overlay" onClick={() => setShowInviteModal(false)}>
+          <div className="campaigns-modal campaigns-modal-wide" onClick={(e) => e.stopPropagation()}>
+            <button
+              className="campaigns-modal-close"
+              onClick={() => setShowInviteModal(false)}
+              type="button"
+              aria-label="Close invite"
+            >
+              ×
+            </button>
+            <ShareCard
+              campaignId={inviteCampaign.id}
+              campaignName={inviteCampaign.name}
+              inviteCode={inviteCampaign.invite_code}
+            />
+          </div>
+        </div>
+      )}
+
+      {showManageModal && manageCampaign && (
+        <div className="campaigns-modal-overlay" onClick={() => setShowManageModal(false)}>
+          <div className="campaigns-modal campaigns-manage-modal" onClick={(e) => e.stopPropagation()}>
+            <h3 className="campaigns-modal-title">Manage Campaign</h3>
+            <div className="campaigns-manage-section">
+              <label className="campaigns-modal-label" htmlFor="renameCampaign">
+                Campaign Name
+              </label>
+              <input
+                id="renameCampaign"
+                className="campaigns-modal-input"
+                value={renameValue}
+                onChange={(e) => setRenameValue(e.target.value)}
+              />
+              <button className="campaigns-modal-btn primary" onClick={handleRename}>
+                Save Name
+              </button>
+            </div>
+
+            <div className="campaigns-manage-section">
+              <div className="campaigns-manage-row">
+                <h4>Members</h4>
+                <button className="campaigns-modal-btn" onClick={handleLoadMembers}>
+                  Load Members
+                </button>
+              </div>
+              {kickList.length === 0 ? (
+                <p className="campaigns-muted">No members loaded.</p>
+              ) : (
+                <div className="campaigns-kick-list">
+                  {kickList.map((player) => (
+                    <div key={player.user_id} className="campaigns-kick-row">
+                      <span>{player.name}</span>
+                      <button
+                        className="campaigns-kick-btn"
+                        onClick={() => handleKick(player.user_id)}
+                      >
+                        🥾
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="campaigns-manage-section">
+              <h4>Delete Campaign</h4>
+              <p className="campaigns-muted">
+                Type <strong>{manageCampaign.name}</strong> to confirm deletion:
+              </p>
+              <input
+                className="campaigns-modal-input"
+                value={confirmDeleteName}
+                onChange={(e) => setConfirmDeleteName(e.target.value)}
+              />
+              <button
+                className="campaigns-modal-btn danger"
+                disabled={confirmDeleteName.trim().toLowerCase() !== manageCampaign.name.toLowerCase()}
+                onClick={handleDelete}
+              >
+                Delete Campaign
+              </button>
+            </div>
+
+            <div className="campaigns-modal-actions">
+              <button className="campaigns-modal-btn" onClick={() => setShowManageModal(false)}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
     </div>

@@ -7,11 +7,12 @@ from app.auth import get_current_user
 from app.admin.routes import router as admin_router
 from app.updates.routes import router as updates_router
 from app.auth import create_access_token
-from app.models import UserOnly, UpdateUserInfo, CampaignAndUserOnly, ShopPurchase, UseItemRequest, ItemTargetRequest
+from app.models import UserOnly, UpdateUserInfo, CampaignAndUserOnly, ShopPurchase, UseItemRequest, ItemTargetRequest, ArmyNameUpdate
 from prometheus_fastapi_instrumentator import Instrumentator
 
 from app.scheduler import start_scheduler
 from database import init_db
+from app.media.routes import router as media_router
 
 
 app = FastAPI()
@@ -110,6 +111,7 @@ def user_campaigns(current_user: dict = Depends(get_current_user)):
 def update_user(data: UpdateUserInfo, current_user: dict = Depends(get_current_user)):
     return crud.update_user_info(current_user["user_id"], data.first_name, data.last_name, data.phone)
 
+
 @app.post("/api/campaign/finished_today")
 def check_finished_today(data: CampaignOnly):
     return {"ended": crud.has_campaign_finished_for_day(data.campaign_id)}
@@ -117,6 +119,10 @@ def check_finished_today(data: CampaignOnly):
 @app.post("/api/campaign/delete")
 def delete_campaign(data: CampaignOnly, current_user: dict = Depends(get_current_user)):
     return crud.delete_campaign(data.campaign_id, current_user["user_id"])
+
+@app.post("/api/campaign/update_name")
+def update_campaign_name(data: models.CampaignNameUpdate, current_user: dict = Depends(get_current_user)):
+    return crud.update_campaign_name(data.campaign_id, current_user["user_id"], data.name)
 
 @app.post("/api/campaign/kick")
 def kick_player(data: models.KickRequest, current_user: dict = Depends(get_current_user)):
@@ -175,6 +181,11 @@ def update_campaign_ruler_title(data: models.CampaignRulerTitle, current_user: d
 def update_campaign_member(data: models.CampaignAndUserOnly, current_user: dict = Depends(get_current_user)):
     return crud.update_campaign_member(data.campaign_id, current_user["user_id"], data.display_name, data.color)
 
+@app.post("/api/campaign/army-name")
+def update_army_name(data: ArmyNameUpdate, current_user: dict = Depends(get_current_user)):
+    return crud.update_army_name(current_user["user_id"], data.campaign_id, data.army_name)
+
+
 @app.post("/api/double_down")
 def activate_double_down(data: CampaignOnly, current_user: dict = Depends(get_current_user)):
     return crud.activate_double_down(current_user["user_id"], data.campaign_id)
@@ -211,3 +222,4 @@ def get_campaign_hint(data: CampaignOnly, current_user: dict = Depends(get_curre
 
 app.include_router(admin_router)
 app.include_router(updates_router)
+app.include_router(media_router)

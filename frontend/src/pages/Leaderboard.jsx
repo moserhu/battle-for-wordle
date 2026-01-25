@@ -22,6 +22,11 @@ export default function Leaderboard() {
   const [isAdminCampaign, setIsAdminCampaign] = useState(false);
   const { token } = useAuth();
   const [statusLoaded, setStatusLoaded] = useState(false);
+  const [previewPlayer, setPreviewPlayer] = useState(null);
+  const [previewImageUrl, setPreviewImageUrl] = useState("");
+  const [viewportWidth, setViewportWidth] = useState(
+    typeof window !== "undefined" ? window.innerWidth : 999
+  );
 
   useEffect(() => {
     const fetchStatus = async () => {
@@ -90,6 +95,12 @@ export default function Leaderboard() {
   
     fetchLeaderboard();
   }, [campaignId]);
+
+  useEffect(() => {
+    const handleResize = () => setViewportWidth(window.innerWidth);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
   
   useEffect(() => {
   
@@ -128,6 +139,19 @@ export default function Leaderboard() {
     plugins: {
       legend: { display: false },
     },
+  };
+
+  const getNameSizeClass = (name) => {
+    if (!name) return '';
+    const words = String(name).trim().split(/\s+/);
+    const longest = words.reduce((max, w) => Math.max(max, w.length), 0);
+    const total = words.join('').length;
+    const isSmallScreen = viewportWidth <= 420;
+    if (isSmallScreen && (longest >= 9 || total >= 12)) return 'player-name--small';
+    if (longest >= 18 || total >= 26) return 'player-name--xxsmall';
+    if (longest >= 15 || total >= 22) return 'player-name--xsmall';
+    if (longest >= 11 || total >= 16) return 'player-name--small';
+    return '';
   };
   
   
@@ -207,10 +231,33 @@ export default function Leaderboard() {
                     <tr key={i}>
                       <td className="player-cell">
                         <div
-                          className="color-swatch"
-                          style={{ backgroundColor: colorMap[entry.username] }}
-                        ></div>
-                        <span className="player-name">{entry.username}</span>
+                          className="player-card"
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => setPreviewPlayer(entry)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              setPreviewPlayer(entry);
+                            }
+                          }}
+                          style={{ '--player-color': colorMap[entry.username] || '#2b2b2b' }}
+                        >
+                          <div className="player-media">
+                            <div className="player-avatar">
+                              {entry.profile_image_url ? (
+                                <img src={entry.profile_image_url} alt="" />
+                              ) : (
+                                <span>?</span>
+                              )}
+                            </div>
+                          </div>
+                          <span
+                            className={`player-name ${getNameSizeClass(entry.username)}`}
+                            style={{ color: '#ffffff' }}
+                          >
+                            {entry.username}
+                          </span>
+                        </div>
                       </td>
                       <td className="center-cell">{entry.score}</td>
                       <td style={{ textAlign: "center" }}>
@@ -224,6 +271,78 @@ export default function Leaderboard() {
                 Back
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {previewPlayer && (
+        <div className="player-preview-overlay" onClick={() => setPreviewPlayer(null)}>
+          <div
+            className="player-preview-card"
+            style={{
+              backgroundImage: previewPlayer.army_image_url
+                ? `url(${previewPlayer.army_image_url})`
+                : undefined,
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (previewPlayer.army_image_url) {
+                setPreviewImageUrl(previewPlayer.army_image_url);
+              }
+            }}
+          >
+            <button
+              className="player-preview-close"
+              onClick={(e) => {
+                e.stopPropagation();
+                setPreviewPlayer(null);
+              }}
+              type="button"
+            >
+              ×
+            </button>
+            <div className="player-preview-avatar">
+              {previewPlayer.profile_image_url ? (
+                <img
+                  src={previewPlayer.profile_image_url}
+                  alt=""
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setPreviewImageUrl(previewPlayer.profile_image_url);
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      setPreviewImageUrl(previewPlayer.profile_image_url);
+                    }
+                  }}
+                />
+              ) : (
+                <span>?</span>
+              )}
+            </div>
+            <div
+              className="player-preview-name"
+            >
+              {previewPlayer.username}
+            </div>
+            <div className="player-preview-army-name">
+              {previewPlayer.army_name || "Unnamed Army"}
+            </div>
+          </div>
+        </div>
+      )}
+      {previewImageUrl && (
+        <div className="player-image-overlay" onClick={() => setPreviewImageUrl("")}>
+          <div className="player-image-card" onClick={(e) => e.stopPropagation()}>
+            <button
+              className="player-image-close"
+              type="button"
+              onClick={() => setPreviewImageUrl("")}
+            >
+              ×
+            </button>
+            <img src={previewImageUrl} alt="Player preview" />
           </div>
         </div>
       )}

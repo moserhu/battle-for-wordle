@@ -247,6 +247,7 @@
   padding: 12px 14px;
   box-shadow: var(--home-shadow-card);
   position: relative;
+  flex-wrap: wrap;
 }
 
 .home-campaign-row.admin-campaign {
@@ -273,6 +274,7 @@
   font-size: 1.05rem;
   color: var(--home-text-primary);
   font-weight: 600;
+  min-width: 0;
 }
 
 .home-campaign-status {
@@ -281,9 +283,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  position: absolute;
-  top: 10px;
-  right: 14px;
+  margin-left: auto;
 }
 
 .home-campaign-actions {
@@ -482,6 +482,13 @@
   .home-campaign-row {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .home-campaign-status {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    margin-left: 0;
   }
 
   .home-campaign-actions,

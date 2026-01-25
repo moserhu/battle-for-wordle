@@ -32,6 +32,10 @@ class CampaignRulerTitle(BaseModel):
     campaign_id: int
     title: str
 
+class CampaignNameUpdate(BaseModel):
+    campaign_id: int
+    name: str
+
 class UserRegister(BaseModel):
     first_name: str
     last_name: str
@@ -71,3 +75,25 @@ class UseItemRequest(BaseModel):
 class ItemTargetRequest(BaseModel):
     campaign_id: int
     item_key: str
+
+class ProfileImagePresign(BaseModel):
+    filename: str
+    content_type: str
+
+class ProfileImageConfirm(BaseModel):
+    key: str
+    file_url: str
+
+class ArmyImagePresign(BaseModel):
+    campaign_id: int
+    filename: str
+    content_type: str
+
+class ArmyImageConfirm(BaseModel):
+    campaign_id: int
+    key: str
+    file_url: str
+
+class ArmyNameUpdate(BaseModel):
+    campaign_id: int
+    army_name: str

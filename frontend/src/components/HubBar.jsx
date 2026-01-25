@@ -1,113 +1,93 @@
 // frontend/src/components/HubBar.jsx
 import React, { useState } from 'react';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faCoins } from '@fortawesome/free-solid-svg-icons';
 import '../styles/HubBar.css';
 import DoubleDownModal from './DoubleDownModal';
 import CoinsInfoModal from './CoinsInfoModal';
-import StreakInfoModal from './StreakInfoModal';
 
 export default function HubBar({
-  campaignDay,
   cutoffCountdown,
   midnightCountdown,
   isFinalDay,
   campaignEnded,
-  campaignId,
-  streak,
   coins,
   doubleDownUsed,
   doubleDownActivated,
+  onBattle,
+  onInventory,
+  onShop,
+  streak,
+  onStreakInfo,
 }) {
   const [showDoubleDownInfo, setShowDoubleDownInfo] = useState(false);
   const [showCoinsInfo, setShowCoinsInfo] = useState(false);
-  const [showStreakInfo, setShowStreakInfo] = useState(false);
 
   return (
-    <section className="hub-bar">
-      {/* Status Effects */}
-      <div className="stat-card">
-        <div className="stat-title">🧪 Status Effects</div>
-        <div className="stat-value">Coming Soon</div>
-        <div className="stat-subtle">Buffs & debuffs</div>
-      </div>
-
-      {/* Streak */}
-      <div className="stat-card streak-card">
-        <div className="stat-title">🔥 Streak</div>
-        <div className="stat-value">{streak ?? 0} days</div>
-        <button
-          className="dd-info-btn"
-          type="button"
-          aria-label="Streak info"
-          onClick={() => setShowStreakInfo(true)}
-        >
-          i
+    <section className="hub-bar hub-bar-split">
+      <div className="hub-card hub-battle">
+        <div className="hub-card-title">⚔️ Battle</div>
+        <button className="hub-primary-btn" type="button" onClick={onBattle}>
+          Enter Battlefield
         </button>
+        <div className="hub-battle-meta">
+          <div className="hub-battle-chip">
+            <span className="hub-chip-label">{isFinalDay ? 'Ends In' : 'Next Word'}</span>
+            <span className="hub-chip-value">
+              {(() => {
+                const countdown = isFinalDay ? cutoffCountdown : midnightCountdown;
+                if (countdown.hours === 0 && countdown.minutes < 10) {
+                  return `${countdown.minutes}m ${countdown.seconds}s`;
+                }
+                return `${countdown.hours}h ${countdown.minutes}m`;
+              })()}
+            </span>
+          </div>
+          <button className="hub-battle-chip hub-battle-chip--streak" type="button" onClick={onStreakInfo}>
+            <span className="hub-chip-label">
+              {streak >= 1 ? '🔥 Streak' : 'Streak'}
+            </span>
+            <span className="hub-chip-value">{streak ?? 0}</span>
+          </button>
+        </div>
+        <div className="hub-battle-badges">
+          <div className={`hub-status ${campaignEnded ? 'complete' : 'incomplete'}`}>
+            {campaignEnded ? '✅ Complete' : '❌ Not Complete'}
+          </div>
+          <button
+            className="hub-status hub-status-dd"
+            type="button"
+            onClick={() => setShowDoubleDownInfo(true)}
+          >
+            ⚔️ {doubleDownUsed ? 'Used' : doubleDownActivated ? 'Active' : 'Available'}
+          </button>
+        </div>
       </div>
 
-      {/* Coins */}
-      <div className="stat-card coins-card">
-        <div className="stat-title">💰 Coins</div>
-        <div className="stat-value">{coins ?? 0}</div>
+      <div className="hub-card hub-economy">
+        <div className="hub-card-title">💰 Economy</div>
+        <div className="hub-coins-value">
+          {coins ?? 0}
+          <span className="hub-coins-icon" aria-hidden="true">
+            <FontAwesomeIcon icon={faCoins} />
+          </span>
+        </div>
+        <div className="hub-econ-actions">
+          <button className="btn hub-econ-btn" type="button" onClick={onInventory}>
+            Inventory
+          </button>
+          <button className="btn btn-shop hub-econ-btn" type="button" onClick={onShop}>
+            Shop
+          </button>
+        </div>
         <button
-          className="dd-info-btn"
+          className="dd-info-btn hub-coins-info"
           type="button"
           aria-label="Coins info"
           onClick={() => setShowCoinsInfo(true)}
         >
           i
         </button>
-      </div>
-
-      {/* Completion */}
-      <div className="stat-card">
-        <div className="stat-title">Completion</div>
-        {campaignEnded ? (
-          <>
-            <div className="completion-symbol complete">✅</div>
-            <div className="completion-text complete">Complete</div>
-          </>
-        ) : (
-          <>
-            <div className="completion-symbol incomplete">❌</div>
-            <div className="completion-text incomplete">Not Complete</div>
-          </>
-        )}
-      </div>
-
-      {/* Double Down */}
-      <div className="stat-card double-down-card">
-        <div className="stat-title">⚔️ Double Down</div>
-        {doubleDownUsed ? (
-          <div className="stat-pill used">Used</div>
-        ) : doubleDownActivated ? (
-          <div className="stat-pill active">Active</div>
-        ) : (
-          <div className="stat-pill available">Available</div>
-        )}
-        <button
-          className="dd-info-btn"
-          type="button"
-          aria-label="Double Down info"
-          onClick={() => setShowDoubleDownInfo(true)}
-        >
-          i
-        </button>
-      </div>
-
-      {/* Timer */}
-      <div className="stat-card">
-        <div className="stat-title">
-          ⏳ {isFinalDay ? 'Ends In' : 'Next Word In'}
-        </div>
-        <div className="stat-value">
-          {(() => {
-            const countdown = isFinalDay ? cutoffCountdown : midnightCountdown;
-            if (countdown.hours === 0 && countdown.minutes < 10) {
-              return `${countdown.minutes}m ${countdown.seconds}s`;
-            }
-            return `${countdown.hours}h ${countdown.minutes}m`;
-          })()}
-        </div>
       </div>
 
       <DoubleDownModal
@@ -119,10 +99,6 @@ export default function HubBar({
       <CoinsInfoModal
         visible={showCoinsInfo}
         onClose={() => setShowCoinsInfo(false)}
-      />
-      <StreakInfoModal
-        visible={showStreakInfo}
-        onClose={() => setShowStreakInfo(false)}
       />
     </section>
   );

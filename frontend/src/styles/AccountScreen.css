@@ -176,6 +176,61 @@
     text-decoration: underline;
 }
 
+.account-image-preview-trigger {
+  margin: 8px auto 16px;
+  background: var(--theme-btn-bg);
+  color: var(--theme-btn-text);
+  border: 2px solid var(--theme-btn-border);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-family: var(--theme-font);
+  cursor: pointer;
+  display: block;
+}
+
+.account-image-preview-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--theme-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1200;
+  padding: 1rem;
+}
+
+.account-image-preview-card {
+  position: relative;
+  background: var(--theme-surface-strong);
+  border: 2px solid var(--theme-border);
+  border-radius: 12px;
+  padding: 12px;
+  width: min(90vw, 520px);
+  box-shadow: var(--theme-shadow-strong);
+}
+
+.account-image-preview-card img {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 8px;
+}
+
+.account-image-preview-close {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  color: #fff;
+  font-size: 1.2rem;
+  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
+}
+
+
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -219,6 +274,14 @@
   background: var(--theme-surface-subtle);
   border-radius: 8px;
   border: 1px solid var(--theme-border);
+  gap: 12px;
+}
+
+.campaign-entry-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .campaign-entry strong {
@@ -229,115 +292,6 @@
   letter-spacing: 0.5px;
 }
 
-.campaign-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.campaign-actions button {
-  padding: 0.5rem 1rem;
-  background-color: var(--theme-btn-bg);
-  color: var(--theme-btn-text);
-  border: 1px solid var(--theme-btn-border);
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: bold;
-  font-family: var(--theme-font);
-  transition: background 0.2s;
-}
-
-.campaign-actions button:hover {
-  background-color: var(--theme-btn-hover);
-  color: var(--theme-text-accent);
-}
-
-.campaign-name-highlight {
-  font-family: 'Roboto Mono', monospace;
-  font-size: 1.05rem;
-  color: var(--theme-accent-warm-strong);
-  letter-spacing: 0.4px;
-}
-
-.modal-content input {
-  width: 100%;
-  padding: 0.6rem;
-  margin: 0.5rem 0 1rem 0;
-  background: var(--theme-input-bg);
-  color: var(--theme-input-text);
-  font-size: 1rem;
-  border: 1px solid var(--theme-input-border);
-  border-radius: 6px;
-  font-family: 'Roboto Mono', monospace;  /* 👈 Set font here */
-  letter-spacing: 0.3px;
-}
-
-.modal-content button {
-  padding: 0.6rem 1.2rem;
-  margin-top: 0.5rem;
-  background: var(--theme-danger-bg);
-  color: var(--theme-text-accent);
-  border: 2px solid var(--theme-border-strong);
-  border-radius: 6px;
-  font-weight: bold;
-  font-family: var(--theme-font);
-  transition: background 0.2s;
-}
-
-.modal-content button:hover {
-  background: var(--theme-danger-hover);
-  color: var(--theme-text-accent);
-}
-
-.modal-content .kick-list {
-  margin-top: 1.2rem;
-}
-
-.kick-list div {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.5rem 0;
-  background: var(--theme-surface-subtle);
-  border-radius: 6px;
-  margin-bottom: 0.4rem;
-  padding: 0.6rem;
-  border: 1px solid var(--theme-border);
-}
-
-.kick-list button {
-  background: var(--theme-warning-bg);
-  color: var(--theme-text-accent);
-  border: 1px solid var(--theme-accent-warm);
-  padding: 0.4rem 0.8rem;
-  border-radius: 4px;
-  font-size: 0.9rem;
-  font-family: var(--theme-font);
-  cursor: pointer;
-}
-
-.kick-list button:hover {
-  background: var(--theme-warning-hover);
-}
-
-
-.management-btn {
-  background-color: var(--theme-btn-bg);
-  color: var(--theme-btn-text);
-  padding: 10px 20px;
-  border: 2px solid var(--theme-border);
-  border-radius: 8px;
-  font-family: var(--theme-font);
-  font-size: 1rem;
-  font-weight: bold;
-  cursor: pointer;
-  margin-top: 20px;
-  transition: background 0.3s ease;
-}
-
-.management-btn:hover {
-  background-color: var(--theme-btn-hover);
-  color: var(--theme-text-accent);
-}
 
 
 

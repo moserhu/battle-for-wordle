@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
+import ImageUploadField from '../components/uploads/ImageUploadField';
 import '../styles/AccountScreen.css';
 
 const API_BASE = process.env.REACT_APP_API_URL || `${window.location.protocol}//${window.location.hostname}`;
@@ -17,17 +18,13 @@ export default function AccountScreen() {
     correct_guesses: 0,
     campaign_wins: 0,
     campaign_losses: 0,
+    profile_image_url: '',
   });
 
   const [originalUser, setOriginalUser] = useState({});
   const [message, setMessage] = useState('');
   const [editing, setEditing] = useState(false);
-  const [campaignsOwned, setCampaignsOwned] = useState([]);
-  const [showCampaignModal, setShowCampaignModal] = useState(false);
-  const [confirmDeleteName, setConfirmDeleteName] = useState('');
-  const [selectedCampaign, setSelectedCampaign] = useState(null);
-  const [kickList, setKickList] = useState([]);
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [showProfilePreview, setShowProfilePreview] = useState(false);
 
   const navigate = useNavigate();
   const { user: authUser, token, isAuthenticated, loading } = useAuth();
@@ -50,6 +47,7 @@ export default function AccountScreen() {
 
       const data = await res.json();
       if (res.ok) {
+        console.log('[AccountScreen] user info', data);
         setUser(data);
         setOriginalUser(data);
       }
@@ -59,24 +57,6 @@ export default function AccountScreen() {
       fetchUser();
     }
   }, [loading, token]);
-
-  const fetchOwnedCampaigns = React.useCallback(async () => {
-    const res = await fetch(`${API_BASE}/api/campaigns/owned`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const data = await res.json();
-    if (res.ok) {
-      setCampaignsOwned(data);
-    }
-  }, [token]);
-
-  useEffect(() => {
-    if (token && authUser?.user_id) {
-      fetchOwnedCampaigns();
-    }
-  }, [authUser?.user_id, fetchOwnedCampaigns, token]);
-  
-  
 
 
   if (loading) return null;
@@ -115,6 +95,7 @@ export default function AccountScreen() {
     }
     return phone; // fallback for non-standard lengths
   };
+
   
 
   return (
@@ -124,6 +105,18 @@ export default function AccountScreen() {
         <h2>My Account</h2>
 
         <div className="account-info">
+          <ImageUploadField
+            label="Profile Photo"
+            value={user.profile_image_url}
+            token={token}
+            presignPath="/api/user/profile-image/presign"
+            confirmPath="/api/user/profile-image/confirm"
+            presignBody={(file) => ({ filename: file.name, content_type: file.type })}
+            confirmBody={(presign) => ({ key: presign.key, file_url: presign.file_url })}
+            emptyLabel="No photo"
+            onUploaded={(url) => setUser((prev) => ({ ...prev, profile_image_url: url }))}
+            onPreview={() => setShowProfilePreview(true)}
+          />
           {!editing ? (
             <>
               <p><strong>Email:</strong> {user.email}</p>
@@ -152,6 +145,20 @@ export default function AccountScreen() {
             </>
           )}
         </div>
+        {showProfilePreview && (
+          <div className="account-image-preview-overlay" onClick={() => setShowProfilePreview(false)}>
+            <div className="account-image-preview-card" onClick={(e) => e.stopPropagation()}>
+              <button
+                className="account-image-preview-close"
+                type="button"
+                onClick={() => setShowProfilePreview(false)}
+              >
+                ×
+              </button>
+              <img src={user.profile_image_url} alt="Profile preview" />
+            </div>
+          </div>
+        )}
 
         <div className="account-highlights">
           <h3>Campaign Highlights</h3>
@@ -162,122 +169,6 @@ export default function AccountScreen() {
             <p>Victories: {user.campaign_wins}</p>
             <p>Losses: {user.campaign_losses}</p>
           </div>
-          <button className='management-btn' onClick={() => { setShowCampaignModal(true); }}>
-  🛠️ Campaign Management
-</button>
-
-{showCampaignModal && (
-  <div className="modal-overlay">
-    <div className="modal-content">
-      <h3>Your Campaigns</h3>
-      {campaignsOwned.length === 0 ? <p>No owned campaigns.</p> : campaignsOwned.map((camp) => (
-        <div key={camp.id} className="campaign-entry">
-        <strong>{camp.name}</strong>
-          <div className="campaign-actions">
-          <button onClick={() => {
-              setSelectedCampaign(camp);
-              setConfirmingDelete(true);
-            }}>Delete</button>
-            <button onClick={async () => {
-              const res = await fetch(`${API_BASE}/api/campaign/members`, {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify({ campaign_id: camp.id }),
-              });
-              const data = await res.json();
-  if (res.ok) {
-    setKickList(data);
-    setSelectedCampaign(camp);
-    setConfirmingDelete(false); // ✅ make sure this is false if switching
-  }
-            }}>Kick Players</button>
-          </div>
-        </div>
-      ))}
-
-      {/* Delete confirmation */}
-      {selectedCampaign && confirmingDelete && (
-        <>
-          <p>
-            Type <strong className="campaign-name-highlight">{selectedCampaign.name}</strong> to confirm deletion <em>(case-insensitive)</em>:
-          </p>
-          <input
-            value={confirmDeleteName}
-            onChange={(e) => setConfirmDeleteName(e.target.value)}
-          />
-          <button
-            disabled={confirmDeleteName.trim().toLowerCase() !== selectedCampaign.name.toLowerCase()}
-            onClick={async () => {
-              const res = await fetch(`${API_BASE}/api/campaign/delete`, {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify({ campaign_id: selectedCampaign.id }),
-              });
-              if (res.ok) {
-                alert("Deleted!");
-                setSelectedCampaign(null);
-                setConfirmDeleteName('');
-                setKickList([]);
-                fetchOwnedCampaigns();
-              }
-            }}
-          >
-            Confirm Delete
-          </button>
-        </>
-      )}
-
-      {/* Kick list */}
-      {kickList.length > 0 && (
-  <div className="kick-list">
-    <h4>Kick players from {selectedCampaign.name}</h4>
-    {kickList.map((player) => (
-      <div key={player.user_id || player.name}>
-        {player.name}
-      <button
-        onClick={async () => {
-          const res = await fetch(`${API_BASE}/api/campaign/kick`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-              campaign_id: selectedCampaign.id,
-              user_id: player.user_id,
-            }),
-          });
-
-          if (res.ok) {
-            setKickList(kickList.filter((p) => p.user_id !== player.user_id));
-          } else {
-            const err = await res.json().catch(() => ({}));
-            alert(err.detail || "Kick failed");
-          }
-        }}
-      >
-        🥾
-      </button>
-      </div>
-    ))}
-  </div>
-)}
-
-
-      <button onClick={() => {
-        setShowCampaignModal(false);
-        setSelectedCampaign(null);
-        setKickList([]);
-      }}>Close</button>
-    </div>
-  </div>
-)}
         </div>
       </div>
     </div>

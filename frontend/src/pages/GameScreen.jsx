@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import WordGrid from '../components/WordGrid';
 import Keyboard from '../components/Keyboard';
 import DoubleDownModal from "../components/DoubleDownModal";
-import EditIdentityModal from "../components/EditIdentityModal";
 import { useNavigate, useLocation } from 'react-router-dom';
 import '../styles/GameScreen.css';
 import confetti from 'canvas-confetti';
@@ -85,9 +84,6 @@ export default function GameScreen() {
   const [errorMsg, setErrorMsg] = useState(null);
   const [showTroopModal, setShowTroopModal] = useState(false);
   const [troopsEarned, setTroopsEarned] = useState(0);
-  const [playerDisplayName, setPlayerDisplayName] = useState("");
-  const [playerColor, setPlayerColor] = useState("#ffffff");
-  const [showEditModal, setShowEditModal] = useState(false);
   const [showDoubleDownModal, setShowDoubleDownModal] = useState(false);
   const [showFailureModal, setShowFailureModal] = useState(false);
   const [failedWord, setFailedWord] = useState("");
@@ -367,9 +363,7 @@ export default function GameScreen() {
         ) {
           setShowDoubleDownModal(true);
         }        
-      const self = await memberRes.json();
-      setPlayerDisplayName(self.display_name || user.first_name);
-      setPlayerColor(self.color || "#ffffff");
+      await memberRes.json();
       
       const validGuesses = Array.isArray(progress.guesses) && progress.guesses.length === 6
   ? progress.guesses.map(row => Array.isArray(row) && row.length === 5 ? row : Array(5).fill("")) 
@@ -471,11 +465,14 @@ export default function GameScreen() {
   const executionerRow = hasExecutioner ? Math.max(0, baseMaxRows - 1) : null;
   const sealActive = Boolean(sealedLetter) && currentRow < 2 && !gameOver;
   const voidActive = Boolean(voidbrandWord) && currentRow === 0 && !gameOver;
-  const blockedLetters = new Set();
-  if (sealActive && sealedLetter) blockedLetters.add(String(sealedLetter).toLowerCase());
-  if (voidActive && voidbrandWord) {
-    String(voidbrandWord).split("").forEach((letter) => blockedLetters.add(letter.toLowerCase()));
-  }
+  const blockedLetters = useMemo(() => {
+    const set = new Set();
+    if (sealActive && sealedLetter) set.add(String(sealedLetter).toLowerCase());
+    if (voidActive && voidbrandWord) {
+      String(voidbrandWord).split("").forEach((letter) => set.add(letter.toLowerCase()));
+    }
+    return set;
+  }, [sealActive, sealedLetter, voidActive, voidbrandWord]);
 
   const handleEditRulerTitle = () => {
     setShowRulerModal(true);
@@ -809,7 +806,7 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
     submitGuess(edictWord);
   }, [edictWord, isCurrentDay, gameOver, isSubmitting, edictApplied, currentRow, guesses, results, submitGuess]);
   
-  const handleKeyPress = (key) => {
+  const handleKeyPress = useCallback((key) => {
     if (gameOver || campaignEnded || loadingDay || isSubmitting) return;
   
     // Clear error on any input
@@ -841,13 +838,64 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
         setCurrentCol(currentCol + 1);
       }
     }
-  };
+  }, [
+    gameOver,
+    campaignEnded,
+    loadingDay,
+    isSubmitting,
+    errorMsg,
+    currentCol,
+    currentRow,
+    guesses,
+    blockedLetters,
+    voidActive,
+    triggerShake,
+    submitGuess,
+  ]);
+
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      const target = event.target;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT" || target.isContentEditable)) {
+        return;
+      }
+      if (event.key === "Enter") {
+        event.preventDefault();
+        handleKeyPress("Enter");
+        return;
+      }
+      if (event.key === "Backspace") {
+        event.preventDefault();
+        handleKeyPress("⌫");
+        return;
+      }
+      if (/^[a-zA-Z]$/.test(event.key)) {
+        handleKeyPress(event.key.toUpperCase());
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleKeyPress]);
 
   
   const isAdminCampaign = Boolean(campaignDay?.is_admin_campaign);
 
+  const rulerBackgroundStyle = !isAdminCampaign && campaignDay?.ruler_army_image_url
+    ? {
+        backgroundImage: `url(${campaignDay.ruler_army_image_url})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+        backgroundAttachment: "fixed",
+      }
+    : undefined;
+
   return (
-    <div className={`game-wrapper${isAdminCampaign ? " admin-theme" : ""}`}>
+    <div
+      className={`game-wrapper${isAdminCampaign ? " admin-theme" : ""}`}
+      style={rulerBackgroundStyle}
+    >
       <div className="game-content">
         <div className="game-inner">
           {hasCandleOfMercy(statusEffects) && (
@@ -867,13 +915,22 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
           )}
           <div className="game-top-row">
             <div className="camp-menu game-top-half" ref={campMenuRef}>
-              <button
-                className="back-btn camp-menu-button"
-                onClick={() => setShowCampMenu((prev) => !prev)}
-                type="button"
-              >
-                Command ▾
-              </button>
+              <div className="camp-menu-card">
+                <button
+                  className="back-btn camp-menu-button camp-menu-use"
+                  onClick={openSelfItemsModal}
+                  type="button"
+                >
+                  Use Items
+                </button>
+                <button
+                  className="back-btn camp-menu-button camp-menu-travel"
+                  onClick={() => setShowCampMenu((prev) => !prev)}
+                  type="button"
+                >
+                  Travel ▾
+                </button>
+              </div>
               {showCampMenu && (
                 <div className="camp-menu-list">
                   <button
@@ -904,11 +961,13 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
                     className="camp-menu-item"
                     onClick={() => {
                       setShowCampMenu(false);
-                      openSelfItemsModal();
+                      if (campaignId) {
+                        navigate(`/campaign/${campaignId}/shop`);
+                      }
                     }}
                     type="button"
                   >
-                    Use Items
+                    Shop 💰
                   </button>
                 </div>
               )}
@@ -1174,19 +1233,6 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
       )}
   
       {/* Edit Display Name Modal */}
-      <EditIdentityModal
-          visible={showEditModal}
-          displayName={playerDisplayName}
-          color={playerColor}
-          campaignId={campaignId}
-          userId={user.user_id}
-          onClose={() => setShowEditModal(false)}
-          onSave={(newName, newColor) => {
-            setPlayerDisplayName(newName);
-            setPlayerColor(newColor);
-            setShowEditModal(false);
-          }}
-        />
       {/* Failure Modal */}
       {showFailureModal && (
           <div className="modal-overlay">

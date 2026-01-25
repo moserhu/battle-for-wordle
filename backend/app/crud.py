@@ -20,6 +20,7 @@ load_dotenv()
 
 from app.items import ITEM_CATALOG, get_item
 from app.utils.campaigns import resolve_campaign_day
+from app.media.storage import create_presigned_download
 
 DB_URL = os.getenv("DATABASE_URL")
 
@@ -306,12 +307,21 @@ def get_user_info(user_id: int):
             SELECT first_name, last_name, phone, email,
                    campaigns, total_guesses, correct_guesses,
                    campaign_wins, campaign_losses, clicked_update,
-                   COALESCE(is_admin, FALSE)
+                   COALESCE(is_admin, FALSE),
+                   profile_image_url,
+                   profile_image_key
             FROM users WHERE id = %s
         """, (user_id,)).fetchone()
 
         if not row:
             raise HTTPException(status_code=404, detail="User not found")
+
+        profile_url = None
+        if row[12]:
+            try:
+                profile_url = create_presigned_download(row[12])
+            except Exception:
+                profile_url = row[11]
 
         return {
             "first_name": row[0],
@@ -324,7 +334,8 @@ def get_user_info(user_id: int):
             "campaign_wins": row[7],
             "campaign_losses": row[8],
             "clicked_update": row[9],
-            "is_admin": bool(row[10])
+            "is_admin": bool(row[10]),
+            "profile_image_url": profile_url
         }
 
 def update_user_info(user_id: int, first_name: str, last_name: str, phone: str):
@@ -340,6 +351,19 @@ def update_user_info(user_id: int, first_name: str, last_name: str, phone: str):
             if "phone" in str(e).lower():
                 raise HTTPException(status_code=400, detail="Phone number already registered")
             raise HTTPException(status_code=400, detail="Failed to update user info")
+
+def update_army_name(user_id: int, campaign_id: int, army_name: str):
+    with get_db() as conn:
+        conn.execute(
+            """
+            UPDATE campaign_members
+            SET army_name = %s
+            WHERE campaign_id = %s AND user_id = %s
+            """,
+            (army_name, campaign_id, user_id)
+        )
+    return {"army_name": army_name}
+
 
 def acknowledge_update(user_id: int):
     with get_db() as conn:
@@ -1064,6 +1088,17 @@ def get_campaign_progress(campaign_id: int):
     start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
     today = datetime.now(ZoneInfo("America/Chicago")).date()
     delta = (today - start_date).days
+    ruler_army_image_url = None
+    if ruler_id and not is_admin_campaign:
+        with get_db() as conn:
+            ruler_row = conn.execute("""
+                SELECT army_image_url, army_image_key
+                FROM campaign_members
+                WHERE campaign_id = %s AND user_id = %s
+            """, (campaign_id, ruler_id)).fetchone()
+        if ruler_row:
+            army_url, army_key = ruler_row
+            ruler_army_image_url = create_presigned_download(army_key) if army_key else army_url
 
     return {
         "name": name,
@@ -1073,7 +1108,8 @@ def get_campaign_progress(campaign_id: int):
         "king": king,
         "ruler_id": ruler_id,
         "ruler_title": ruler_title,
-        "is_admin_campaign": bool(is_admin_campaign)
+        "is_admin_campaign": bool(is_admin_campaign),
+        "ruler_army_image_url": ruler_army_image_url
     }
 
 def get_campaign_streak(user_id: int, campaign_id: int):
@@ -1103,11 +1139,18 @@ def get_leaderboard(campaign_id: int):
         rows = conn.execute(
             """
             SELECT 
+                cm.user_id,
                 cm.display_name,
                 cm.color,
                 cm.score,
-                COALESCE(dp.completed, 0) as played_today
+                COALESCE(dp.completed, 0) as played_today,
+                u.profile_image_url,
+                u.profile_image_key,
+                cm.army_image_url,
+                cm.army_image_key,
+                cm.army_name
             FROM campaign_members cm
+            JOIN users u ON u.id = cm.user_id
             LEFT JOIN campaign_daily_progress dp 
               ON cm.user_id = dp.user_id 
               AND cm.campaign_id = dp.campaign_id 
@@ -1120,10 +1163,15 @@ def get_leaderboard(campaign_id: int):
 
     return [
         {
-            "username": row[0],
-            "color": row[1],
-            "score": row[2],
-            "played_today": bool(row[3])
+            "user_id": row[0],
+            "display_name": row[1],
+            "username": row[1],
+            "color": row[2],
+            "score": row[3],
+            "played_today": bool(row[4]),
+            "profile_image_url": create_presigned_download(row[6]) if row[6] else row[5],
+            "army_image_url": create_presigned_download(row[8]) if row[8] else row[7],
+            "army_name": row[9]
         }
         for row in rows
     ]
@@ -1223,20 +1271,25 @@ def handle_campaign_end(campaign_id: int):
             ended_on = min(today, final_day)
 
             # Persist reigning king for the next cycle.
+            king_name = (display_name or f"{first_name or ''} {last_name or ''}").strip()
             conn.execute("""
                 UPDATE campaigns
                 SET king = %s,
                     ruler_id = %s,
                     ruler_title = COALESCE(ruler_title, 'Current Ruler')
                 WHERE id = %s
-            """, (first_name, user_id, campaign_id))
+            """, (king_name, user_id, campaign_id))
 
             if not is_admin_flag:
                 # 1a. Record global high score entries for all members
                 for member_user_id, member_score, member_display_name, member_first, member_last, *_ in standings:
                     if not member_score or member_score <= 0:
                         continue
-                    player_name = (member_display_name or f"{member_first} {member_last}").strip()
+                    account_name = f"{member_first or ''} {member_last or ''}".strip()
+                    if member_first and member_last:
+                        player_name = account_name
+                    else:
+                        player_name = (member_display_name or account_name).strip()
                     conn.execute("""
                         INSERT INTO global_high_scores (
                             user_id,
@@ -1349,6 +1402,28 @@ def update_campaign_ruler_title(user_id: int, campaign_id: int, title: str):
 
     return {"status": "updated", "ruler_title": title}
 
+def update_campaign_name(campaign_id: int, requester_id: int, name: str):
+    cleaned = (name or "").strip()
+    if not cleaned:
+        raise HTTPException(status_code=400, detail="Campaign name cannot be empty")
+
+    with get_db() as conn:
+        owner_row = conn.execute(
+            "SELECT owner_id FROM campaigns WHERE id = %s",
+            (campaign_id,)
+        ).fetchone()
+        if not owner_row:
+            raise HTTPException(status_code=404, detail="Campaign not found")
+        if owner_row[0] != requester_id:
+            raise HTTPException(status_code=403, detail="Only the campaign owner can rename this campaign")
+
+        conn.execute(
+            "UPDATE campaigns SET name = %s WHERE id = %s",
+            (cleaned, campaign_id)
+        )
+
+    return {"status": "updated", "name": cleaned}
+
 
 def has_campaign_finished_for_day(campaign_id: int):
     with get_db() as conn:
@@ -1456,8 +1531,14 @@ def get_self_member(campaign_id: int, user_id: int):
                    cm.double_down_activated,
                    cm.double_down_used_week,
                    cm.double_down_date,
-                   COALESCE(dp.completed, 0) as daily_completed
+                   COALESCE(dp.completed, 0) as daily_completed,
+                   cm.army_image_url,
+                   cm.army_image_key,
+                   u.profile_image_url,
+                   u.profile_image_key,
+                   cm.army_name
             FROM campaign_members cm
+            JOIN users u ON u.id = cm.user_id
             LEFT JOIN campaign_daily_progress dp
               ON dp.user_id = cm.user_id
              AND dp.campaign_id = cm.campaign_id
@@ -1468,13 +1549,19 @@ def get_self_member(campaign_id: int, user_id: int):
         if not row:
             raise HTTPException(status_code=404, detail="Membership not found")
 
+        army_url = create_presigned_download(row[7]) if row[7] else row[6]
+        profile_url = create_presigned_download(row[9]) if row[9] else row[8]
+
         return {
             "display_name": row[0],
             "color": row[1],
             "double_down_activated": row[2],
             "double_down_used_week": row[3],
             "double_down_date": row[4],
-            "daily_completed": row[5]
+            "daily_completed": row[5],
+            "army_image_url": army_url,
+            "profile_image_url": profile_url,
+            "army_name": row[10]
         }
 
 def get_targetable_members(campaign_id: int, requester_id: int):

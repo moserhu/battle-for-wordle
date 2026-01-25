@@ -14,7 +14,12 @@ def init_db():
         conn.execute("ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS is_admin_campaign BOOLEAN DEFAULT FALSE")
         conn.execute("ALTER TABLE global_high_scores ADD COLUMN IF NOT EXISTS campaign_length INTEGER")
         conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE")
+        conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_image_url TEXT")
+        conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_image_key TEXT")
         conn.execute("UPDATE users SET is_admin = TRUE WHERE id = 2")
+        conn.execute("ALTER TABLE campaign_members ADD COLUMN IF NOT EXISTS army_image_url TEXT")
+        conn.execute("ALTER TABLE campaign_members ADD COLUMN IF NOT EXISTS army_image_key TEXT")
+        conn.execute("ALTER TABLE campaign_members ADD COLUMN IF NOT EXISTS army_name TEXT")
         conn.execute("""
             CREATE TABLE IF NOT EXISTS campaign_streaks (
                 user_id INTEGER NOT NULL,
