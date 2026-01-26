@@ -201,6 +201,16 @@ def init_db():
         """)
         conn.execute("ALTER TABLE campaign_user_daily_results ADD COLUMN IF NOT EXISTS word TEXT")
         conn.execute("""
+            CREATE TABLE IF NOT EXISTS campaign_daily_recaps (
+                campaign_id INTEGER NOT NULL,
+                date TEXT NOT NULL,
+                summary TEXT,
+                highlights JSONB,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (campaign_id, date)
+            )
+        """)
+        conn.execute("""
             CREATE TABLE IF NOT EXISTS user_campaign_stats (
                 user_id INTEGER NOT NULL,
                 campaign_id INTEGER NOT NULL,
@@ -226,6 +236,42 @@ def init_db():
                 solved_count INTEGER NOT NULL DEFAULT 0,
                 failed_count INTEGER NOT NULL DEFAULT 0,
                 PRIMARY KEY (campaign_id, date, word)
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS global_accolade_stats (
+                accolade_key TEXT PRIMARY KEY,
+                count INTEGER NOT NULL DEFAULT 0,
+                last_awarded_at TIMESTAMP
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS campaign_accolade_stats (
+                campaign_id INTEGER NOT NULL,
+                accolade_key TEXT NOT NULL,
+                count INTEGER NOT NULL DEFAULT 0,
+                last_awarded_at TIMESTAMP,
+                PRIMARY KEY (campaign_id, accolade_key)
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS user_accolade_stats (
+                user_id INTEGER NOT NULL,
+                campaign_id INTEGER NOT NULL,
+                accolade_key TEXT NOT NULL,
+                count INTEGER NOT NULL DEFAULT 0,
+                last_awarded_at TIMESTAMP,
+                PRIMARY KEY (user_id, campaign_id, accolade_key)
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS user_accolade_events (
+                user_id INTEGER NOT NULL,
+                campaign_id INTEGER NOT NULL,
+                accolade_key TEXT NOT NULL,
+                date TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (user_id, campaign_id, accolade_key, date)
             )
         """)
         conn.execute("""

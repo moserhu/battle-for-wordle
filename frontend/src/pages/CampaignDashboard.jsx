@@ -1,13 +1,14 @@
 // frontend/src/pages/CampaignDashboard.jsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import HubBar from '../components/HubBar';
 import RulerTitleModal from '../components/RulerTitleModal';
 import ProfileModal from '../components/ProfileModal';
 import StreakInfoModal from '../components/StreakInfoModal';
+import AccoladesModal from '../components/AccoladesModal';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faEnvelope } from '@fortawesome/free-solid-svg-icons';
+import { faMedal } from '@fortawesome/free-solid-svg-icons';
 import '../styles/Dashboard.css';
 
 const API_BASE = process.env.REACT_APP_API_URL || `${window.location.protocol}//${window.location.hostname}`;
@@ -63,6 +64,7 @@ export default function CampaignDashboard() {
 
   // content
   const [recap, setRecap] = useState(null);
+  const [recapDay, setRecapDay] = useState(null);
   const [leaderboard, setLeaderboard] = useState([]);
 
   // invite modal
@@ -71,6 +73,8 @@ export default function CampaignDashboard() {
   const [showStreakInfo, setShowStreakInfo] = useState(false);
   const [previewPlayer, setPreviewPlayer] = useState(null);
   const [previewImageUrl, setPreviewImageUrl] = useState("");
+  const [showAccoladesModal, setShowAccoladesModal] = useState(false);
+  const [accolades, setAccolades] = useState([]);
 
   // ---- auth gate ----
   useEffect(() => {
@@ -117,6 +121,14 @@ export default function CampaignDashboard() {
         setSelfMember(self);
         setDoubleDownActivated(self?.double_down_activated === 1 || self?.double_down_activated === true);
         setDoubleDownUsed(self?.double_down_used_week === 1 || self?.double_down_used_week === true);
+
+        const accoladeRes = await fetch(`${API_BASE}/api/campaign/accolades`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ campaign_id: Number(cid) })
+        });
+        const accoladeJson = await accoladeRes.json();
+        setAccolades(accoladeJson?.accolades || []);
         setCampaignEnded(self?.daily_completed === 1 || self?.daily_completed === true);
 
         // streak (best-effort; ignore if missing)
@@ -145,14 +157,8 @@ export default function CampaignDashboard() {
           }
         } catch {}
 
-        // recap (yesterday)
-        let recapData = null;
-        try {
-          const r = await fetch(`${API_BASE}/api/campaign/${cid}/recap`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          if (r.ok) recapData = await r.json();
-        } catch {}
+        const targetRecapDay = Math.max(1, prog?.day || 1);
+        setRecapDay(targetRecapDay);
 
         // leaderboard (today)
         let lbData = [];
@@ -170,7 +176,6 @@ export default function CampaignDashboard() {
             console.log('[CampaignDashboard] leaderboard', lbData);
           }
         } catch {}
-        setRecap(recapData);
         setLeaderboard(lbData);
       } catch (e) {
         setError('Failed to load dashboard.');
@@ -182,10 +187,38 @@ export default function CampaignDashboard() {
     run();
   }, [cid, token, loading]);
 
+  useEffect(() => {
+    if (!cid || !token || !recapDay) {
+      setRecap(null);
+      return;
+    }
+    let cancelled = false;
+    const loadRecap = async () => {
+      try {
+        const r = await fetch(`${API_BASE}/api/campaign/${cid}/recap?day=${recapDay}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!cancelled && r.ok) {
+          const recapData = await r.json();
+          setRecap(recapData);
+        }
+      } catch {}
+    };
+    loadRecap();
+    return () => {
+      cancelled = true;
+    };
+  }, [cid, token, recapDay]);
+
+  const maxRecapDay = useMemo(() => {
+    if (campaignMeta?.day) {
+      return Math.max(1, campaignMeta.day);
+    }
+    return 1;
+  }, [campaignMeta?.day]);
+
   if (loading) return null;
 
-  const inviteCode = campaignMeta?.invite_code || '';
-  const campaignName = campaignMeta?.name || 'Campaign';
   const rulerTitle = campaignMeta?.ruler_title || 'Current Ruler';
   const isRuler = campaignMeta?.ruler_id && user?.user_id === campaignMeta.ruler_id;
   const isAdminCampaign = Boolean(campaignMeta?.is_admin_campaign);
@@ -224,6 +257,15 @@ export default function CampaignDashboard() {
                 <h1 className="dash-title">
                   {campaignMeta?.name || 'Campaign Dashboard'}
                 </h1>
+                <button
+                  className="dash-accolades-btn"
+                  type="button"
+                  onClick={() => setShowAccoladesModal(true)}
+                  aria-label="Open accolades"
+                  title="Accolades"
+                >
+                  <FontAwesomeIcon icon={faMedal} />
+                </button>
               </div>
               <div className="dash-herald-card">
                 <button
@@ -286,6 +328,12 @@ export default function CampaignDashboard() {
         onSave={handleSaveRulerTitle}
         onClose={() => setShowRulerModal(false)}
       />
+      <AccoladesModal
+        open={showAccoladesModal}
+        onClose={() => setShowAccoladesModal(false)}
+        accolades={accolades}
+        isAdminCampaign={isAdminCampaign}
+      />
 
       <section className="dash-surface">
         <div className="dash-surface-header">
@@ -304,13 +352,56 @@ export default function CampaignDashboard() {
             {/* Recap */}
             <div className="dash-panel">
               <div className="dash-panel-header">
-                <h2>Recap</h2>
+                <h2>Battle Log</h2>
+                {recapDay ? (
+                  <div className="recap-controls">
+                    <button
+                      className="recap-nav"
+                      type="button"
+                      onClick={() => setRecapDay((prev) => (prev > 1 ? prev - 1 : prev))}
+                      disabled={recapDay <= 1}
+                    >
+                      ‹
+                    </button>
+                    <span className="recap-day">Day {recapDay}</span>
+                    <button
+                      className="recap-nav"
+                      type="button"
+                      onClick={() =>
+                        setRecapDay((prev) =>
+                          prev < maxRecapDay ? prev + 1 : prev
+                        )
+                      }
+                      disabled={recapDay >= maxRecapDay}
+                    >
+                      ›
+                    </button>
+                  </div>
+                ) : null}
               </div>
               {recap?.date ? (
                 <div className="recap-block">
                   <p className="recap-date"><strong>{recap.date_label}</strong></p>
                   {recap.summary && <p className="recap-summary">{recap.summary}</p>}
-                  {Array.isArray(recap.highlights) && recap.highlights.length > 0 ? (
+                  {Array.isArray(recap.events) && recap.events.length > 0 ? (
+                    <div className="recap-events">
+                      {recap.events.map((evt, i) => (
+                        <div className="recap-event" key={i}>
+                          <div className="recap-avatar">
+                            {evt.profile_image_url ? (
+                              <img src={evt.profile_image_url} alt="" />
+                            ) : (
+                              <span>?</span>
+                            )}
+                          </div>
+                          <div className="recap-event-body">
+                            {evt.name ? <div className="recap-event-name">{evt.name}</div> : null}
+                            <div className="recap-event-text">{evt.text}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : Array.isArray(recap.highlights) && recap.highlights.length > 0 ? (
                     <ul className="recap-list">
                       {recap.highlights.map((h, i) => <li key={i}>{h}</li>)}
                     </ul>

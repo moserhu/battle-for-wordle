@@ -337,9 +337,35 @@
     height: 20px;
     font-size: 0.7rem;
   }
+
+  .hub-battle-meta {
+    gap: 4px;
+  }
+
+  .hub-battle-chip {
+    font-size: 0.72rem;
+    padding: 3px 8px;
+  }
+
+  .hub-chip-label {
+    font-size: 0.6rem;
+  }
 }
 
 @media (max-width: 420px) {
+  .hub-battle-meta {
+    flex-wrap: nowrap;
+  }
+
+  .hub-battle-chip {
+    font-size: 0.68rem;
+    padding: 3px 6px;
+  }
+
+  .hub-chip-label {
+    font-size: 0.56rem;
+  }
+
   .hub-econ-btn.btn {
     font-size: 0.68rem !important;
     padding: 4px 4px !important;

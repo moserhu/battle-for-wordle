@@ -122,6 +122,16 @@
   color: var(--theme-text-accent);
 }
 
+.nav-dropdown-item.admin-campaign {
+  background: rgba(120, 20, 20, 0.85);
+  border-color: rgba(230, 90, 90, 0.9);
+  color: #ffe9e9;
+}
+
+.nav-dropdown-item.admin-campaign:hover {
+  background: rgba(150, 30, 30, 0.9);
+}
+
 .nav-dropdown-empty {
   padding: 8px 10px;
   color: var(--theme-text-muted);

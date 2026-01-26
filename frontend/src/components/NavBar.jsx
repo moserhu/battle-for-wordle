@@ -2,7 +2,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faLandmark, faUserShield, faRightFromBracket, faCoins, faTrophy, faCampground, faBars, faList } from '@fortawesome/free-solid-svg-icons';
+import { faLandmark, faUserShield, faRightFromBracket, faCoins, faTrophy, faCampground, faBars, faList, faHouse } from '@fortawesome/free-solid-svg-icons';
 import '../styles/NavBar.css';
 import { useAuth } from '../auth/AuthProvider';  // ⬅️ add this
 
@@ -134,7 +134,7 @@ export default function NavBar() {
                   campaigns.map((camp) => (
                     <button
                       key={camp.campaign_id}
-                      className="nav-dropdown-item"
+                      className={`nav-dropdown-item${camp.is_admin_campaign ? ' admin-campaign' : ''}`}
                       type="button"
                       onClick={() => {
                         setShowHomeMenu(false);
@@ -172,7 +172,7 @@ export default function NavBar() {
                   campaigns.map((camp) => (
                     <button
                       key={camp.campaign_id}
-                      className="nav-dropdown-item"
+                      className={`nav-dropdown-item${camp.is_admin_campaign ? ' admin-campaign' : ''}`}
                       type="button"
                       onClick={() => {
                         setShowShopMenu(false);
@@ -210,7 +210,7 @@ export default function NavBar() {
                   campaigns.map((camp) => (
                     <button
                       key={camp.campaign_id}
-                      className="nav-dropdown-item"
+                      className={`nav-dropdown-item${camp.is_admin_campaign ? ' admin-campaign' : ''}`}
                       type="button"
                       onClick={() => {
                         setShowPlayMenu(false);
@@ -251,7 +251,7 @@ export default function NavBar() {
                   campaigns.map((camp) => (
                     <button
                       key={camp.campaign_id}
-                      className="nav-dropdown-item"
+                      className={`nav-dropdown-item${camp.is_admin_campaign ? ' admin-campaign' : ''}`}
                       type="button"
                       onClick={() => {
                         setShowLeaderboardMenu(false);
@@ -280,6 +280,16 @@ export default function NavBar() {
             </button>
             {showUserMenu && (
               <div className="nav-dropdown-menu">
+                <button
+                  className="nav-dropdown-item"
+                  type="button"
+                  onClick={() => {
+                    setShowUserMenu(false);
+                    navigate('/home');
+                  }}
+                >
+                  <FontAwesomeIcon icon={faHouse} /> Home
+                </button>
                 <button
                   className="nav-dropdown-item"
                   type="button"

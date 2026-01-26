@@ -1,6 +1,7 @@
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from app.crud import handle_campaign_end, update_campaign_ruler, get_db
+from app.recap.service import build_and_store_recap
 from datetime import datetime, timedelta, date
 from zoneinfo import ZoneInfo
 import json
@@ -246,6 +247,19 @@ def compute_campaign_daily_word_stats():
                 failed_count or 0
             ))
 
+def compute_campaign_daily_recaps():
+    print(f"[{datetime.now(ZoneInfo('America/Chicago'))}] Computing campaign daily recaps...")
+
+    recap_date = (datetime.now(ZoneInfo("America/Chicago")).date() - timedelta(days=1))
+
+    with get_db() as conn:
+        campaign_ids = conn.execute("""
+            SELECT id FROM campaigns WHERE COALESCE(is_admin_campaign, FALSE) = FALSE
+        """).fetchall()
+
+    for (campaign_id,) in campaign_ids:
+        build_and_store_recap(campaign_id, recap_date)
+
 def compute_global_daily_stats():
     print(f"[{datetime.now(ZoneInfo('America/Chicago'))}] Computing global daily stats...")
 
@@ -329,6 +343,7 @@ def start_scheduler():
     scheduler.add_job(reset_expired_campaigns, CronTrigger(hour=0, minute=0, timezone="America/Chicago"))
     scheduler.add_job(compute_campaign_daily_stats, CronTrigger(hour=0, minute=5, timezone="America/Chicago"))
     scheduler.add_job(compute_campaign_daily_word_stats, CronTrigger(hour=0, minute=7, timezone="America/Chicago"))
+    scheduler.add_job(compute_campaign_daily_recaps, CronTrigger(hour=0, minute=8, timezone="America/Chicago"))
     scheduler.add_job(compute_global_daily_stats, CronTrigger(hour=0, minute=10, timezone="America/Chicago"))
     scheduler.add_job(update_final_day_rulers, CronTrigger(hour=0, minute=0, timezone="America/Chicago"))
 

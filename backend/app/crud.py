@@ -19,6 +19,16 @@ import bcrypt
 load_dotenv()
 
 from app.items import ITEM_CATALOG, get_item
+from app.accolades.service import (
+    award_accolade,
+    is_lucky_strike,
+    classify_time_accolades,
+    SHOP_REGULAR_THRESHOLD,
+    ITEM_MASTER_THRESHOLD,
+    BIG_SPENDER_THRESHOLD,
+    HOARDER_THRESHOLD,
+    list_user_accolades,
+)
 from app.utils.campaigns import resolve_campaign_day
 from app.media.storage import create_presigned_download
 
@@ -448,10 +458,10 @@ def update_campaign_streak(conn, user_id: int, campaign_id: int, date_str: str, 
     _update_streak_table(conn, "campaign_streak_cycle", user_id, campaign_id, date_str)
 
     if new_streak is None:
-        return
+        return None
 
     if not track_stats:
-        return
+        return new_streak
 
     stats_row = conn.execute("""
         SELECT current_streak, longest_streak
@@ -504,6 +514,8 @@ def update_campaign_streak(conn, user_id: int, campaign_id: int, date_str: str, 
                 WHERE id = 1
             """, (new_streak, user_id, campaign_id))
 
+    return new_streak
+
 def update_campaign_coins(conn, user_id: int, campaign_id: int, date_str: str, coins_to_add: int):
     row = conn.execute("""
         SELECT coins, last_awarded_date
@@ -512,20 +524,22 @@ def update_campaign_coins(conn, user_id: int, campaign_id: int, date_str: str, c
     """, (user_id, campaign_id)).fetchone()
 
     if row:
-        _, last_awarded_date = row
+        current_coins, last_awarded_date = row
         if last_awarded_date == date_str:
-            return
+            return current_coins
         conn.execute("""
             UPDATE campaign_coins
             SET coins = coins + %s,
                 last_awarded_date = GREATEST(COALESCE(last_awarded_date, %s), %s)
             WHERE user_id = %s AND campaign_id = %s
         """, (coins_to_add, date_str, date_str, user_id, campaign_id))
+        return current_coins + coins_to_add
     else:
         conn.execute("""
             INSERT INTO campaign_coins (user_id, campaign_id, coins, last_awarded_date)
             VALUES (%s, %s, %s, %s)
         """, (user_id, campaign_id, coins_to_add, date_str))
+        return coins_to_add
 
 
 def get_daily_word(campaign_id: int, day_override: int | None = None):
@@ -874,13 +888,16 @@ def validate_guess(word: str, user_id: int, campaign_id: int, day_override: int 
         ))
 
         if new_game_over:
+            new_streak = None
             if target_day == current_day:
-                update_campaign_streak(conn, user_id, campaign_id, target_date_str, track_stats=not is_admin_flag)
+                new_streak = update_campaign_streak(
+                    conn, user_id, campaign_id, target_date_str, track_stats=not is_admin_flag
+                )
             if correct:
                 coins_to_add = coins_by_row.get(current_row, 4)
             else:
                 coins_to_add = 8
-            update_campaign_coins(conn, user_id, campaign_id, target_date_str, coins_to_add)
+            new_coin_balance = update_campaign_coins(conn, user_id, campaign_id, target_date_str, coins_to_add)
 
             guesses_used = (current_row + 1) if correct else max_rows
             used_double_down = 1 if is_double_down else 0
@@ -953,6 +970,7 @@ def validate_guess(word: str, user_id: int, campaign_id: int, day_override: int 
                     target_date_str
                 ))
 
+            total_days_played_new = None
             if not is_admin_flag:
                 stats_row = conn.execute("""
                     SELECT total_solves, total_fails, total_guesses_on_solves,
@@ -971,6 +989,7 @@ def validate_guess(word: str, user_id: int, campaign_id: int, day_override: int 
 
                 if stats_row:
                     total_solves, total_fails, total_guesses_on_solves, total_days_played, dd_used, dd_success, dd_bonus, coins_total = stats_row
+                    total_days_played_new = total_days_played + 1
                     conn.execute("""
                         UPDATE user_campaign_stats
                         SET total_solves = %s,
@@ -986,7 +1005,7 @@ def validate_guess(word: str, user_id: int, campaign_id: int, day_override: int 
                         total_solves + solves_add,
                         total_fails + fails_add,
                         total_guesses_on_solves + guesses_on_solves_add,
-                        total_days_played + 1,
+                        total_days_played_new,
                         dd_used + dd_used_add,
                         dd_success + dd_success_add,
                         dd_bonus + dd_bonus_add,
@@ -995,6 +1014,7 @@ def validate_guess(word: str, user_id: int, campaign_id: int, day_override: int 
                         campaign_id
                     ))
                 else:
+                    total_days_played_new = 1
                     conn.execute("""
                         INSERT INTO user_campaign_stats (
                             user_id,
@@ -1020,6 +1040,79 @@ def validate_guess(word: str, user_id: int, campaign_id: int, day_override: int 
                         dd_bonus_add,
                         coins_to_add
                     ))
+
+                if correct:
+                    if guesses_used == 1:
+                        award_accolade(conn, campaign_id, user_id, "ace", target_date_str)
+                    elif guesses_used in (2, 3):
+                        award_accolade(conn, campaign_id, user_id, "clutch", target_date_str)
+                    elif guesses_used == 6:
+                        award_accolade(conn, campaign_id, user_id, "barely_made_it", target_date_str)
+
+                    if guesses_used == 3 and is_lucky_strike(results_data):
+                        award_accolade(conn, campaign_id, user_id, "lucky_strike", target_date_str)
+
+                    early, night, late_save = classify_time_accolades(completed_at, target_date)
+                    if early:
+                        award_accolade(conn, campaign_id, user_id, "early_bird", target_date_str)
+                    if night:
+                        award_accolade(conn, campaign_id, user_id, "night_owl", target_date_str)
+                    if late_save:
+                        award_accolade(conn, campaign_id, user_id, "late_save", target_date_str)
+
+                    first_solver_row = conn.execute("""
+                        SELECT user_id
+                        FROM campaign_user_daily_results
+                        WHERE campaign_id = %s AND date = %s AND solved = 1
+                        ORDER BY completed_at ASC NULLS LAST, user_id ASC
+                        LIMIT 1
+                    """, (campaign_id, target_date_str)).fetchone()
+                    if first_solver_row and first_solver_row[0] == user_id:
+                        award_accolade(conn, campaign_id, user_id, "first_solver", target_date_str)
+
+                    yesterday = (target_date - timedelta(days=1)).strftime("%Y-%m-%d")
+                    prev_row = conn.execute("""
+                        SELECT solved
+                        FROM campaign_user_daily_results
+                        WHERE user_id = %s AND campaign_id = %s AND date = %s
+                    """, (user_id, campaign_id, yesterday)).fetchone()
+                    if prev_row and int(prev_row[0]) == 0:
+                        award_accolade(conn, campaign_id, user_id, "comeback", target_date_str)
+
+                    two_days = (target_date - timedelta(days=2)).strftime("%Y-%m-%d")
+                    prev_two_row = conn.execute("""
+                        SELECT solved
+                        FROM campaign_user_daily_results
+                        WHERE user_id = %s AND campaign_id = %s AND date = %s
+                    """, (user_id, campaign_id, two_days)).fetchone()
+                    if prev_row and prev_two_row and int(prev_row[0]) == 0 and int(prev_two_row[0]) == 0:
+                        award_accolade(conn, campaign_id, user_id, "iron_will", target_date_str)
+
+                    item_used_row = conn.execute("""
+                        SELECT 1
+                        FROM campaign_item_events
+                        WHERE user_id = %s AND campaign_id = %s AND event_type = 'use'
+                          AND DATE(created_at AT TIME ZONE 'America/Chicago') = %s
+                        LIMIT 1
+                    """, (user_id, campaign_id, target_date_str)).fetchone()
+                    if item_used_row and guesses_used <= 3:
+                        award_accolade(conn, campaign_id, user_id, "saves_the_day", target_date_str)
+
+                if (
+                    HOARDER_THRESHOLD is not None
+                    and new_coin_balance is not None
+                    and (new_coin_balance - coins_to_add) < HOARDER_THRESHOLD <= new_coin_balance
+                ):
+                    award_accolade(conn, campaign_id, user_id, "hoarder", target_date_str)
+
+                if total_days_played_new in (7, 30, 100):
+                    key = f"veteran_{total_days_played_new}"
+                    award_accolade(conn, campaign_id, user_id, key, target_date_str)
+
+                if new_streak == 7:
+                    award_accolade(conn, campaign_id, user_id, "perfect_week", target_date_str)
+                if new_streak == 10:
+                    award_accolade(conn, campaign_id, user_id, "marathon", target_date_str)
 
         return {
             "result": result,
@@ -1131,6 +1224,11 @@ def get_campaign_coins(user_id: int, campaign_id: int):
         """, (user_id, campaign_id)).fetchone()
 
     return {"coins": row[0] if row else 0}
+
+
+def get_user_accolades(user_id: int, campaign_id: int):
+    with get_db() as conn:
+        return {"accolades": list_user_accolades(conn, user_id, campaign_id)}
 
 def get_leaderboard(campaign_id: int):
     today = datetime.now(ZoneInfo("America/Chicago")).strftime("%Y-%m-%d")
@@ -1281,6 +1379,10 @@ def handle_campaign_end(campaign_id: int):
             """, (king_name, user_id, campaign_id))
 
             if not is_admin_flag:
+                ended_on_str = ended_on.strftime("%Y-%m-%d")
+                for rank_row in standings[:3]:
+                    award_accolade(conn, campaign_id, rank_row[0], "top_3", ended_on_str)
+
                 # 1a. Record global high score entries for all members
                 for member_user_id, member_score, member_display_name, member_first, member_last, *_ in standings:
                     if not member_score or member_score <= 0:
@@ -1331,6 +1433,7 @@ def handle_campaign_end(campaign_id: int):
         conn.execute("DELETE FROM campaign_guess_states WHERE campaign_id = %s", (campaign_id,))
         conn.execute("DELETE FROM campaign_daily_progress WHERE campaign_id = %s", (campaign_id,))
         conn.execute("DELETE FROM campaign_streak_cycle WHERE campaign_id = %s", (campaign_id,))
+        conn.execute("DELETE FROM campaign_daily_recaps WHERE campaign_id = %s", (campaign_id,))
         conn.execute("UPDATE campaign_members SET score = 0 WHERE campaign_id = %s", (campaign_id,))
         conn.execute("""
             UPDATE campaign_members
@@ -1902,6 +2005,7 @@ def _get_or_create_shop_rotation(conn, user_id: int, campaign_id: int, date_str:
 
 def get_shop_state(user_id: int, campaign_id: int):
     with get_db() as conn:
+        is_admin_flag = is_admin_campaign(conn, campaign_id)
         coins_row = conn.execute("""
             SELECT coins
             FROM campaign_coins
@@ -1933,6 +2037,26 @@ def get_shop_state(user_id: int, campaign_id: int):
             for r in effect_rows
         ]
 
+        today_str = _get_shop_day(conn, campaign_id)
+        log_details = json.dumps({"date": today_str})
+        conn.execute("""
+            INSERT INTO campaign_shop_log (user_id, campaign_id, event_type, details)
+            VALUES (%s, %s, %s, %s)
+        """, (user_id, campaign_id, "open", log_details))
+
+        if not is_admin_flag and SHOP_REGULAR_THRESHOLD:
+            open_count = conn.execute("""
+                SELECT COUNT(*)
+                FROM campaign_shop_log
+                WHERE user_id = %s AND campaign_id = %s AND event_type = %s
+                  AND (
+                    (details::jsonb ? 'date' AND details::jsonb->>'date' = %s)
+                    OR DATE(created_at AT TIME ZONE 'America/Chicago') = %s
+                  )
+            """, (user_id, campaign_id, "open", today_str, today_str)).fetchone()[0]
+            if open_count >= SHOP_REGULAR_THRESHOLD:
+                award_accolade(conn, campaign_id, user_id, "shop_regular", today_str)
+
         log_rows = conn.execute("""
             SELECT event_type, item_key, details, created_at
             FROM campaign_shop_log
@@ -1955,7 +2079,6 @@ def get_shop_state(user_id: int, campaign_id: int):
                 "created_at": r[3].isoformat() if r[3] else None
             })
 
-        today_str = _get_shop_day(conn, campaign_id)
         purchased_rows = conn.execute("""
             SELECT item_key
             FROM campaign_shop_log
@@ -1991,6 +2114,7 @@ def purchase_item(user_id: int, campaign_id: int, item_key: str):
         raise HTTPException(status_code=404, detail="Item not found")
 
     with get_db() as conn:
+        is_admin_flag = is_admin_campaign(conn, campaign_id)
         today_str = _get_shop_day(conn, campaign_id)
         purchased_row = conn.execute("""
             SELECT 1
@@ -2050,6 +2174,16 @@ def purchase_item(user_id: int, campaign_id: int, item_key: str):
 
         new_quantity = qty_row[0] if qty_row else 1
 
+        if not is_admin_flag and BIG_SPENDER_THRESHOLD:
+            spend_total = conn.execute("""
+                SELECT COALESCE(SUM(cost), 0)
+                FROM store_purchases
+                WHERE user_id = %s AND campaign_id = %s
+                  AND DATE(purchased_at AT TIME ZONE 'America/Chicago') = %s
+            """, (user_id, campaign_id, today_str)).fetchone()[0]
+            if spend_total >= BIG_SPENDER_THRESHOLD:
+                award_accolade(conn, campaign_id, user_id, "big_spender", today_str)
+
     return {
         "coins": coins - item["cost"],
         "item": item,
@@ -2108,7 +2242,7 @@ def reshuffle_shop(user_id: int, campaign_id: int, cost: int = 3):
         conn.execute("""
             INSERT INTO campaign_shop_log (user_id, campaign_id, event_type, details)
             VALUES (%s, %s, %s, %s)
-        """, (user_id, campaign_id, "reshuffle", log_details))
+        """, (user_id, campaign_id, "restock", log_details))
 
         catalog = {item["key"]: item for item in get_shop_catalog()}
         rotated_items = [catalog[key] for key in selection if key in catalog]
@@ -2229,6 +2363,14 @@ def use_item(user_id: int, campaign_id: int, item_key: str, target_user_id, effe
                 if conflict_row:
                     raise HTTPException(status_code=400, detail="Target already has a conflicting effect for that day")
 
+        use_count_before = 0
+        if not is_admin_flag and ITEM_MASTER_THRESHOLD:
+            use_count_before = conn.execute("""
+                SELECT COUNT(*)
+                FROM campaign_item_events
+                WHERE user_id = %s AND campaign_id = %s AND event_type = 'use'
+            """, (user_id, campaign_id)).fetchone()[0]
+
         conn.execute("""
             UPDATE campaign_user_items
             SET quantity = quantity - 1
@@ -2258,6 +2400,11 @@ def use_item(user_id: int, campaign_id: int, item_key: str, target_user_id, effe
                               targets = global_item_stats.targets + %s,
                               last_used_at = CURRENT_TIMESTAMP
             """, (item_key, 1 if target_user_id else 0, 1 if target_user_id else 0))
+
+        if not is_admin_flag and ITEM_MASTER_THRESHOLD:
+            if use_count_before < ITEM_MASTER_THRESHOLD <= use_count_before + 1:
+                today_str = datetime.now(ZoneInfo("America/Chicago")).strftime("%Y-%m-%d")
+                award_accolade(conn, campaign_id, user_id, "item_master", today_str)
 
         remaining_row = conn.execute("""
             SELECT quantity

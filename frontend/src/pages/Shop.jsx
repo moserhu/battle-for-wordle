@@ -30,7 +30,6 @@ export default function Shop() {
   const [error, setError] = useState('');
   const [purchaseBusy, setPurchaseBusy] = useState('');
   const [reshuffleBusy, setReshuffleBusy] = useState(false);
-  const [purchasedToday, setPurchasedToday] = useState(false);
   const [purchasedItemKeys, setPurchasedItemKeys] = useState([]);
   const [canReshuffle, setCanReshuffle] = useState(true);
   const [selectedItem, setSelectedItem] = useState(null);
@@ -89,7 +88,6 @@ export default function Shop() {
       const state = await stateRes.json();
       setCoins(Number(state?.coins ?? 0));
       setItems(Array.isArray(state?.items) ? state.items : []);
-      setPurchasedToday(Boolean(state?.purchased_today));
       setPurchasedItemKeys(Array.isArray(state?.purchased_item_keys) ? state.purchased_item_keys : []);
       setCanReshuffle(Boolean(state?.can_reshuffle));
     } catch (err) {
@@ -140,13 +138,13 @@ export default function Shop() {
       });
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data?.detail || 'Reshuffle failed');
+        throw new Error(data?.detail || 'Restock failed');
       }
       setCoins(Number(data?.coins ?? coins));
       setItems(Array.isArray(data?.items) ? data.items : []);
       await loadShopState();
     } catch (err) {
-      setError(err?.message || 'Reshuffle failed.');
+      setError(err?.message || 'Restock failed.');
     } finally {
       setReshuffleBusy(false);
     }
@@ -173,10 +171,10 @@ export default function Shop() {
               disabled={reshuffleBusy || !canReshuffle || coins < 3}
             >
               {reshuffleBusy ? (
-                'Reshuffling...'
+                'Restocking...'
               ) : (
                 <span className="shop-reshuffle-label">
-                  <span>Reshuffle</span>
+                  <span>Restock</span>
                   <span className="shop-reshuffle-cost">3 coins</span>
                 </span>
               )}
@@ -206,7 +204,6 @@ export default function Shop() {
                   <div className="shop-empty">No items available yet.</div>
                 ) : (
                   items.map((item) => {
-                    const affordable = coins >= item.cost;
                     const purchased = purchasedItemKeys.includes(item.key);
                     return (
                       <div className={`shop-item-card${purchased ? " purchased" : ""}`} key={item.key}>

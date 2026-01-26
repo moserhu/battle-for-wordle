@@ -8,6 +8,7 @@ from app.admin.routes import router as admin_router
 from app.updates.routes import router as updates_router
 from app.auth import create_access_token
 from app.models import UserOnly, UpdateUserInfo, CampaignAndUserOnly, ShopPurchase, UseItemRequest, ItemTargetRequest, ArmyNameUpdate
+from app.recap import service as recap_service
 from prometheus_fastapi_instrumentator import Instrumentator
 
 from app.scheduler import start_scheduler
@@ -124,6 +125,10 @@ def delete_campaign(data: CampaignOnly, current_user: dict = Depends(get_current
 def update_campaign_name(data: models.CampaignNameUpdate, current_user: dict = Depends(get_current_user)):
     return crud.update_campaign_name(data.campaign_id, current_user["user_id"], data.name)
 
+@app.get("/api/campaign/{campaign_id}/recap")
+def campaign_recap(campaign_id: int, day: int | None = None, current_user: dict = Depends(get_current_user)):
+    return recap_service.get_campaign_recap(campaign_id, current_user["user_id"], day=day)
+
 @app.post("/api/campaign/kick")
 def kick_player(data: models.KickRequest, current_user: dict = Depends(get_current_user)):
     return crud.kick_player_from_campaign(data.campaign_id, data.user_id, current_user["user_id"])
@@ -172,6 +177,10 @@ def get_campaign_streak(data: models.CampaignOnly, current_user: dict = Depends(
 @app.post("/api/campaign/coins")
 def get_campaign_coins(data: models.CampaignOnly, current_user: dict = Depends(get_current_user)):
     return crud.get_campaign_coins(current_user["user_id"], data.campaign_id)
+
+@app.post("/api/campaign/accolades")
+def get_campaign_accolades(data: models.CampaignOnly, current_user: dict = Depends(get_current_user)):
+    return crud.get_user_accolades(current_user["user_id"], data.campaign_id)
 
 @app.post("/api/campaign/ruler_title")
 def update_campaign_ruler_title(data: models.CampaignRulerTitle, current_user: dict = Depends(get_current_user)):
