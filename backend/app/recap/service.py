@@ -69,7 +69,9 @@ def _build_recap_for_date(conn, campaign_id: int, target_date: date):
             u.first_name,
             u.last_name,
             u.profile_image_url,
-            u.profile_image_key
+            u.profile_image_key,
+            u.profile_image_thumb_url,
+            u.profile_image_thumb_key
         FROM campaign_user_daily_results r
         JOIN campaign_members cm ON cm.user_id = r.user_id AND cm.campaign_id = r.campaign_id
         JOIN users u ON u.id = r.user_id
@@ -85,12 +87,17 @@ def _build_recap_for_date(conn, campaign_id: int, target_date: date):
     biggest_gain = None
 
     for (user_id, guesses_used, solved, troops_earned, used_dd, dd_success,
-         display_name, first_name, last_name, profile_url, profile_key) in result_rows:
+         display_name, first_name, last_name, profile_url, profile_key, profile_thumb_url, profile_thumb_key) in result_rows:
         name = _resolve_name(display_name, first_name, last_name, user_id)
         guesses_used = int(guesses_used or 0)
         troops_earned = int(troops_earned or 0)
         avatar_url = None
-        if profile_key:
+        if profile_thumb_key:
+            try:
+                avatar_url = create_presigned_download(profile_thumb_key)
+            except Exception:
+                avatar_url = profile_thumb_url or profile_url
+        elif profile_key:
             try:
                 avatar_url = create_presigned_download(profile_key)
             except Exception:
@@ -183,7 +190,8 @@ def build_and_store_recap(campaign_id: int, target_date: date):
             if user_ids:
                 member_rows = conn.execute(
                     """
-                    SELECT cm.user_id, u.profile_image_url, u.profile_image_key
+                    SELECT cm.user_id, u.profile_image_url, u.profile_image_key,
+                           u.profile_image_thumb_url, u.profile_image_thumb_key
                     FROM campaign_members cm
                     JOIN users u ON u.id = cm.user_id
                     WHERE cm.campaign_id = %s
@@ -196,9 +204,14 @@ def build_and_store_recap(campaign_id: int, target_date: date):
                         continue
                     uid = entry.get("user_id")
                     if uid and uid in by_id:
-                        _uid, _url, _key = by_id[uid]
+                        _uid, _url, _key, _thumb_url, _thumb_key = by_id[uid]
                         avatar_url = None
-                        if _key:
+                        if _thumb_key:
+                            try:
+                                avatar_url = create_presigned_download(_thumb_key)
+                            except Exception:
+                                avatar_url = _thumb_url or _url
+                        elif _key:
                             try:
                                 avatar_url = create_presigned_download(_key)
                             except Exception:
@@ -270,7 +283,8 @@ def _resolve_avatars(conn, campaign_id: int, date_str: str, events: list[dict]) 
 
     member_rows = conn.execute(
         """
-        SELECT cm.user_id, cm.display_name, u.first_name, u.last_name, u.profile_image_url, u.profile_image_key
+        SELECT cm.user_id, cm.display_name, u.first_name, u.last_name,
+               u.profile_image_url, u.profile_image_key, u.profile_image_thumb_url, u.profile_image_thumb_key
         FROM campaign_members cm
         JOIN users u ON u.id = cm.user_id
         WHERE cm.campaign_id = %s
@@ -299,7 +313,8 @@ def _resolve_avatars(conn, campaign_id: int, date_str: str, events: list[dict]) 
 
     daily_rows = conn.execute(
         """
-        SELECT r.user_id, cm.display_name, u.first_name, u.last_name, u.profile_image_url, u.profile_image_key
+        SELECT r.user_id, cm.display_name, u.first_name, u.last_name,
+               u.profile_image_url, u.profile_image_key, u.profile_image_thumb_url, u.profile_image_thumb_key
         FROM campaign_user_daily_results r
         JOIN campaign_members cm ON cm.user_id = r.user_id AND cm.campaign_id = r.campaign_id
         JOIN users u ON u.id = r.user_id
@@ -331,9 +346,14 @@ def _resolve_avatars(conn, campaign_id: int, date_str: str, events: list[dict]) 
                 uid = candidates[0][0]
                 entry["user_id"] = uid
         if uid and uid in by_id:
-            _uid, _display, _first, _last, _url, _key = by_id[uid]
+            _uid, _display, _first, _last, _url, _key, _thumb_url, _thumb_key = by_id[uid]
             avatar_url = None
-            if _key:
+            if _thumb_key:
+                try:
+                    avatar_url = create_presigned_download(_thumb_key)
+                except Exception:
+                    avatar_url = _thumb_url or _url
+            elif _key:
                 try:
                     avatar_url = create_presigned_download(_key)
                 except Exception:

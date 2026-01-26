@@ -319,7 +319,9 @@ def get_user_info(user_id: int):
                    campaign_wins, campaign_losses, clicked_update,
                    COALESCE(is_admin, FALSE),
                    profile_image_url,
-                   profile_image_key
+                   profile_image_key,
+                   profile_image_thumb_url,
+                   profile_image_thumb_key
             FROM users WHERE id = %s
         """, (user_id,)).fetchone()
 
@@ -332,6 +334,12 @@ def get_user_info(user_id: int):
                 profile_url = create_presigned_download(row[12])
             except Exception:
                 profile_url = row[11]
+        thumb_url = None
+        if row[14]:
+            try:
+                thumb_url = create_presigned_download(row[14])
+            except Exception:
+                thumb_url = row[13]
 
         return {
             "first_name": row[0],
@@ -345,7 +353,8 @@ def get_user_info(user_id: int):
             "campaign_losses": row[8],
             "clicked_update": row[9],
             "is_admin": bool(row[10]),
-            "profile_image_url": profile_url
+            "profile_image_url": profile_url,
+            "profile_image_thumb_url": thumb_url
         }
 
 def update_user_info(user_id: int, first_name: str, last_name: str, phone: str):
@@ -1185,12 +1194,12 @@ def get_campaign_progress(campaign_id: int):
     if ruler_id and not is_admin_campaign:
         with get_db() as conn:
             ruler_row = conn.execute("""
-                SELECT army_image_url, army_image_key
+                SELECT army_image_url, army_image_key, army_image_thumb_url, army_image_thumb_key
                 FROM campaign_members
                 WHERE campaign_id = %s AND user_id = %s
             """, (campaign_id, ruler_id)).fetchone()
         if ruler_row:
-            army_url, army_key = ruler_row
+            army_url, army_key, army_thumb_url, army_thumb_key = ruler_row
             ruler_army_image_url = create_presigned_download(army_key) if army_key else army_url
 
     return {
@@ -1244,8 +1253,12 @@ def get_leaderboard(campaign_id: int):
                 COALESCE(dp.completed, 0) as played_today,
                 u.profile_image_url,
                 u.profile_image_key,
+                u.profile_image_thumb_url,
+                u.profile_image_thumb_key,
                 cm.army_image_url,
                 cm.army_image_key,
+                cm.army_image_thumb_url,
+                cm.army_image_thumb_key,
                 cm.army_name
             FROM campaign_members cm
             JOIN users u ON u.id = cm.user_id
@@ -1267,9 +1280,13 @@ def get_leaderboard(campaign_id: int):
             "color": row[2],
             "score": row[3],
             "played_today": bool(row[4]),
-            "profile_image_url": create_presigned_download(row[6]) if row[6] else row[5],
-            "army_image_url": create_presigned_download(row[8]) if row[8] else row[7],
-            "army_name": row[9]
+            "profile_image_full_url": create_presigned_download(row[6]) if row[6] else row[5],
+            "profile_image_thumb_url": create_presigned_download(row[8]) if row[8] else row[7] or row[5],
+            "profile_image_url": create_presigned_download(row[8]) if row[8] else create_presigned_download(row[6]) if row[6] else row[5],
+            "army_image_full_url": create_presigned_download(row[10]) if row[10] else row[9],
+            "army_image_thumb_url": create_presigned_download(row[12]) if row[12] else row[11] or row[9],
+            "army_image_url": create_presigned_download(row[10]) if row[10] else row[9],
+            "army_name": row[13]
         }
         for row in rows
     ]
@@ -1637,8 +1654,12 @@ def get_self_member(campaign_id: int, user_id: int):
                    COALESCE(dp.completed, 0) as daily_completed,
                    cm.army_image_url,
                    cm.army_image_key,
+                   cm.army_image_thumb_url,
+                   cm.army_image_thumb_key,
                    u.profile_image_url,
                    u.profile_image_key,
+                   u.profile_image_thumb_url,
+                   u.profile_image_thumb_key,
                    cm.army_name
             FROM campaign_members cm
             JOIN users u ON u.id = cm.user_id
@@ -1653,7 +1674,9 @@ def get_self_member(campaign_id: int, user_id: int):
             raise HTTPException(status_code=404, detail="Membership not found")
 
         army_url = create_presigned_download(row[7]) if row[7] else row[6]
-        profile_url = create_presigned_download(row[9]) if row[9] else row[8]
+        army_thumb_url = create_presigned_download(row[9]) if row[9] else row[8] or row[6]
+        profile_url = create_presigned_download(row[11]) if row[11] else row[10]
+        profile_thumb_url = create_presigned_download(row[13]) if row[13] else row[12] or row[10]
 
         return {
             "display_name": row[0],
@@ -1663,8 +1686,12 @@ def get_self_member(campaign_id: int, user_id: int):
             "double_down_date": row[4],
             "daily_completed": row[5],
             "army_image_url": army_url,
+            "army_image_full_url": army_url,
+            "army_image_thumb_url": army_thumb_url,
             "profile_image_url": profile_url,
-            "army_name": row[10]
+            "profile_image_full_url": profile_url,
+            "profile_image_thumb_url": profile_thumb_url,
+            "army_name": row[14]
         }
 
 def get_targetable_members(campaign_id: int, requester_id: int):

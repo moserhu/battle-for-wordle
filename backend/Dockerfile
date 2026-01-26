@@ -6,7 +6,8 @@ WORKDIR /app
 
 # Copy requirements and install dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN apk add --no-cache build-base jpeg-dev zlib-dev libjpeg-turbo-dev libwebp-dev \
+    && pip install --no-cache-dir -r requirements.txt
 
 # Copy the backend code
 COPY . .

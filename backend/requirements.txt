@@ -9,3 +9,4 @@ apscheduler
 prometheus-fastapi-instrumentator
 psycopg[binary]
 boto3
+Pillow

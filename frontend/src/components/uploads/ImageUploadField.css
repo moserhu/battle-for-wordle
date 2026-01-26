@@ -145,3 +145,24 @@
   gap: 10px;
   flex-wrap: wrap;
 }
+
+.image-upload-saving {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.image-upload-spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  border-top-color: rgba(255, 220, 140, 0.9);
+  animation: image-upload-spin 0.9s linear infinite;
+}
+
+@keyframes image-upload-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

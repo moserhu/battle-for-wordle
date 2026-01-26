@@ -15,6 +15,9 @@ export default function ImageUploadField({
   emptyLabel = 'No image',
   onUploaded,
   onPreview,
+  maxDimension = 768,
+  outputType = 'image/webp',
+  outputQuality = 0.78,
 }) {
   const [preview, setPreview] = useState(value || '');
   const [selectedFile, setSelectedFile] = useState(null);
@@ -56,6 +59,50 @@ export default function ImageUploadField({
     setSelectedFile(file);
   };
 
+  const processImage = (file) => {
+    if (!file) return Promise.resolve(null);
+    const inputType = file.type || '';
+    const needsResize = maxDimension && maxDimension > 0;
+    const canProcess = inputType.startsWith('image/');
+    if (!canProcess || !needsResize) {
+      return Promise.resolve(file);
+    }
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const { width, height } = img;
+        const scale = Math.min(1, maxDimension / Math.max(width, height));
+        const targetW = Math.max(1, Math.round(width * scale));
+        const targetH = Math.max(1, Math.round(height * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = targetW;
+        canvas.height = targetH;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(file);
+          return;
+        }
+        ctx.drawImage(img, 0, 0, targetW, targetH);
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              resolve(file);
+              return;
+            }
+            const nameBase = (file.name || 'upload').replace(/\.[^.]+$/, '');
+            const ext = outputType === 'image/webp' ? 'webp' : 'jpg';
+            const processedFile = new File([blob], `${nameBase}.${ext}`, { type: outputType });
+            resolve(processedFile);
+          },
+          outputType,
+          outputQuality
+        );
+      };
+      img.onerror = () => resolve(file);
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
   const handleUpload = async () => {
     if (!selectedFile) {
       setError('Please choose a file first.');
@@ -64,13 +111,17 @@ export default function ImageUploadField({
     setUploading(true);
     setError('');
     try {
+      const processedFile = await processImage(selectedFile);
+      if (!processedFile) {
+        throw new Error('Failed to process image.');
+      }
       const presignRes = await fetch(`${API_BASE}${presignPath}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(presignBody(selectedFile)),
+        body: JSON.stringify(presignBody(processedFile)),
       });
       if (!presignRes.ok) {
         throw new Error('Failed to get upload URL.');
@@ -79,8 +130,11 @@ export default function ImageUploadField({
       console.log('[ImageUploadField] presign ok', presign);
       const uploadRes = await fetch(presign.upload_url, {
         method: 'PUT',
-        headers: { 'Content-Type': selectedFile.type },
-        body: selectedFile,
+        headers: {
+          'Content-Type': processedFile.type,
+          ...(presign.cache_control ? { 'Cache-Control': presign.cache_control } : null),
+        },
+        body: processedFile,
       });
       if (!uploadRes.ok) {
         throw new Error('Upload failed.');
@@ -106,10 +160,11 @@ export default function ImageUploadField({
       setSelectedFile(null);
       setShowConfirm(false);
       if (onUploaded) {
-        onUploaded(nextUrl);
+        onUploaded(nextUrl, confirmJson);
       }
     } catch (err) {
       setError(err?.message || 'Upload failed.');
+      setShowConfirm(false);
     } finally {
       setUploading(false);
     }
@@ -167,7 +222,11 @@ export default function ImageUploadField({
             </button>
           </div>
         )}
-        {uploading && <span className="image-upload-status">Uploading…</span>}
+        {uploading && (
+          <span className="image-upload-status">
+            Uploading… <span className="image-upload-note">this can took a bit... I just a baby</span>
+          </span>
+        )}
         {error && <span className="image-upload-error">{error}</span>}
       </div>
       {showConfirm && (
@@ -182,7 +241,14 @@ export default function ImageUploadField({
                 onClick={handleUpload}
                 disabled={uploading}
               >
-                Yes, save
+                {uploading ? (
+                  <span className="image-upload-saving">
+                    <span className="image-upload-spinner" aria-hidden="true" />
+                    Saving… <span className="image-upload-note">this can took a bit... I just a baby</span>
+                  </span>
+                ) : (
+                  'Yes, save'
+                )}
               </button>
               <button
                 type="button"

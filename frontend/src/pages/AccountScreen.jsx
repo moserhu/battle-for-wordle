@@ -19,6 +19,7 @@ export default function AccountScreen() {
     campaign_wins: 0,
     campaign_losses: 0,
     profile_image_url: '',
+    profile_image_thumb_url: '',
   });
 
   const [originalUser, setOriginalUser] = useState({});
@@ -107,14 +108,20 @@ export default function AccountScreen() {
         <div className="account-info">
           <ImageUploadField
             label="Profile Photo"
-            value={user.profile_image_url}
+            value={user.profile_image_thumb_url || user.profile_image_url}
             token={token}
             presignPath="/api/user/profile-image/presign"
             confirmPath="/api/user/profile-image/confirm"
             presignBody={(file) => ({ filename: file.name, content_type: file.type })}
             confirmBody={(presign) => ({ key: presign.key, file_url: presign.file_url })}
             emptyLabel="No photo"
-            onUploaded={(url) => setUser((prev) => ({ ...prev, profile_image_url: url }))}
+            onUploaded={(url, meta) =>
+              setUser((prev) => ({
+                ...prev,
+                profile_image_url: url,
+                ...(meta?.profile_image_thumb_url ? { profile_image_thumb_url: meta.profile_image_thumb_url } : null),
+              }))
+            }
             onPreview={() => setShowProfilePreview(true)}
           />
           {!editing ? (
@@ -155,7 +162,7 @@ export default function AccountScreen() {
               >
                 ×
               </button>
-              <img src={user.profile_image_url} alt="Profile preview" />
+              <img src={user.profile_image_thumb_url || user.profile_image_url} alt="Profile preview" />
             </div>
           </div>
         )}

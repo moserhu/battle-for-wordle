@@ -1,7 +1,33 @@
-from fastapi import HTTPException
+from io import BytesIO
 
-from app.media.storage import create_presigned_upload, validate_key_prefix, create_presigned_download
+from fastapi import HTTPException
+from PIL import Image, ImageOps
+
+from app.media.storage import (
+    create_presigned_upload,
+    validate_key_prefix,
+    create_presigned_download,
+    get_object_bytes,
+    put_object_bytes,
+)
 from app.crud import get_db
+
+
+def _thumb_key(original_key: str) -> str:
+    parts = original_key.split("/")
+    filename = parts[-1]
+    base = filename.rsplit(".", 1)[0]
+    return "/".join(parts[:-1] + ["thumbs", f"{base}.webp"])
+
+
+def _build_thumbnail(data: bytes, size: int = 256) -> bytes:
+    with Image.open(BytesIO(data)) as img:
+        img = ImageOps.exif_transpose(img)
+        img = img.convert("RGB")
+        thumb = ImageOps.fit(img, (size, size), Image.LANCZOS)
+        out = BytesIO()
+        thumb.save(out, format="WEBP", quality=82, method=6)
+        return out.getvalue()
 
 
 def _require_campaign_member(conn, campaign_id: int, user_id: int) -> None:
@@ -14,47 +40,87 @@ def _require_campaign_member(conn, campaign_id: int, user_id: int) -> None:
 
 
 def create_profile_image_upload(user_id: int, filename: str, content_type: str):
-    key, file_url, upload_url = create_presigned_upload(
+    key, file_url, upload_url, cache_control = create_presigned_upload(
         f"profiles/{user_id}",
         filename,
         content_type
     )
-    return {"key": key, "file_url": file_url, "upload_url": upload_url}
+    return {"key": key, "file_url": file_url, "upload_url": upload_url, "cache_control": cache_control}
 
 
 def confirm_profile_image_upload(user_id: int, key: str, file_url: str):
     validate_key_prefix(key, f"profiles/{user_id}")
+    thumb_key = None
+    thumb_url = None
+    try:
+        thumb_key = _thumb_key(key)
+        original_bytes, _ = get_object_bytes(key)
+        thumb_bytes = _build_thumbnail(original_bytes)
+        thumb_url = put_object_bytes(
+            thumb_key,
+            thumb_bytes,
+            "image/webp",
+        )
+    except Exception:
+        thumb_key = None
+        thumb_url = None
     with get_db() as conn:
         conn.execute(
-            "UPDATE users SET profile_image_url = %s, profile_image_key = %s WHERE id = %s",
-            (file_url, key, user_id)
+            """
+            UPDATE users
+            SET profile_image_url = %s,
+                profile_image_key = %s,
+                profile_image_thumb_url = %s,
+                profile_image_thumb_key = %s
+            WHERE id = %s
+            """,
+            (file_url, key, thumb_url, thumb_key, user_id)
         )
     signed_url = create_presigned_download(key)
-    return {"profile_image_url": signed_url}
+    thumb_signed_url = create_presigned_download(thumb_key) if thumb_key else None
+    return {"profile_image_url": signed_url, "profile_image_thumb_url": thumb_signed_url}
 
 
 def create_army_image_upload(user_id: int, campaign_id: int, filename: str, content_type: str):
     with get_db() as conn:
         _require_campaign_member(conn, campaign_id, user_id)
-    key, file_url, upload_url = create_presigned_upload(
+    key, file_url, upload_url, cache_control = create_presigned_upload(
         f"armies/{campaign_id}/{user_id}",
         filename,
         content_type
     )
-    return {"key": key, "file_url": file_url, "upload_url": upload_url}
+    return {"key": key, "file_url": file_url, "upload_url": upload_url, "cache_control": cache_control}
 
 
 def confirm_army_image_upload(user_id: int, campaign_id: int, key: str, file_url: str):
     validate_key_prefix(key, f"armies/{campaign_id}/{user_id}")
+    thumb_key = None
+    thumb_url = None
+    try:
+        thumb_key = _thumb_key(key)
+        original_bytes, _ = get_object_bytes(key)
+        thumb_bytes = _build_thumbnail(original_bytes)
+        thumb_url = put_object_bytes(
+            thumb_key,
+            thumb_bytes,
+            "image/webp",
+        )
+    except Exception:
+        thumb_key = None
+        thumb_url = None
     with get_db() as conn:
         _require_campaign_member(conn, campaign_id, user_id)
         conn.execute(
             """
             UPDATE campaign_members
-            SET army_image_url = %s, army_image_key = %s
+            SET army_image_url = %s,
+                army_image_key = %s,
+                army_image_thumb_url = %s,
+                army_image_thumb_key = %s
             WHERE campaign_id = %s AND user_id = %s
             """,
-            (file_url, key, campaign_id, user_id)
+            (file_url, key, thumb_url, thumb_key, campaign_id, user_id)
         )
     signed_url = create_presigned_download(key)
-    return {"army_image_url": signed_url}
+    thumb_signed_url = create_presigned_download(thumb_key) if thumb_key else None
+    return {"army_image_url": signed_url, "army_image_thumb_url": thumb_signed_url}

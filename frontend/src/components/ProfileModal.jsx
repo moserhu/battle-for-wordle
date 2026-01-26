@@ -164,7 +164,12 @@ export default function ProfileModal({
               presignBody={(file) => ({ filename: file.name, content_type: file.type })}
               confirmBody={(presign) => ({ key: presign.key, file_url: presign.file_url })}
               emptyLabel="No photo"
-              onUploaded={(url) => onUpdated({ profileImageUrl: url })}
+              onUploaded={(url, meta) =>
+                onUpdated({
+                  profileImageUrl: url,
+                  profileImageThumbUrl: meta?.profile_image_thumb_url
+                })
+              }
               onPreview={(url) => setPreviewImageUrl(url)}
             />
             <ImageUploadField
@@ -184,7 +189,12 @@ export default function ProfileModal({
                 file_url: presign.file_url
               })}
               emptyLabel="No banner"
-              onUploaded={(url) => onUpdated({ armyImageUrl: url })}
+              onUploaded={(url, meta) =>
+                onUpdated({
+                  armyImageUrl: url,
+                  armyImageThumbUrl: meta?.army_image_thumb_url
+                })
+              }
               onPreview={(url) => setPreviewImageUrl(url)}
             />
           </div>

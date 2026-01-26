@@ -619,6 +619,27 @@
   gap: 8px;
 }
 
+.recap-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.recap-toggle {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid var(--theme-border-muted);
+  background: rgba(120, 40, 10, 0.35);
+  color: #ffd38a;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+.recap-toggle:hover {
+  filter: brightness(1.15);
+}
+
 .recap-nav {
   border: 1px solid var(--theme-border-muted);
   background: rgba(0, 0, 0, 0.2);

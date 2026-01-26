@@ -244,8 +244,8 @@ export default function Leaderboard() {
                         >
                           <div className="player-media">
                             <div className="player-avatar">
-                              {entry.profile_image_url ? (
-                                <img src={entry.profile_image_url} alt="" />
+                              {entry.profile_image_thumb_url || entry.profile_image_url ? (
+                                <img src={entry.profile_image_thumb_url || entry.profile_image_url} alt="" />
                               ) : (
                                 <span>?</span>
                               )}
@@ -279,14 +279,16 @@ export default function Leaderboard() {
           <div
             className="player-preview-card"
             style={{
-              backgroundImage: previewPlayer.army_image_url
-                ? `url(${previewPlayer.army_image_url})`
+              backgroundImage: (previewPlayer.army_image_thumb_url || previewPlayer.army_image_url || previewPlayer.army_image_full_url)
+                ? `url(${previewPlayer.army_image_thumb_url || previewPlayer.army_image_url || previewPlayer.army_image_full_url})`
                 : undefined,
             }}
             onClick={(e) => {
               e.stopPropagation();
-              if (previewPlayer.army_image_url) {
-                setPreviewImageUrl(previewPlayer.army_image_url);
+              if (previewPlayer.army_image_thumb_url || previewPlayer.army_image_url || previewPlayer.army_image_full_url) {
+                setPreviewImageUrl(
+                  previewPlayer.army_image_thumb_url || previewPlayer.army_image_url || previewPlayer.army_image_full_url
+                );
               }
             }}
           >
@@ -301,19 +303,23 @@ export default function Leaderboard() {
               ×
             </button>
             <div className="player-preview-avatar">
-              {previewPlayer.profile_image_url ? (
+              {previewPlayer.profile_image_thumb_url || previewPlayer.profile_image_url || previewPlayer.profile_image_full_url ? (
                 <img
-                  src={previewPlayer.profile_image_url}
+                  src={previewPlayer.profile_image_thumb_url || previewPlayer.profile_image_url || previewPlayer.profile_image_full_url}
                   alt=""
                   onClick={(e) => {
                     e.stopPropagation();
-                    setPreviewImageUrl(previewPlayer.profile_image_url);
+                    setPreviewImageUrl(
+                      previewPlayer.profile_image_thumb_url || previewPlayer.profile_image_url || previewPlayer.profile_image_full_url
+                    );
                   }}
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
-                      setPreviewImageUrl(previewPlayer.profile_image_url);
+                      setPreviewImageUrl(
+                        previewPlayer.profile_image_thumb_url || previewPlayer.profile_image_url || previewPlayer.profile_image_full_url
+                      );
                     }
                   }}
                 />

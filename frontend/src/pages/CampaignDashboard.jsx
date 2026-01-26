@@ -66,6 +66,7 @@ export default function CampaignDashboard() {
   const [recap, setRecap] = useState(null);
   const [recapDay, setRecapDay] = useState(null);
   const [leaderboard, setLeaderboard] = useState([]);
+  const [recapCollapsed, setRecapCollapsed] = useState(false);
 
   // invite modal
   const [showRulerModal, setShowRulerModal] = useState(false);
@@ -223,7 +224,9 @@ export default function CampaignDashboard() {
   const isRuler = campaignMeta?.ruler_id && user?.user_id === campaignMeta.ruler_id;
   const isAdminCampaign = Boolean(campaignMeta?.is_admin_campaign);
   const displayName = selfMember?.display_name || user?.first_name || 'Player';
-  const profileImageUrl = selfMember?.profile_image_url || '';
+  const profileImageUrl = selfMember?.profile_image_thumb_url || selfMember?.profile_image_url || '';
+  const profileImageFullUrl = selfMember?.profile_image_full_url || selfMember?.profile_image_url || '';
+  const armyImageFullUrl = selfMember?.army_image_full_url || selfMember?.army_image_url || '';
   const armyName = selfMember?.army_name || '';
 
   const handleEditRulerTitle = () => {
@@ -353,64 +356,78 @@ export default function CampaignDashboard() {
             <div className="dash-panel">
               <div className="dash-panel-header">
                 <h2>Battle Log</h2>
-                {recapDay ? (
-                  <div className="recap-controls">
-                    <button
-                      className="recap-nav"
-                      type="button"
-                      onClick={() => setRecapDay((prev) => (prev > 1 ? prev - 1 : prev))}
-                      disabled={recapDay <= 1}
-                    >
-                      ‹
-                    </button>
-                    <span className="recap-day">Day {recapDay}</span>
-                    <button
-                      className="recap-nav"
-                      type="button"
-                      onClick={() =>
-                        setRecapDay((prev) =>
-                          prev < maxRecapDay ? prev + 1 : prev
-                        )
-                      }
-                      disabled={recapDay >= maxRecapDay}
-                    >
-                      ›
-                    </button>
-                  </div>
-                ) : null}
-              </div>
-              {recap?.date ? (
-                <div className="recap-block">
-                  <p className="recap-date"><strong>{recap.date_label}</strong></p>
-                  {recap.summary && <p className="recap-summary">{recap.summary}</p>}
-                  {Array.isArray(recap.events) && recap.events.length > 0 ? (
-                    <div className="recap-events">
-                      {recap.events.map((evt, i) => (
-                        <div className="recap-event" key={i}>
-                          <div className="recap-avatar">
-                            {evt.profile_image_url ? (
-                              <img src={evt.profile_image_url} alt="" />
-                            ) : (
-                              <span>?</span>
-                            )}
-                          </div>
-                          <div className="recap-event-body">
-                            {evt.name ? <div className="recap-event-name">{evt.name}</div> : null}
-                            <div className="recap-event-text">{evt.text}</div>
-                          </div>
-                        </div>
-                      ))}
+                <div className="recap-header-actions">
+                  {recapDay ? (
+                    <div className="recap-controls">
+                      <button
+                        className="recap-nav"
+                        type="button"
+                        onClick={() => setRecapDay((prev) => (prev > 1 ? prev - 1 : prev))}
+                        disabled={recapDay <= 1}
+                      >
+                        ‹
+                      </button>
+                      <span className="recap-day">Day {recapDay}</span>
+                      <button
+                        className="recap-nav"
+                        type="button"
+                        onClick={() =>
+                          setRecapDay((prev) =>
+                            prev < maxRecapDay ? prev + 1 : prev
+                          )
+                        }
+                        disabled={recapDay >= maxRecapDay}
+                      >
+                        ›
+                      </button>
                     </div>
-                  ) : Array.isArray(recap.highlights) && recap.highlights.length > 0 ? (
-                    <ul className="recap-list">
-                      {recap.highlights.map((h, i) => <li key={i}>{h}</li>)}
-                    </ul>
-                  ) : (
-                    !recap.summary && <p>No recap available.</p>
-                  )}
+                  ) : null}
+                  <button
+                    className="recap-toggle"
+                    type="button"
+                    onClick={() => setRecapCollapsed((prev) => !prev)}
+                    aria-label={recapCollapsed ? 'Expand battle log' : 'Collapse battle log'}
+                  >
+                    {recapCollapsed ? '+' : '−'}
+                  </button>
                 </div>
-              ) : (
-                <p>No recap available.</p>
+              </div>
+              {!recapCollapsed && (
+                <>
+                  {recap?.date ? (
+                    <div className="recap-block">
+                      <p className="recap-date"><strong>{recap.date_label}</strong></p>
+                      {recap.summary && <p className="recap-summary">{recap.summary}</p>}
+                      {Array.isArray(recap.events) && recap.events.length > 0 ? (
+                        <div className="recap-events">
+                          {recap.events.map((evt, i) => (
+                            <div className="recap-event" key={i}>
+                              <div className="recap-avatar">
+                                {evt.profile_image_thumb_url || evt.profile_image_url ? (
+                                  <img src={evt.profile_image_thumb_url || evt.profile_image_url} alt="" />
+                                ) : (
+                                  <span>?</span>
+                                )}
+                              </div>
+                              <div className="recap-event-body">
+                                {evt.name ? <div className="recap-event-name">{evt.name}</div> : null}
+                                <div className="recap-event-text">{evt.text}</div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : Array.isArray(recap.highlights) && recap.highlights.length > 0 ? (
+                        <ul className="recap-list">
+                          {recap.highlights.map((h, i) => <li key={i}>{h}</li>)}
+                        </ul>
+                      ) : (
+                        !recap.summary && <p>No recap available.</p>
+                      )}
+                    </div>
+                  ) : (
+                    <p>No recap available.</p>
+                  )}
+                </>
               )}
             </div>
 
@@ -437,8 +454,8 @@ export default function CampaignDashboard() {
                         }}
                       >
                         <div className="lb-avatar">
-                          {p.profile_image_url ? (
-                            <img src={p.profile_image_url} alt="" />
+                          {p.profile_image_thumb_url || p.profile_image_url ? (
+                            <img src={p.profile_image_thumb_url || p.profile_image_url} alt="" />
                           ) : (
                             <span>?</span>
                           )}
@@ -471,14 +488,16 @@ export default function CampaignDashboard() {
           displayName={displayName}
           color={selfMember?.color || '#ffffff'}
           profileImageUrl={profileImageUrl}
-          armyImageUrl={selfMember?.army_image_url || ''}
+          armyImageUrl={selfMember?.army_image_thumb_url || selfMember?.army_image_url || ''}
           armyName={armyName}
           onClose={() => setShowProfileModal(false)}
           onUpdated={(updates) => {
             setSelfMember((prev) => ({
               ...(prev || {}),
               ...(updates.profileImageUrl ? { profile_image_url: updates.profileImageUrl } : null),
+              ...(updates.profileImageThumbUrl ? { profile_image_thumb_url: updates.profileImageThumbUrl } : null),
               ...(updates.armyImageUrl ? { army_image_url: updates.armyImageUrl } : null),
+              ...(updates.armyImageThumbUrl ? { army_image_thumb_url: updates.armyImageThumbUrl } : null),
               ...(updates.armyName ? { army_name: updates.armyName } : null),
               ...(updates.displayName ? { display_name: updates.displayName } : null),
               ...(updates.color ? { color: updates.color } : null),
@@ -490,7 +509,9 @@ export default function CampaignDashboard() {
                     ? {
                         ...entry,
                         ...(updates.profileImageUrl ? { profile_image_url: updates.profileImageUrl } : null),
+                        ...(updates.profileImageThumbUrl ? { profile_image_thumb_url: updates.profileImageThumbUrl } : null),
                         ...(updates.armyImageUrl ? { army_image_url: updates.armyImageUrl } : null),
+                        ...(updates.armyImageThumbUrl ? { army_image_thumb_url: updates.armyImageThumbUrl } : null),
                         ...(updates.armyName ? { army_name: updates.armyName } : null),
                         ...(updates.displayName ? { display_name: updates.displayName } : null),
                         ...(updates.color ? { color: updates.color } : null),
@@ -511,14 +532,16 @@ export default function CampaignDashboard() {
           <div
             className="dash-preview-card"
             style={{
-              backgroundImage: previewPlayer.army_image_url
-                ? `url(${previewPlayer.army_image_url})`
+              backgroundImage: (previewPlayer.army_image_thumb_url || previewPlayer.army_image_url || previewPlayer.army_image_full_url)
+                ? `url(${previewPlayer.army_image_thumb_url || previewPlayer.army_image_url || previewPlayer.army_image_full_url})`
                 : undefined,
             }}
             onClick={(e) => {
               e.stopPropagation();
-              if (previewPlayer.army_image_url) {
-                setPreviewImageUrl(previewPlayer.army_image_url);
+              if (previewPlayer.army_image_thumb_url || previewPlayer.army_image_url || previewPlayer.army_image_full_url) {
+                setPreviewImageUrl(
+                  previewPlayer.army_image_thumb_url || previewPlayer.army_image_url || previewPlayer.army_image_full_url
+                );
               }
             }}
           >
@@ -533,13 +556,15 @@ export default function CampaignDashboard() {
               ×
             </button>
             <div className="dash-preview-avatar">
-              {previewPlayer.profile_image_url ? (
+              {previewPlayer.profile_image_thumb_url || previewPlayer.profile_image_url || previewPlayer.profile_image_full_url ? (
                 <img
-                  src={previewPlayer.profile_image_url}
+                  src={previewPlayer.profile_image_thumb_url || previewPlayer.profile_image_url || previewPlayer.profile_image_full_url}
                   alt=""
                   onClick={(e) => {
                     e.stopPropagation();
-                    setPreviewImageUrl(previewPlayer.profile_image_url);
+                    setPreviewImageUrl(
+                      previewPlayer.profile_image_thumb_url || previewPlayer.profile_image_url || previewPlayer.profile_image_full_url
+                    );
                   }}
                 />
               ) : (
