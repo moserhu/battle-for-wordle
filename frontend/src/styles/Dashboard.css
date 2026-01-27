@@ -8,10 +8,28 @@
   background-size: cover;
   color: var(--theme-text-primary);
   font-family: var(--theme-font);
-  padding: 2px 20px 60px; /* clear fixed NavBar with less gap */
+  padding: 2px 0 60px; /* clear fixed NavBar with less gap */
   display: flex;
   flex-direction: column;
   align-items: center;
+  --dash-card-width: min(calc(100% - 12px), 1100px);
+}
+
+.dash-header,
+.dash-hub-wrap,
+.dash-king-wrap,
+.dash-surface {
+  width: calc(100% - 12px) !important;
+  max-width: 1100px;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  box-sizing: border-box;
+}
+
+.dash-king-wrap .dash-king-banner {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0;
 }
 
 .dash-wrapper.admin-theme {
@@ -109,33 +127,45 @@
 
 /* Header Banner */
 .dash-header {
-  width: 100%;
-  max-width: 1100px;
-  margin-bottom: 12px;
+  width: var(--dash-card-width);
+  margin: 0 auto 12px;
+  box-sizing: border-box;
 }
 
 .dash-hub-wrap {
-  width: 100%;
-  max-width: 1100px;
+  width: var(--dash-card-width);
   background: var(--theme-surface-strong);
   border: 2px solid var(--theme-border);
   border-radius: 16px;
   padding: 12px;
   box-shadow: var(--theme-shadow-card);
-  margin-bottom: 16px;
+  margin: 0 auto 16px;
   backdrop-filter: blur(6px);
+}
+
+.dash-king-wrap {
+  width: var(--dash-card-width);
+  margin: 0 auto 16px;
+  padding: 10px;
+  border-radius: 16px;
+  background: #f4c76a;
+  border: 1px solid rgba(255, 210, 120, 0.7);
+  box-shadow:
+    inset 0 0 18px rgba(255, 230, 170, 0.2),
+    0 10px 24px rgba(12, 8, 3, 0.35);
 }
 
 /* Reigning King banner */
 .dash-king-banner {
-  width: 100%;
-  max-width: 1100px;
+  width: var(--dash-card-width);
   position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 16px 18px;
-  margin-bottom: 18px;
+  padding: 18px 22px !important;
+  margin: 0;
+  box-sizing: border-box;
   border-radius: 18px;
   background:
     radial-gradient(120% 160% at 10% 10%, #ffe48f, #d49b2c 55%),
@@ -146,6 +176,22 @@
     0 10px 30px rgba(15, 10, 6, 0.55),
     inset 0 0 22px rgba(255, 232, 164, 0.35);
   overflow: hidden;
+  flex-wrap: wrap;
+}
+
+.dash-king-banner::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(120% 160% at 20% 10%, rgba(255, 230, 170, 0.45), transparent 55%),
+    linear-gradient(135deg, rgba(255, 205, 130, 0.8), rgba(165, 90, 20, 0.7));
+  border-radius: 22px;
+  z-index: 0;
+  transform: translateY(6px);
+  box-shadow:
+    0 14px 40px rgba(18, 10, 4, 0.45),
+    inset 0 0 26px rgba(255, 235, 180, 0.45);
 }
 
 .dash-king-banner::before {
@@ -172,22 +218,29 @@
   gap: 2px;
   position: relative;
   z-index: 2;
+  min-width: 0;
+  flex: 1 1 auto;
+  margin: 6px 0 !important;
 }
 
 .dash-king-title {
   text-transform: uppercase;
   letter-spacing: 0.2em;
-  font-size: 0.72rem;
+  font-size: clamp(0.6rem, 1vw, 0.72rem);
   color: #3a2207;
   white-space: normal;
-  word-break: break-word;
+  overflow: visible;
+  text-overflow: clip;
   line-height: 1.2;
 }
 
 .dash-king-name {
   font-family: var(--theme-font-accent);
-  font-size: 1.4rem;
+  font-size: clamp(1rem, 2.2vw, 1.4rem);
   color: #2b1602;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
   text-shadow:
     0 2px 0 rgba(255, 250, 236, 0.6),
     0 3px 12px rgba(42, 24, 6, 0.45);
@@ -235,9 +288,12 @@
   background: radial-gradient(circle at top, rgba(80, 55, 20, 0.35), rgba(16, 10, 4, 0.85));
   border: 2px solid var(--theme-border);
   border-radius: 12px;
-  padding: 8px 12px;
+  padding: 12px !important;
   box-shadow: var(--theme-shadow-card);
-  gap: 14px;
+  gap: 8px;
+  width: 100%;
+  margin: 0;
+  box-sizing: border-box;
 }
 
 .dash-header-left,
@@ -274,6 +330,8 @@
   gap: 4px;
   justify-content: center;
   max-width: 100%;
+  width: 100%;
+  padding: 12px !important;
 }
 
 .dash-header-center.compact .dash-title {
@@ -281,20 +339,25 @@
   line-height: 1.1;
 }
 
+.dash-header-center.compact {
+  padding: 12px !important;
+  box-sizing: border-box;
+}
+
 .dash-title-card {
   display: inline-flex;
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  padding: 8px 16px;
+  padding: 6px 8px;
   border-radius: 14px;
   border: 1px solid rgba(255, 220, 170, 0.45);
   background: radial-gradient(circle at top, rgba(70, 45, 15, 0.4), rgba(15, 10, 4, 0.85));
   box-shadow:
     inset 0 0 12px rgba(255, 220, 150, 0.15),
     0 6px 18px rgba(0, 0, 0, 0.45);
-  width: 100%;
-  max-width: 100%;
+  width: 100% !important;
+  max-width: none;
   box-sizing: border-box;
   position: relative;
 }
@@ -308,7 +371,7 @@
 
 .dash-herald-card {
   margin-top: 6px;
-  padding: 8px 14px;
+  padding: 6px 8px;
   border-radius: 12px;
   border: 1px solid rgba(255, 220, 170, 0.55);
   background: radial-gradient(circle at top, rgba(90, 60, 20, 0.35), rgba(20, 12, 4, 0.85));
@@ -319,8 +382,8 @@
   align-items: center;
   gap: 12px;
   text-align: left;
-  width: 100%;
-  max-width: 100%;
+  width: 100% !important;
+  max-width: none;
   box-sizing: border-box;
   position: relative;
 }
@@ -355,6 +418,7 @@
   flex-direction: column;
   gap: 4px;
   width: 100%;
+  padding: 0;
 }
 
 .dash-actions-card {
@@ -459,8 +523,7 @@
 
 /* Dashboard surface */
 .dash-surface {
-  width: 100%;
-  max-width: 1100px;
+  width: var(--dash-card-width);
   background: var(--theme-surface-strong);
   border: 2px solid var(--theme-border);
   border-radius: 16px;
@@ -470,6 +533,7 @@
   flex-direction: column;
   gap: 16px;
   backdrop-filter: blur(6px);
+  margin: 0 auto 18px;
 }
 
 .dash-surface-header {
@@ -1029,6 +1093,10 @@
   gap: 2px;
   align-items: center;
   text-align: center;
+}
+
+.dash-header-inner {
+  padding: 0 !important;
 }
 
 .dash-herald-content {

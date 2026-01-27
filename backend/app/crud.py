@@ -1179,28 +1179,35 @@ def get_campaign_day(campaign_id: int):
 def get_campaign_progress(campaign_id: int):
     with get_db() as conn:
         row = conn.execute(
-            "SELECT name, start_date, invite_code, cycle_length, king, ruler_id, ruler_title, COALESCE(is_admin_campaign, FALSE) FROM campaigns WHERE id = %s",
+            """
+            SELECT name,
+                   start_date,
+                   invite_code,
+                   cycle_length,
+                   king,
+                   ruler_id,
+                   ruler_title,
+                   COALESCE(is_admin_campaign, FALSE),
+                   ruler_background_image_url,
+                   ruler_background_image_key
+            FROM campaigns
+            WHERE id = %s
+            """,
             (campaign_id,)
         ).fetchone()
 
     if not row:
         raise HTTPException(status_code=404, detail="Campaign not found")
 
-    name, start_date_str, invite_code, cycle_length, king, ruler_id, ruler_title, is_admin_campaign = row
+    name, start_date_str, invite_code, cycle_length, king, ruler_id, ruler_title, is_admin_campaign, ruler_bg_url, ruler_bg_key = row
     start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
     today = datetime.now(ZoneInfo("America/Chicago")).date()
     delta = (today - start_date).days
-    ruler_army_image_url = None
-    if ruler_id and not is_admin_campaign:
-        with get_db() as conn:
-            ruler_row = conn.execute("""
-                SELECT army_image_url, army_image_key, army_image_thumb_url, army_image_thumb_key
-                FROM campaign_members
-                WHERE campaign_id = %s AND user_id = %s
-            """, (campaign_id, ruler_id)).fetchone()
-        if ruler_row:
-            army_url, army_key, army_thumb_url, army_thumb_key = ruler_row
-            ruler_army_image_url = create_presigned_download(army_key) if army_key else army_url
+    ruler_background_image_url = None
+    if ruler_bg_key:
+        ruler_background_image_url = create_presigned_download(ruler_bg_key)
+    elif ruler_bg_url:
+        ruler_background_image_url = ruler_bg_url
 
     return {
         "name": name,
@@ -1211,7 +1218,7 @@ def get_campaign_progress(campaign_id: int):
         "ruler_id": ruler_id,
         "ruler_title": ruler_title,
         "is_admin_campaign": bool(is_admin_campaign),
-        "ruler_army_image_url": ruler_army_image_url
+        "ruler_background_image_url": ruler_background_image_url
     }
 
 def get_campaign_streak(user_id: int, campaign_id: int):
@@ -1502,16 +1509,24 @@ def update_campaign_ruler_title(user_id: int, campaign_id: int, title: str):
         raise HTTPException(status_code=400, detail="Title must be 30 characters or fewer")
 
     with get_db() as conn:
-        row = conn.execute("""
+        row = conn.execute(
+            """
             SELECT ruler_id
             FROM campaigns
             WHERE id = %s
-        """, (campaign_id,)).fetchone()
+            """,
+            (campaign_id,)
+        ).fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="Campaign not found")
 
         ruler_id = row[0]
-        if ruler_id != user_id:
+        is_admin_row = conn.execute(
+            "SELECT COALESCE(is_admin, FALSE) FROM users WHERE id = %s",
+            (user_id,)
+        ).fetchone()
+        is_admin = bool(is_admin_row[0]) if is_admin_row else False
+        if not is_admin and ruler_id != user_id:
             raise HTTPException(status_code=403, detail="Only the current ruler can edit this title")
 
         conn.execute("""
@@ -1910,6 +1925,7 @@ def redeem_candle_of_mercy(user_id: int, campaign_id: int):
     return {"bonus": bonus}
 
 def update_campaign_member(campaign_id: int, user_id: int, display_name: str, color: str):
+    cleaned_name = (display_name or "").strip()
     with get_db() as conn:
         result = conn.execute("""
             UPDATE campaign_members
@@ -1919,6 +1935,25 @@ def update_campaign_member(campaign_id: int, user_id: int, display_name: str, co
 
         if result.rowcount == 0:
             raise HTTPException(status_code=404, detail="Campaign membership not found")
+
+        # If the member is the current ruler, keep the campaign king name in sync.
+        is_ruler = conn.execute(
+            "SELECT 1 FROM campaigns WHERE id = %s AND ruler_id = %s",
+            (campaign_id, user_id)
+        ).fetchone()
+        if is_ruler:
+            if not cleaned_name:
+                name_row = conn.execute(
+                    "SELECT first_name, last_name FROM users WHERE id = %s",
+                    (user_id,)
+                ).fetchone()
+                if name_row:
+                    cleaned_name = f"{name_row[0] or ''} {name_row[1] or ''}".strip()
+            if cleaned_name:
+                conn.execute(
+                    "UPDATE campaigns SET king = %s WHERE id = %s",
+                    (cleaned_name, campaign_id)
+                )
 
         return {"status": "updated", "display_name": display_name, "color": color}
     

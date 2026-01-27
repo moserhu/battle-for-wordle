@@ -162,7 +162,7 @@ export default function AccountScreen() {
               >
                 ×
               </button>
-              <img src={user.profile_image_thumb_url || user.profile_image_url} alt="Profile preview" />
+              <img src={user.profile_image_url || user.profile_image_thumb_url} alt="Profile preview" />
             </div>
           </div>
         )}

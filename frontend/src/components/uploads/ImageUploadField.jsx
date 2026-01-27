@@ -15,9 +15,9 @@ export default function ImageUploadField({
   emptyLabel = 'No image',
   onUploaded,
   onPreview,
-  maxDimension = 768,
+  maxDimension = 1200,
   outputType = 'image/webp',
-  outputQuality = 0.78,
+  outputQuality = 0.85,
 }) {
   const [preview, setPreview] = useState(value || '');
   const [selectedFile, setSelectedFile] = useState(null);

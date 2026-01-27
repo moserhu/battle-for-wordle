@@ -279,15 +279,15 @@ export default function Leaderboard() {
           <div
             className="player-preview-card"
             style={{
-              backgroundImage: (previewPlayer.army_image_thumb_url || previewPlayer.army_image_url || previewPlayer.army_image_full_url)
-                ? `url(${previewPlayer.army_image_thumb_url || previewPlayer.army_image_url || previewPlayer.army_image_full_url})`
+              backgroundImage: (previewPlayer.army_image_full_url || previewPlayer.army_image_url || previewPlayer.army_image_thumb_url)
+                ? `url(${previewPlayer.army_image_full_url || previewPlayer.army_image_url || previewPlayer.army_image_thumb_url})`
                 : undefined,
             }}
             onClick={(e) => {
               e.stopPropagation();
-              if (previewPlayer.army_image_thumb_url || previewPlayer.army_image_url || previewPlayer.army_image_full_url) {
+              if (previewPlayer.army_image_full_url || previewPlayer.army_image_url || previewPlayer.army_image_thumb_url) {
                 setPreviewImageUrl(
-                  previewPlayer.army_image_thumb_url || previewPlayer.army_image_url || previewPlayer.army_image_full_url
+                  previewPlayer.army_image_full_url || previewPlayer.army_image_url || previewPlayer.army_image_thumb_url
                 );
               }
             }}
@@ -303,14 +303,14 @@ export default function Leaderboard() {
               ×
             </button>
             <div className="player-preview-avatar">
-              {previewPlayer.profile_image_thumb_url || previewPlayer.profile_image_url || previewPlayer.profile_image_full_url ? (
+              {previewPlayer.profile_image_full_url || previewPlayer.profile_image_url || previewPlayer.profile_image_thumb_url ? (
                 <img
-                  src={previewPlayer.profile_image_thumb_url || previewPlayer.profile_image_url || previewPlayer.profile_image_full_url}
+                  src={previewPlayer.profile_image_full_url || previewPlayer.profile_image_url || previewPlayer.profile_image_thumb_url}
                   alt=""
                   onClick={(e) => {
                     e.stopPropagation();
                     setPreviewImageUrl(
-                      previewPlayer.profile_image_thumb_url || previewPlayer.profile_image_url || previewPlayer.profile_image_full_url
+                      previewPlayer.profile_image_full_url || previewPlayer.profile_image_url || previewPlayer.profile_image_thumb_url
                     );
                   }}
                   role="button"
@@ -318,7 +318,7 @@ export default function Leaderboard() {
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       setPreviewImageUrl(
-                        previewPlayer.profile_image_thumb_url || previewPlayer.profile_image_url || previewPlayer.profile_image_full_url
+                        previewPlayer.profile_image_full_url || previewPlayer.profile_image_url || previewPlayer.profile_image_thumb_url
                       );
                     }
                   }}

@@ -38,6 +38,28 @@ def _require_campaign_member(conn, campaign_id: int, user_id: int) -> None:
     if not member:
         raise HTTPException(status_code=403, detail="Not a member of this campaign")
 
+def _require_campaign_ruler(conn, campaign_id: int, user_id: int) -> None:
+    row = conn.execute(
+        """
+        SELECT ruler_id, COALESCE(is_admin_campaign, FALSE)
+        FROM campaigns
+        WHERE id = %s
+        """,
+        (campaign_id,)
+    ).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    ruler_id, is_admin_campaign = row
+    if is_admin_campaign:
+        raise HTTPException(status_code=403, detail="Admin campaigns cannot set a ruler background")
+    is_admin = conn.execute(
+        "SELECT COALESCE(is_admin, FALSE) FROM users WHERE id = %s",
+        (user_id,)
+    ).fetchone()
+    is_admin = bool(is_admin[0]) if is_admin else False
+    if not is_admin and (not ruler_id or ruler_id != user_id):
+        raise HTTPException(status_code=403, detail="Only the current ruler can set the background")
+
 
 def create_profile_image_upload(user_id: int, filename: str, content_type: str):
     key, file_url, upload_url, cache_control = create_presigned_upload(
@@ -124,3 +146,49 @@ def confirm_army_image_upload(user_id: int, campaign_id: int, key: str, file_url
     signed_url = create_presigned_download(key)
     thumb_signed_url = create_presigned_download(thumb_key) if thumb_key else None
     return {"army_image_url": signed_url, "army_image_thumb_url": thumb_signed_url}
+
+
+def create_ruler_background_upload(user_id: int, campaign_id: int, filename: str, content_type: str):
+    with get_db() as conn:
+        _require_campaign_member(conn, campaign_id, user_id)
+        _require_campaign_ruler(conn, campaign_id, user_id)
+    key, file_url, upload_url, cache_control = create_presigned_upload(
+        f"rulers/{campaign_id}/{user_id}",
+        filename,
+        content_type
+    )
+    return {"key": key, "file_url": file_url, "upload_url": upload_url, "cache_control": cache_control}
+
+
+def confirm_ruler_background_upload(user_id: int, campaign_id: int, key: str, file_url: str):
+    validate_key_prefix(key, f"rulers/{campaign_id}/{user_id}")
+    with get_db() as conn:
+        _require_campaign_member(conn, campaign_id, user_id)
+        _require_campaign_ruler(conn, campaign_id, user_id)
+        conn.execute(
+            """
+            UPDATE campaigns
+            SET ruler_background_image_url = %s,
+                ruler_background_image_key = %s
+            WHERE id = %s
+            """,
+            (file_url, key, campaign_id)
+        )
+    signed_url = create_presigned_download(key)
+    return {"image_url": signed_url}
+
+
+def clear_ruler_background(user_id: int, campaign_id: int):
+    with get_db() as conn:
+        _require_campaign_member(conn, campaign_id, user_id)
+        _require_campaign_ruler(conn, campaign_id, user_id)
+        conn.execute(
+            """
+            UPDATE campaigns
+            SET ruler_background_image_url = NULL,
+                ruler_background_image_key = NULL
+            WHERE id = %s
+            """,
+            (campaign_id,)
+        )
+    return {"status": "cleared"}

@@ -94,6 +94,16 @@ class ArmyImageConfirm(BaseModel):
     key: str
     file_url: str
 
+class RulerBackgroundPresign(BaseModel):
+    campaign_id: int
+    filename: str
+    content_type: str
+
+class RulerBackgroundConfirm(BaseModel):
+    campaign_id: int
+    key: str
+    file_url: str
+
 class ArmyNameUpdate(BaseModel):
     campaign_id: int
     army_name: str

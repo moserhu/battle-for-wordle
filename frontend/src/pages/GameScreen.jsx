@@ -881,9 +881,9 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
   
   const isAdminCampaign = Boolean(campaignDay?.is_admin_campaign);
 
-  const rulerBackgroundStyle = !isAdminCampaign && campaignDay?.ruler_army_image_url
+  const rulerBackgroundStyle = !isAdminCampaign && campaignDay?.ruler_background_image_url
     ? {
-        backgroundImage: `url(${campaignDay.ruler_army_image_url})`,
+        backgroundImage: `url(${campaignDay.ruler_background_image_url})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundRepeat: "no-repeat",
@@ -972,23 +972,32 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
                 </div>
               )}
             </div>
-            <section className="game-king-banner game-top-half" aria-live="polite">
-          <div className="game-king-text">
-            <div className="game-king-title">{rulerTitle}</div>
-            <div className="game-king-name">{campaignDay?.king || 'Uncrowned'}</div>
-          </div>
-          <div className="game-king-glow" aria-hidden="true" />
-          {isRuler && (
-            <button
-              className="game-king-edit"
-              onClick={handleEditRulerTitle}
-              type="button"
-              aria-label="Edit ruler title"
-            >
-              ✎
-            </button>
-          )}
-            </section>
+            <div className="game-king-stack game-top-half" aria-live="polite">
+              <section className="game-king-banner">
+                <div className="game-king-text">
+                  <div className="game-king-title">{rulerTitle}</div>
+                  {(() => {
+                    const rulerName = campaignDay?.king || 'Uncrowned';
+                    const isLong = rulerName.length > 16;
+                    const isLonger = rulerName.length > 24;
+                    const nameClass = `game-king-name${isLong ? ' long' : ''}${isLonger ? ' longer' : ''}`;
+                    return <div className={nameClass}>{rulerName}</div>;
+                  })()}
+                </div>
+                <div className="game-king-glow" aria-hidden="true" />
+              </section>
+              {(isRuler || isAdmin) && (
+                <button
+                  className="game-king-edit game-king-edit-bubble"
+                  onClick={handleEditRulerTitle}
+                  type="button"
+                  aria-label="Royal orders"
+                  title="Royal Orders"
+                >
+                  Royal Orders
+                </button>
+              )}
+            </div>
             {isAdmin && isAdminCampaign && (
               <button
                 className="admin-btn game-top-half"
@@ -1003,6 +1012,12 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
           initialTitle={rulerTitle}
           onSave={handleSaveRulerTitle}
           onClose={() => setShowRulerModal(false)}
+          token={token}
+          campaignId={campaignId}
+          rulerBackdropUrl={campaignDay?.ruler_background_image_url || ''}
+          onBackdropSaved={(url) => {
+            setCampaignDay((prev) => (prev ? { ...prev, ruler_background_image_url: url } : prev));
+          }}
         />
           </div>
           <div className="game-day-carousel">

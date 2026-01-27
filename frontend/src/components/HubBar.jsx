@@ -44,10 +44,11 @@ export default function HubBar({
             </span>
           </div>
           <button className="hub-battle-chip hub-battle-chip--streak" type="button" onClick={onStreakInfo}>
-            <span className="hub-chip-label">
-              {streak >= 1 ? '🔥 Streak' : 'Streak'}
+            <span className="hub-chip-label">Streak</span>
+            <span className="hub-chip-value">
+              {streak ?? 0}
+              {streak >= 1 ? ' 🔥' : ''}
             </span>
-            <span className="hub-chip-value">{streak ?? 0}</span>
           </button>
         </div>
         <div className="hub-battle-badges">

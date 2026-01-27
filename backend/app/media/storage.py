@@ -16,6 +16,7 @@ ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
 
 def _get_s3_settings():
     endpoint_url = os.getenv("S3_ENDPOINT_URL")
+    public_endpoint_url = os.getenv("S3_PUBLIC_ENDPOINT_URL")
     access_key = os.getenv("S3_ACCESS_KEY_ID") or os.getenv("S3_ACCESS_KEY")
     secret_key = os.getenv("S3_SECRET_ACCESS_KEY") or os.getenv("S3_SECRET_KEY")
     bucket = os.getenv("S3_BUCKET")
@@ -25,14 +26,16 @@ def _get_s3_settings():
     if not endpoint_url or not access_key or not secret_key or not bucket:
         raise RuntimeError("S3 configuration is incomplete")
 
-    return endpoint_url, access_key, secret_key, bucket, region, public_base
+    return endpoint_url, public_endpoint_url, access_key, secret_key, bucket, region, public_base
 
 
-def _get_s3_client():
-    endpoint_url, access_key, secret_key, _, region, _ = _get_s3_settings()
+def _get_s3_client(endpoint_url: str | None = None):
+    settings = _get_s3_settings()
+    internal_endpoint_url, _, access_key, secret_key, _, region, _ = settings
+    resolved_endpoint = endpoint_url or internal_endpoint_url
     return boto3.client(
         "s3",
-        endpoint_url=endpoint_url,
+        endpoint_url=resolved_endpoint,
         aws_access_key_id=access_key,
         aws_secret_access_key=secret_key,
         region_name=region,
@@ -41,10 +44,15 @@ def _get_s3_client():
 
 
 def _build_public_url(key: str) -> str:
-    endpoint_url, _, _, bucket, _, public_base = _get_s3_settings()
+    endpoint_url, _, _, _, bucket, _, public_base = _get_s3_settings()
     if public_base:
         return f"{public_base.rstrip('/')}/{key}"
     return f"{endpoint_url.rstrip('/')}/{bucket}/{key}"
+
+
+def _get_public_endpoint_url() -> str | None:
+    _, public_endpoint_url, _, _, _, _, _ = _get_s3_settings()
+    return public_endpoint_url
 
 
 def _resolve_extension(filename: str, content_type: str) -> Tuple[str, str]:
@@ -70,8 +78,9 @@ def create_presigned_upload(prefix: str, filename: str, content_type: str) -> tu
     ext, content_type = _resolve_extension(filename, content_type)
     key = f"{prefix}/{uuid.uuid4().hex}{ext}"
 
-    client = _get_s3_client()
-    _, _, _, bucket, _, public_base = _get_s3_settings()
+    public_endpoint_url = _get_public_endpoint_url()
+    client = _get_s3_client(endpoint_url=public_endpoint_url)
+    _, _, _, _, bucket, _, public_base = _get_s3_settings()
     cache_control = os.getenv("S3_UPLOAD_CACHE_CONTROL", "public, max-age=31536000, immutable")
 
     upload_url = client.generate_presigned_url(
@@ -96,8 +105,9 @@ def validate_key_prefix(key: str, expected_prefix: str) -> None:
 
 
 def create_presigned_download(key: str, expires_in: int | None = None) -> str:
-    client = _get_s3_client()
-    _, _, _, bucket, _, _ = _get_s3_settings()
+    public_endpoint_url = _get_public_endpoint_url()
+    client = _get_s3_client(endpoint_url=public_endpoint_url)
+    _, _, _, _, bucket, _, _ = _get_s3_settings()
     if expires_in is None:
         try:
             expires_in = int(os.getenv("S3_DOWNLOAD_EXPIRES", "86400"))
@@ -112,7 +122,7 @@ def create_presigned_download(key: str, expires_in: int | None = None) -> str:
 
 def get_object_bytes(key: str) -> tuple[bytes, str]:
     client = _get_s3_client()
-    _, _, _, bucket, _, _ = _get_s3_settings()
+    _, _, _, _, bucket, _, _ = _get_s3_settings()
     response = client.get_object(Bucket=bucket, Key=key)
     body = response["Body"].read()
     content_type = response.get("ContentType") or "application/octet-stream"
@@ -121,7 +131,7 @@ def get_object_bytes(key: str) -> tuple[bytes, str]:
 
 def put_object_bytes(key: str, data: bytes, content_type: str, cache_control: str | None = None) -> str:
     client = _get_s3_client()
-    _, _, _, bucket, _, _ = _get_s3_settings()
+    _, _, _, _, bucket, _, _ = _get_s3_settings()
     if cache_control is None:
         cache_control = os.getenv("S3_UPLOAD_CACHE_CONTROL", "public, max-age=31536000, immutable")
     params = {"Bucket": bucket, "Key": key, "Body": data, "ContentType": content_type}

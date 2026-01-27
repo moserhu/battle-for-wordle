@@ -2,12 +2,17 @@
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import "../styles/RulerTitleModal.css";
+import ImageUploadField from "./uploads/ImageUploadField";
 
 export default function RulerTitleModal({
   visible,
   initialTitle,
   onSave,
   onClose,
+  token,
+  campaignId,
+  rulerBackdropUrl,
+  onBackdropSaved,
 }) {
   const [title, setTitle] = useState(initialTitle || "");
 
@@ -32,6 +37,25 @@ export default function RulerTitleModal({
     onSave(nextTitle);
   };
 
+  const handleResetBackdrop = async () => {
+    if (!token || !campaignId) return;
+    try {
+      await fetch(`${process.env.REACT_APP_API_URL || `${window.location.protocol}//${window.location.hostname}`}/api/campaign/ruler-background/reset`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ campaign_id: Number(campaignId) }),
+      });
+      if (onBackdropSaved) {
+        onBackdropSaved("");
+      }
+    } catch (err) {
+      // silent fail for now
+    }
+  };
+
   const modal = (
     <div className="ruler-modal-backdrop" onClick={handleBackdropClick}>
       <div className="ruler-modal">
@@ -43,9 +67,11 @@ export default function RulerTitleModal({
         >
           −
         </button>
-        <h2>Set Your Title</h2>
-        <p>Choose the name the realm will remember you by.</p>
-        <form className="ruler-modal-form" onSubmit={handleSubmit}>
+        <h2>Royal Orders</h2>
+        <p>Issue your title and set the realm’s backdrop.</p>
+        <div className="ruler-modal-section">
+          <div className="ruler-modal-section-title">Ruler Title</div>
+          <form className="ruler-modal-form" onSubmit={handleSubmit}>
           <input
             className="ruler-modal-input"
             value={title}
@@ -64,7 +90,48 @@ export default function RulerTitleModal({
               Cancel
             </button>
           </div>
-        </form>
+          </form>
+        </div>
+        {campaignId && token && (
+          <div className="ruler-backdrop-section ruler-modal-section">
+            <div className="ruler-modal-section-title">Battle Backdrop</div>
+            <ImageUploadField
+              label="Ruler backdrop"
+              value={rulerBackdropUrl || ''}
+              token={token}
+              presignPath="/api/campaign/ruler-background/presign"
+              confirmPath="/api/campaign/ruler-background/confirm"
+              presignBody={(file) => ({
+                campaign_id: Number(campaignId),
+                filename: file.name,
+                content_type: file.type,
+              })}
+              confirmBody={(presign) => ({
+                campaign_id: Number(campaignId),
+                key: presign.key,
+                file_url: presign.file_url,
+              })}
+              maxDimension={1920}
+              outputQuality={0.9}
+              emptyLabel="No backdrop"
+              onUploaded={(url) => {
+                if (onBackdropSaved) {
+                  onBackdropSaved(url);
+                }
+              }}
+            />
+            <div className="ruler-backdrop-default">
+              <div className="ruler-backdrop-default-preview" aria-hidden="true" />
+              <button
+                type="button"
+                className="ruler-modal-btn"
+                onClick={handleResetBackdrop}
+              >
+                Use default background
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

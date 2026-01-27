@@ -313,23 +313,31 @@ export default function CampaignDashboard() {
         />
       </div>
 
-      <section className="dash-king-banner" aria-live="polite">
-        <div className="dash-king-text">
-          <div className="dash-king-title">{rulerTitle}</div>
-          <div className="dash-king-name">{campaignMeta?.king || 'Uncrowned'}</div>
-        </div>
-        <div className="dash-king-glow" aria-hidden="true" />
-        {isRuler && (
-          <button className="dash-king-edit" onClick={handleEditRulerTitle} type="button">
-            Edit
-          </button>
-        )}
-      </section>
+      <div className="dash-king-wrap">
+        <section className="dash-king-banner" aria-live="polite">
+          <div className="dash-king-text">
+            <div className="dash-king-title">{rulerTitle}</div>
+            <div className="dash-king-name">{campaignMeta?.king || 'Uncrowned'}</div>
+          </div>
+          <div className="dash-king-glow" aria-hidden="true" />
+          {(isRuler || user?.is_admin) && (
+            <button className="dash-king-edit" onClick={handleEditRulerTitle} type="button">
+              📜
+            </button>
+          )}
+        </section>
+      </div>
       <RulerTitleModal
         visible={showRulerModal}
         initialTitle={rulerTitle}
         onSave={handleSaveRulerTitle}
         onClose={() => setShowRulerModal(false)}
+        token={token}
+        campaignId={cid}
+        rulerBackdropUrl={campaignMeta?.ruler_background_image_url || ''}
+        onBackdropSaved={(url) => {
+          setCampaignMeta((prev) => (prev ? { ...prev, ruler_background_image_url: url } : prev));
+        }}
       />
       <AccoladesModal
         open={showAccoladesModal}
@@ -532,15 +540,15 @@ export default function CampaignDashboard() {
           <div
             className="dash-preview-card"
             style={{
-              backgroundImage: (previewPlayer.army_image_thumb_url || previewPlayer.army_image_url || previewPlayer.army_image_full_url)
-                ? `url(${previewPlayer.army_image_thumb_url || previewPlayer.army_image_url || previewPlayer.army_image_full_url})`
+              backgroundImage: (previewPlayer.army_image_full_url || previewPlayer.army_image_url || previewPlayer.army_image_thumb_url)
+                ? `url(${previewPlayer.army_image_full_url || previewPlayer.army_image_url || previewPlayer.army_image_thumb_url})`
                 : undefined,
             }}
             onClick={(e) => {
               e.stopPropagation();
-              if (previewPlayer.army_image_thumb_url || previewPlayer.army_image_url || previewPlayer.army_image_full_url) {
+              if (previewPlayer.army_image_full_url || previewPlayer.army_image_url || previewPlayer.army_image_thumb_url) {
                 setPreviewImageUrl(
-                  previewPlayer.army_image_thumb_url || previewPlayer.army_image_url || previewPlayer.army_image_full_url
+                  previewPlayer.army_image_full_url || previewPlayer.army_image_url || previewPlayer.army_image_thumb_url
                 );
               }
             }}
@@ -556,14 +564,14 @@ export default function CampaignDashboard() {
               ×
             </button>
             <div className="dash-preview-avatar">
-              {previewPlayer.profile_image_thumb_url || previewPlayer.profile_image_url || previewPlayer.profile_image_full_url ? (
+              {previewPlayer.profile_image_full_url || previewPlayer.profile_image_url || previewPlayer.profile_image_thumb_url ? (
                 <img
-                  src={previewPlayer.profile_image_thumb_url || previewPlayer.profile_image_url || previewPlayer.profile_image_full_url}
+                  src={previewPlayer.profile_image_full_url || previewPlayer.profile_image_url || previewPlayer.profile_image_thumb_url}
                   alt=""
                   onClick={(e) => {
                     e.stopPropagation();
                     setPreviewImageUrl(
-                      previewPlayer.profile_image_thumb_url || previewPlayer.profile_image_url || previewPlayer.profile_image_full_url
+                      previewPlayer.profile_image_full_url || previewPlayer.profile_image_url || previewPlayer.profile_image_thumb_url
                     );
                   }}
                 />
