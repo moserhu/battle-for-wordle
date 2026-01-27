@@ -330,4 +330,15 @@ def init_db():
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS private_api_audit (
+                id SERIAL PRIMARY KEY,
+                endpoint TEXT NOT NULL,
+                campaign_id INTEGER,
+                user_id INTEGER,
+                action TEXT NOT NULL,
+                payload JSONB,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
     print("✅ Database connection verified!")

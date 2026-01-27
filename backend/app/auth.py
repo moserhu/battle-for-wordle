@@ -1,5 +1,5 @@
-from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi import Depends, HTTPException, Security, status
+from fastapi.security import APIKeyHeader, OAuth2PasswordBearer
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
 import os
@@ -11,8 +11,10 @@ load_dotenv()
 SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = os.getenv("ALGORITHM")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
+PRIVATE_API_KEY = os.getenv("PRIVATE_API_KEY")
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 def create_access_token(data: dict, expires_delta: timedelta = None):
     to_encode = data.copy()
@@ -34,3 +36,10 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
         return {"user_id": user_id}
     except JWTError:
         raise credentials_exception
+
+def require_api_key(api_key: str = Security(api_key_header)):
+    if not PRIVATE_API_KEY:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="PRIVATE_API_KEY not configured")
+    if not api_key or api_key != PRIVATE_API_KEY:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key")
+    return True

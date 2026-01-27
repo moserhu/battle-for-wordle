@@ -14,6 +14,7 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from app.scheduler import start_scheduler
 from database import init_db
 from app.media.routes import router as media_router
+from app.private.routes import router as private_router
 
 
 app = FastAPI()
@@ -232,3 +233,4 @@ def get_campaign_hint(data: CampaignOnly, current_user: dict = Depends(get_curre
 app.include_router(admin_router)
 app.include_router(updates_router)
 app.include_router(media_router)
+app.include_router(private_router)
