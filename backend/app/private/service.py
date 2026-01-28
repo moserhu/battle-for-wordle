@@ -6,6 +6,7 @@ from app.crud import get_db
 
 
 MAX_LIMIT = 365
+MAX_OFFSET = 10000
 
 
 def _clamp_limit(limit: Optional[int], default: int = 30) -> int:
@@ -18,6 +19,18 @@ def _clamp_limit(limit: Optional[int], default: int = 30) -> int:
     if limit <= 0:
         return default
     return min(limit, MAX_LIMIT)
+
+
+def _clamp_offset(offset: Optional[int]) -> int:
+    if offset is None:
+        return 0
+    try:
+        offset = int(offset)
+    except (TypeError, ValueError):
+        return 0
+    if offset < 0:
+        return 0
+    return min(offset, MAX_OFFSET)
 
 
 def _date_filters(date_from: Optional[str], date_to: Optional[str]) -> tuple[str, list]:
@@ -64,6 +77,278 @@ def list_campaigns():
     ]
 
 
+def get_campaign_details(campaign_id: int):
+    with get_db() as conn:
+        row = conn.execute("""
+            SELECT
+                id,
+                name,
+                owner_id,
+                invite_code,
+                start_date,
+                cycle_length,
+                COALESCE(is_admin_campaign, FALSE),
+                king,
+                ruler_id,
+                ruler_title,
+                ruler_background_image_url,
+                ruler_background_image_key
+            FROM campaigns
+            WHERE id = %s
+        """, (campaign_id,)).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Campaign not found")
+    return {
+        "campaign_id": row[0],
+        "name": row[1],
+        "owner_id": row[2],
+        "invite_code": row[3],
+        "start_date": row[4],
+        "cycle_length": row[5],
+        "is_admin_campaign": bool(row[6]),
+        "king": row[7],
+        "ruler_id": row[8],
+        "ruler_title": row[9],
+        "ruler_background_image_url": row[10],
+        "ruler_background_image_key": row[11],
+    }
+
+
+def list_users(limit: Optional[int], offset: Optional[int]):
+    limit = _clamp_limit(limit)
+    offset = _clamp_offset(offset)
+    with get_db() as conn:
+        rows = conn.execute("""
+            SELECT
+                id,
+                first_name,
+                last_name,
+                campaigns,
+                total_guesses,
+                correct_guesses,
+                campaign_wins,
+                campaign_losses,
+                clicked_update,
+                COALESCE(is_admin, FALSE),
+                profile_image_url,
+                profile_image_key,
+                profile_image_thumb_url,
+                profile_image_thumb_key
+            FROM users
+            ORDER BY id ASC
+            LIMIT %s OFFSET %s
+        """, (limit, offset)).fetchall()
+    return [
+        {
+            "user_id": row[0],
+            "first_name": row[1],
+            "last_name": row[2],
+            "campaigns": row[3],
+            "total_guesses": row[4],
+            "correct_guesses": row[5],
+            "campaign_wins": row[6],
+            "campaign_losses": row[7],
+            "clicked_update": row[8],
+            "is_admin": bool(row[9]),
+            "profile_image_url": row[10],
+            "profile_image_key": row[11],
+            "profile_image_thumb_url": row[12],
+            "profile_image_thumb_key": row[13],
+        }
+        for row in rows
+    ]
+
+
+def get_user_campaign_stats(user_id: Optional[int], campaign_id: Optional[int], limit: Optional[int]):
+    limit = _clamp_limit(limit)
+    clauses = []
+    params: list = []
+    if user_id is not None:
+        clauses.append("user_id = %s")
+        params.append(user_id)
+    if campaign_id is not None:
+        clauses.append("campaign_id = %s")
+        params.append(campaign_id)
+    where_sql = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+    params.append(limit)
+    with get_db() as conn:
+        rows = conn.execute(f"""
+            SELECT
+                user_id,
+                campaign_id,
+                total_solves,
+                total_fails,
+                total_guesses_on_solves,
+                total_days_played,
+                current_streak,
+                longest_streak,
+                streak_recovery_days,
+                double_down_used,
+                double_down_success,
+                double_down_bonus_troops,
+                coins_earned_total
+            FROM user_campaign_stats
+            {where_sql}
+            ORDER BY campaign_id DESC, user_id ASC
+            LIMIT %s
+        """, params).fetchall()
+    return [
+        {
+            "user_id": row[0],
+            "campaign_id": row[1],
+            "total_solves": row[2],
+            "total_fails": row[3],
+            "total_guesses_on_solves": row[4],
+            "total_days_played": row[5],
+            "current_streak": row[6],
+            "longest_streak": row[7],
+            "streak_recovery_days": row[8],
+            "double_down_used": row[9],
+            "double_down_success": row[10],
+            "double_down_bonus_troops": row[11],
+            "coins_earned_total": row[12],
+        }
+        for row in rows
+    ]
+
+
+def get_user_daily_results(
+    user_id: Optional[int],
+    campaign_id: Optional[int],
+    date_from: Optional[str],
+    date_to: Optional[str],
+    limit: Optional[int],
+):
+    limit = _clamp_limit(limit)
+    clauses = []
+    params: list = []
+    if user_id is not None:
+        clauses.append("user_id = %s")
+        params.append(user_id)
+    if campaign_id is not None:
+        clauses.append("campaign_id = %s")
+        params.append(campaign_id)
+    date_sql, date_params = _date_filters(date_from, date_to)
+    if date_sql:
+        clauses.append(date_sql.replace(" WHERE ", ""))
+        params.extend(date_params)
+    where_sql = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+    params.append(limit)
+    with get_db() as conn:
+        rows = conn.execute(f"""
+            SELECT
+                user_id,
+                campaign_id,
+                date,
+                word,
+                guesses_used,
+                solved,
+                first_guess_word,
+                used_double_down,
+                double_down_success,
+                double_down_bonus_troops,
+                troops_earned,
+                coins_earned,
+                completed_at
+            FROM campaign_user_daily_results
+            {where_sql}
+            ORDER BY date DESC, user_id ASC
+            LIMIT %s
+        """, params).fetchall()
+    return [
+        {
+            "user_id": row[0],
+            "campaign_id": row[1],
+            "date": row[2],
+            "word": row[3],
+            "guesses_used": row[4],
+            "solved": row[5],
+            "first_guess_word": row[6],
+            "used_double_down": row[7],
+            "double_down_success": row[8],
+            "double_down_bonus_troops": row[9],
+            "troops_earned": row[10],
+            "coins_earned": row[11],
+            "completed_at": row[12],
+        }
+        for row in rows
+    ]
+
+
+def get_user_accolade_stats(user_id: Optional[int], campaign_id: Optional[int], limit: Optional[int]):
+    limit = _clamp_limit(limit)
+    clauses = []
+    params: list = []
+    if user_id is not None:
+        clauses.append("user_id = %s")
+        params.append(user_id)
+    if campaign_id is not None:
+        clauses.append("campaign_id = %s")
+        params.append(campaign_id)
+    where_sql = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+    params.append(limit)
+    with get_db() as conn:
+        rows = conn.execute(f"""
+            SELECT user_id, campaign_id, accolade_key, count, last_awarded_at
+            FROM user_accolade_stats
+            {where_sql}
+            ORDER BY count DESC, accolade_key ASC
+            LIMIT %s
+        """, params).fetchall()
+    return [
+        {
+            "user_id": row[0],
+            "campaign_id": row[1],
+            "accolade_key": row[2],
+            "count": row[3],
+            "last_awarded_at": row[4],
+        }
+        for row in rows
+    ]
+
+
+def get_user_accolade_events(
+    user_id: Optional[int],
+    campaign_id: Optional[int],
+    date_from: Optional[str],
+    date_to: Optional[str],
+    limit: Optional[int],
+):
+    limit = _clamp_limit(limit)
+    clauses = []
+    params: list = []
+    if user_id is not None:
+        clauses.append("user_id = %s")
+        params.append(user_id)
+    if campaign_id is not None:
+        clauses.append("campaign_id = %s")
+        params.append(campaign_id)
+    date_sql, date_params = _date_filters(date_from, date_to)
+    if date_sql:
+        clauses.append(date_sql.replace(" WHERE ", ""))
+        params.extend(date_params)
+    where_sql = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+    params.append(limit)
+    with get_db() as conn:
+        rows = conn.execute(f"""
+            SELECT user_id, campaign_id, accolade_key, date, created_at
+            FROM user_accolade_events
+            {where_sql}
+            ORDER BY date DESC, user_id ASC
+            LIMIT %s
+        """, params).fetchall()
+    return [
+        {
+            "user_id": row[0],
+            "campaign_id": row[1],
+            "accolade_key": row[2],
+            "date": row[3],
+            "created_at": row[4],
+        }
+        for row in rows
+    ]
+
+
 def list_campaign_members(campaign_id: int):
     with get_db() as conn:
         campaign_row = conn.execute(
@@ -84,8 +369,11 @@ def list_campaign_members(campaign_id: int):
                 cm.army_image_url,
                 cm.army_image_thumb_url,
                 cm.army_image_key,
-                cm.army_image_thumb_key
+                cm.army_image_thumb_key,
+                COALESCE(cc.coins, 0) AS coins
             FROM campaign_members cm
+            LEFT JOIN campaign_coins cc
+                ON cc.user_id = cm.user_id AND cc.campaign_id = cm.campaign_id
             WHERE cm.campaign_id = %s
             ORDER BY cm.score DESC, cm.user_id ASC
         """, (campaign_id,)).fetchall()
@@ -100,6 +388,7 @@ def list_campaign_members(campaign_id: int):
             "army_image_thumb_url": row[6],
             "army_image_key": row[7],
             "army_image_thumb_key": row[8],
+            "coins": row[9],
             "is_owner": row[0] == owner_id,
         }
         for row in rows
@@ -210,6 +499,73 @@ def get_global_accolade_stats(limit: Optional[int]):
     ]
 
 
+def get_global_high_scores(limit: Optional[int]):
+    limit = _clamp_limit(limit)
+    with get_db() as conn:
+        rows = conn.execute("""
+            SELECT
+                ended_on,
+                user_id,
+                troops,
+                display_name,
+                campaign_id,
+                campaign_name,
+                campaign_length
+            FROM global_high_scores
+            ORDER BY troops DESC, ended_on DESC
+            LIMIT %s
+        """, (limit,)).fetchall()
+    return [
+        {
+            "ended_on": row[0],
+            "user_id": row[1],
+            "troops": row[2],
+            "display_name": row[3],
+            "campaign_id": row[4],
+            "campaign_name": row[5],
+            "campaign_length": row[6],
+        }
+        for row in rows
+    ]
+
+
+def get_global_streak_stats():
+    with get_db() as conn:
+        row = conn.execute("""
+            SELECT id, highest_streak, user_id, campaign_id, updated_at
+            FROM global_streak_stats
+            WHERE id = 1
+        """).fetchone()
+    if not row:
+        return None
+    return {
+        "id": row[0],
+        "highest_streak": row[1],
+        "user_id": row[2],
+        "campaign_id": row[3],
+        "updated_at": row[4],
+    }
+
+
+def get_global_user_streaks(limit: Optional[int]):
+    limit = _clamp_limit(limit)
+    with get_db() as conn:
+        rows = conn.execute("""
+            SELECT user_id, highest_streak, updated_at
+            FROM global_user_streaks
+            ORDER BY highest_streak DESC, updated_at DESC
+            LIMIT %s
+        """, (limit,)).fetchall()
+    return [
+        {
+            "user_id": row[0],
+            "highest_streak": row[1],
+            "updated_at": row[2],
+        }
+        for row in rows
+    ]
+
+
 def get_campaign_daily_stats(campaign_id: int, date_from: Optional[str], date_to: Optional[str], limit: Optional[int]):
     where_sql, params = _date_filters(date_from, date_to)
     limit = _clamp_limit(limit)
@@ -253,6 +609,44 @@ def get_campaign_daily_stats(campaign_id: int, date_from: Optional[str], date_to
             "participation_pct": row[11],
             "hardest_word": row[12],
             "easiest_word": row[13],
+        }
+        for row in rows
+    ]
+
+
+def get_campaign_daily_troops(
+    campaign_id: int,
+    user_id: Optional[int],
+    date_from: Optional[str],
+    date_to: Optional[str],
+    limit: Optional[int],
+):
+    limit = _clamp_limit(limit)
+    clauses = ["campaign_id = %s"]
+    params: list = [campaign_id]
+    if user_id is not None:
+        clauses.append("user_id = %s")
+        params.append(user_id)
+    date_sql, date_params = _date_filters(date_from, date_to)
+    if date_sql:
+        clauses.append(date_sql.replace(" WHERE ", ""))
+        params.extend(date_params)
+    where_sql = f"WHERE {' AND '.join(clauses)}"
+    params.append(limit)
+    with get_db() as conn:
+        rows = conn.execute(f"""
+            SELECT user_id, campaign_id, date, troops
+            FROM campaign_daily_troops
+            {where_sql}
+            ORDER BY date DESC, user_id ASC
+            LIMIT %s
+        """, params).fetchall()
+    return [
+        {
+            "user_id": row[0],
+            "campaign_id": row[1],
+            "date": row[2],
+            "troops": row[3],
         }
         for row in rows
     ]
@@ -304,6 +698,86 @@ def get_campaign_accolade_stats(campaign_id: int, limit: Optional[int]):
     ]
 
 
+def get_campaign_guess_states(
+    campaign_id: int,
+    user_id: Optional[int],
+    date_from: Optional[str],
+    date_to: Optional[str],
+    limit: Optional[int],
+):
+    limit = _clamp_limit(limit)
+    clauses = ["campaign_id = %s"]
+    params: list = [campaign_id]
+    if user_id is not None:
+        clauses.append("user_id = %s")
+        params.append(user_id)
+    date_sql, date_params = _date_filters(date_from, date_to)
+    if date_sql:
+        clauses.append(date_sql.replace(" WHERE ", ""))
+        params.extend(date_params)
+    where_sql = f"WHERE {' AND '.join(clauses)}"
+    params.append(limit)
+    with get_db() as conn:
+        rows = conn.execute(f"""
+            SELECT user_id, campaign_id, date, guesses, results, letter_status, current_row, game_over
+            FROM campaign_guess_states
+            {where_sql}
+            ORDER BY date DESC, user_id ASC
+            LIMIT %s
+        """, params).fetchall()
+    return [
+        {
+            "user_id": row[0],
+            "campaign_id": row[1],
+            "date": row[2],
+            "guesses": row[3],
+            "results": row[4],
+            "letter_status": row[5],
+            "current_row": row[6],
+            "game_over": row[7],
+        }
+        for row in rows
+    ]
+
+
+def get_campaign_first_guesses(
+    campaign_id: int,
+    user_id: Optional[int],
+    date_from: Optional[str],
+    date_to: Optional[str],
+    limit: Optional[int],
+):
+    limit = _clamp_limit(limit)
+    clauses = ["campaign_id = %s"]
+    params: list = [campaign_id]
+    if user_id is not None:
+        clauses.append("user_id = %s")
+        params.append(user_id)
+    date_sql, date_params = _date_filters(date_from, date_to)
+    if date_sql:
+        clauses.append(date_sql.replace(" WHERE ", ""))
+        params.extend(date_params)
+    where_sql = f"WHERE {' AND '.join(clauses)}"
+    params.append(limit)
+    with get_db() as conn:
+        rows = conn.execute(f"""
+            SELECT user_id, campaign_id, date, word
+            FROM campaign_first_guesses
+            {where_sql}
+            ORDER BY date DESC, user_id ASC
+            LIMIT %s
+        """, params).fetchall()
+    return [
+        {
+            "user_id": row[0],
+            "campaign_id": row[1],
+            "date": row[2],
+            "word": row[3],
+        }
+        for row in rows
+    ]
+
+
 def get_campaign_item_usage(campaign_id: int, limit: Optional[int]):
     limit = _clamp_limit(limit)
     with get_db() as conn:
@@ -325,6 +799,145 @@ def get_campaign_item_usage(campaign_id: int, limit: Optional[int]):
             "uses": row[1],
             "targets": row[2],
             "last_used_at": row[3],
+        }
+        for row in rows
+    ]
+
+
+def get_campaign_shop_rotation(
+    campaign_id: int,
+    user_id: Optional[int],
+    date_from: Optional[str],
+    date_to: Optional[str],
+    limit: Optional[int],
+):
+    limit = _clamp_limit(limit)
+    clauses = ["campaign_id = %s"]
+    params: list = [campaign_id]
+    if user_id is not None:
+        clauses.append("user_id = %s")
+        params.append(user_id)
+    date_sql, date_params = _date_filters(date_from, date_to)
+    if date_sql:
+        clauses.append(date_sql.replace(" WHERE ", ""))
+        params.extend(date_params)
+    where_sql = f"WHERE {' AND '.join(clauses)}"
+    params.append(limit)
+    with get_db() as conn:
+        rows = conn.execute(f"""
+            SELECT user_id, campaign_id, date, items, reshuffles, updated_at
+            FROM campaign_shop_rotation
+            {where_sql}
+            ORDER BY date DESC, user_id ASC
+            LIMIT %s
+        """, params).fetchall()
+    return [
+        {
+            "user_id": row[0],
+            "campaign_id": row[1],
+            "date": row[2],
+            "items": row[3],
+            "reshuffles": row[4],
+            "updated_at": row[5],
+        }
+        for row in rows
+    ]
+
+
+def get_campaign_shop_log(
+    campaign_id: int,
+    user_id: Optional[int],
+    event_type: Optional[str],
+    date_from: Optional[str],
+    date_to: Optional[str],
+    limit: Optional[int],
+):
+    limit = _clamp_limit(limit)
+    clauses = ["campaign_id = %s"]
+    params: list = [campaign_id]
+    if user_id is not None:
+        clauses.append("user_id = %s")
+        params.append(user_id)
+    if event_type:
+        clauses.append("event_type = %s")
+        params.append(event_type)
+    date_sql, date_params = _date_filters(date_from, date_to)
+    if date_sql:
+        clauses.append(date_sql.replace(" WHERE ", ""))
+        params.extend(date_params)
+    where_sql = f"WHERE {' AND '.join(clauses)}"
+    params.append(limit)
+    with get_db() as conn:
+        rows = conn.execute(f"""
+            SELECT id, user_id, campaign_id, event_type, item_key, details, created_at
+            FROM campaign_shop_log
+            {where_sql}
+            ORDER BY created_at DESC, id DESC
+            LIMIT %s
+        """, params).fetchall()
+    return [
+        {
+            "id": row[0],
+            "user_id": row[1],
+            "campaign_id": row[2],
+            "event_type": row[3],
+            "item_key": row[4],
+            "details": row[5],
+            "created_at": row[6],
+        }
+        for row in rows
+    ]
+
+
+def get_campaign_item_events(
+    campaign_id: int,
+    user_id: Optional[int],
+    target_user_id: Optional[int],
+    event_type: Optional[str],
+    item_key: Optional[str],
+    date_from: Optional[str],
+    date_to: Optional[str],
+    limit: Optional[int],
+):
+    limit = _clamp_limit(limit)
+    clauses = ["campaign_id = %s"]
+    params: list = [campaign_id]
+    if user_id is not None:
+        clauses.append("user_id = %s")
+        params.append(user_id)
+    if target_user_id is not None:
+        clauses.append("target_user_id = %s")
+        params.append(target_user_id)
+    if event_type:
+        clauses.append("event_type = %s")
+        params.append(event_type)
+    if item_key:
+        clauses.append("item_key = %s")
+        params.append(item_key)
+    date_sql, date_params = _date_filters(date_from, date_to)
+    if date_sql:
+        clauses.append(date_sql.replace(" WHERE ", ""))
+        params.extend(date_params)
+    where_sql = f"WHERE {' AND '.join(clauses)}"
+    params.append(limit)
+    with get_db() as conn:
+        rows = conn.execute(f"""
+            SELECT id, user_id, campaign_id, item_key, target_user_id, event_type, details, created_at
+            FROM campaign_item_events
+            {where_sql}
+            ORDER BY created_at DESC, id DESC
+            LIMIT %s
+        """, params).fetchall()
+    return [
+        {
+            "id": row[0],
+            "user_id": row[1],
+            "campaign_id": row[2],
+            "item_key": row[3],
+            "target_user_id": row[4],
+            "event_type": row[5],
+            "details": row[6],
+            "created_at": row[7],
         }
         for row in rows
     ]
