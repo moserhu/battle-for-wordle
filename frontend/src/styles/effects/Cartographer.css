@@ -1,0 +1,19 @@
+.keyboard-container .keyboard-key.cartographer-letter:not(.correct):not(.present) {
+  background-color: #334158;
+  color: #b7d3ff;
+  position: relative;
+  overflow: hidden;
+}
+
+.keyboard-container .keyboard-key.cartographer-letter:not(.correct):not(.present)::before {
+  content: "";
+  position: absolute;
+  inset: -40%;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Ccircle cx='60' cy='60' r='38' fill='none' stroke='%23b7d3ff' stroke-width='2' opacity='0.35'/%3E%3Ccircle cx='60' cy='60' r='10' fill='none' stroke='%23ffd27d' stroke-width='2' opacity='0.45'/%3E%3Cpath d='M60 22 L70 60 L60 98 L50 60 Z' fill='%23ffd27d' opacity='0.35'/%3E%3Cpath d='M60 32 L66 60 L60 88 L54 60 Z' fill='%23f4fbff' opacity='0.3'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: 55% 50%;
+  background-size: 160% 160%;
+  transform: rotate(22deg);
+  pointer-events: none;
+  opacity: 0.9;
+}

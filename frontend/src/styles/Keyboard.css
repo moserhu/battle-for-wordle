@@ -67,6 +67,8 @@
   }
   
   
+@import './effects/Cartographer.css';
+
   /* Coloring */
   .keyboard-container .keyboard-key.correct { background-color: var(--keyboard-correct); }
   .keyboard-container .keyboard-key.present { background-color: var(--keyboard-present); }

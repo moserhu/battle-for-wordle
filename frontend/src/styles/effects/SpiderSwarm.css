@@ -1,0 +1,14 @@
+.spider-swarm-layer {
+  position: absolute;
+  inset: 60px 0 120px 0;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.spider-swarm-creature {
+  position: absolute;
+  opacity: 1;
+  background-color: transparent;
+  z-index: 4;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
+}

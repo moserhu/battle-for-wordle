@@ -1458,6 +1458,7 @@ def handle_campaign_end(campaign_id: int):
         conn.execute("DELETE FROM campaign_daily_progress WHERE campaign_id = %s", (campaign_id,))
         conn.execute("DELETE FROM campaign_streak_cycle WHERE campaign_id = %s", (campaign_id,))
         conn.execute("DELETE FROM campaign_daily_recaps WHERE campaign_id = %s", (campaign_id,))
+        conn.execute("DELETE FROM campaign_user_status_effects WHERE campaign_id = %s", (campaign_id,))
         conn.execute("UPDATE campaign_members SET score = 0 WHERE campaign_id = %s", (campaign_id,))
         conn.execute("""
             UPDATE campaign_members
@@ -2481,12 +2482,22 @@ def get_current_day_hint(user_id: int, campaign_id: int):
     with get_db() as conn:
         _, _, _, target_day, _ = resolve_campaign_day(conn, campaign_id, None)
         row = conn.execute("""
-            SELECT effect_value
+            SELECT effect_value, expires_at, active
             FROM campaign_user_status_effects
             WHERE user_id = %s AND campaign_id = %s AND effect_key = %s
         """, (user_id, campaign_id, "oracle_whisper")).fetchone()
         if not row or not row[0]:
             return {"hint": None}
+
+        expires_at = row[1]
+        active = row[2] if row[2] is not None else True
+        if not active:
+            return {"hint": None}
+        if expires_at:
+            now_ct = datetime.now(ZoneInfo("America/Chicago"))
+            compare_now = now_ct if expires_at.tzinfo else now_ct.replace(tzinfo=None)
+            if expires_at < compare_now:
+                return {"hint": None}
 
         try:
             payload = json.loads(row[0])

@@ -171,33 +171,6 @@
   background: rgba(42, 56, 80, 0.95);
 }
 
-.game-hint-banner {
-  width: 100%;
-  max-width: 720px;
-  margin: 0 auto 12px;
-  padding: 10px 14px;
-  border-radius: 12px;
-  background: rgba(20, 30, 46, 0.75);
-  border: 1px solid var(--theme-border-muted);
-  color: var(--theme-text-warm);
-  text-align: center;
-  box-shadow: var(--theme-shadow-soft);
-}
-
-.game-effect-banner {
-  width: 100%;
-  max-width: 720px;
-  margin: 0 auto 10px;
-  padding: 8px 14px;
-  border-radius: 12px;
-  background: rgba(18, 26, 38, 0.7);
-  border: 1px solid var(--theme-border-muted);
-  color: var(--theme-text-muted);
-  text-align: center;
-  box-shadow: var(--theme-shadow-soft);
-  font-size: 0.95rem;
-}
-
 .daily-word-banner {
   margin: 0 auto 10px;
   padding: 6px 14px;
@@ -214,24 +187,6 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   color: var(--theme-text-warm);
-}
-
-.voidbrand-banner {
-  background: rgba(24, 12, 34, 0.75);
-  border-color: rgba(132, 84, 210, 0.5);
-  color: #e2d7ff;
-}
-
-.voidbrand-word {
-  font-weight: 700;
-  color: #c0a3ff;
-  letter-spacing: 0.08em;
-}
-
-.mercy-excerpt {
-  margin: 10px 0;
-  font-style: italic;
-  color: var(--theme-text-warm-muted);
 }
 
 .self-items-modal {
@@ -351,138 +306,6 @@
   align-items: center;
 }
 
-.cone-overlay {
-  position: fixed;
-  inset: -6vh -6vw;
-  border-radius: 0;
-  background:
-    radial-gradient(
-      circle at 50% 50%,
-      rgba(150, 195, 255, 0.22) 0%,
-      rgba(120, 170, 235, 0.3) 55%,
-      rgba(70, 120, 190, 0.42) 100%
-    ),
-    radial-gradient(
-      120% 120% at 50% 50%,
-      rgba(0, 0, 0, 0) 55%,
-      rgba(20, 40, 80, 0.62) 85%,
-      rgba(12, 28, 60, 0.8) 100%
-    ),
-    radial-gradient(
-      140% 140% at 50% 50%,
-      rgba(255, 255, 255, 0) 60%,
-      rgba(210, 235, 255, 0.35) 82%,
-      rgba(180, 220, 255, 0.45) 100%
-    ),
-    repeating-linear-gradient(
-      135deg,
-      rgba(220, 245, 255, 0.18) 0 8px,
-      rgba(170, 215, 255, 0.26) 8px 16px
-    );
-  background-blend-mode: screen, normal, screen, soft-light;
-  backdrop-filter: blur(4px) saturate(115%);
-  border: 1px solid rgba(170, 210, 255, 0.28);
-  pointer-events: none;
-  z-index: 2;
-}
-
-.spider-swarm-layer {
-  position: absolute;
-  inset: 60px 0 120px 0;
-  pointer-events: none;
-  z-index: 3;
-}
-
-.spider-swarm-creature {
-  position: absolute;
-  opacity: 1;
-  background-color: transparent;
-  z-index: 4;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
-}
-
-
-.letter-box.jester-dance {
-  animation-name: jester-dance;
-  animation-timing-function: ease-in-out;
-  animation-iteration-count: infinite;
-}
-
-.word-row.edict-row {
-  background: linear-gradient(135deg, rgba(192, 145, 42, 0.4), rgba(128, 88, 16, 0.35));
-  border: 1px solid rgba(220, 168, 70, 0.5);
-  border-radius: 10px;
-  padding: 44px 6px 6px;
-  position: relative;
-}
-
-.letter-box.edict-cell {
-  box-shadow: 0 0 10px rgba(214, 170, 72, 0.2);
-}
-
-.edict-label {
-  position: absolute;
-  top: 10px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 2px 10px;
-  border-radius: 999px;
-  background: rgba(124, 86, 18, 0.45);
-  color: #f5e6b8;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  font-size: 0.85rem;
-}
-
-.edict-crown {
-  font-size: 0.95rem;
-}
-
-.edict-name {
-  font-size: 0.85rem;
-}
-
-.word-row.executioner-row {
-  position: relative;
-  overflow: visible;
-}
-
-.word-row.executioner-row::before {
-  content: "🪓";
-  position: absolute;
-  left: calc((var(--cell-size) * 2) + (var(--cell-gap) * 2) + (var(--cell-size) / 2));
-  top: 50%;
-  transform: translate(-50%, -50%);
-  font-size: 1.2rem;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
-  pointer-events: none;
-  z-index: 2;
-}
-
-.word-row.executioner-row::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 50%;
-  height: 3px;
-  background: rgba(200, 40, 40, 0.7);
-  transform: translateY(-50%);
-  box-shadow: 0 0 8px rgba(200, 40, 40, 0.4);
-  z-index: 1;
-}
-
-@keyframes jester-dance {
-  0% { transform: translate(0, 0) rotate(0deg); }
-  20% { transform: translate(1px, -2px) rotate(2deg); }
-  40% { transform: translate(-2px, 1px) rotate(-2deg); }
-  60% { transform: translate(2px, 2px) rotate(1.5deg); }
-  80% { transform: translate(-1px, -1px) rotate(-1deg); }
-  100% { transform: translate(0, 0) rotate(0deg); }
-}
 
 
 .game-day-carousel {
@@ -717,7 +540,14 @@
 
 
 
- 
+@import './effects/OracleWhisper.css';
+@import './effects/StatusBanners.css';
+@import './effects/ConeEffect.css';
+@import './effects/SpiderSwarm.css';
+@import './effects/JesterDance.css';
+@import './effects/EdictExecutioner.css';
+@import './effects/ClownEffect.css';
+
 
 .game-king-title {
   text-transform: uppercase;

@@ -1,0 +1,31 @@
+.game-effect-banner {
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto 10px;
+  padding: 8px 14px;
+  border-radius: 12px;
+  background: rgba(18, 26, 38, 0.7);
+  border: 1px solid var(--theme-border-muted);
+  color: var(--theme-text-muted);
+  text-align: center;
+  box-shadow: var(--theme-shadow-soft);
+  font-size: 0.95rem;
+}
+
+.voidbrand-banner {
+  background: rgba(24, 12, 34, 0.75);
+  border-color: rgba(132, 84, 210, 0.5);
+  color: #e2d7ff;
+}
+
+.voidbrand-word {
+  font-weight: 700;
+  color: #c0a3ff;
+  letter-spacing: 0.08em;
+}
+
+.mercy-excerpt {
+  margin: 10px 0;
+  font-style: italic;
+  color: var(--theme-text-warm-muted);
+}

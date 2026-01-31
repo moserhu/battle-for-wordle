@@ -98,6 +98,8 @@ export default function GameScreen() {
   const [loadingDay, setLoadingDay] = useState(false);
   const [showDayReplayInfo, setShowDayReplayInfo] = useState(false);
   const [hintScroll, setHintScroll] = useState(null);
+  const [hintPulse, setHintPulse] = useState(false);
+  const lastHintRef = useRef("");
   const [targetEffects, setTargetEffects] = useState([]);
   const [coneTurnsLeft, setConeTurnsLeft] = useState(0);
   const [statusEffects, setStatusEffects] = useState([]);
@@ -179,6 +181,85 @@ export default function GameScreen() {
     }
   }, [campaignId, token]);
 
+  const refreshSelfEffects = useCallback(async () => {
+    if (!campaignId || !token) return;
+    try {
+      const [hintRes, effectsRes, statusRes] = await Promise.all([
+        fetch(`${API_BASE}/api/campaign/items/hint`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ campaign_id: campaignId }),
+        }),
+        fetch(`${API_BASE}/api/campaign/items/active`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ campaign_id: campaignId }),
+        }),
+        fetch(`${API_BASE}/api/campaign/items/status`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ campaign_id: campaignId }),
+        }),
+      ]);
+
+      const hintData = await hintRes.json();
+      const effectsData = await effectsRes.json();
+      const statusData = await statusRes.json();
+
+      if (hintData?.hint?.letter && hintData?.hint?.position) {
+        setHintScroll(hintData.hint);
+      } else {
+        setHintScroll(null);
+      }
+
+      if (effectsData?.effects) {
+        setTargetEffects(effectsData.effects);
+        setConeTurnsLeft(getConeTurns(effectsData.effects));
+      } else {
+        setTargetEffects([]);
+        setConeTurnsLeft(0);
+      }
+
+      if (statusData?.effects) {
+        setStatusEffects(statusData.effects);
+      } else {
+        setStatusEffects([]);
+      }
+    } catch {
+      // Silently ignore refresh failures; main gameplay flow still works.
+    }
+  }, [campaignId, token]);
+
+  useEffect(() => {
+    const hintKey = hintScroll ? `${hintScroll.letter}-${hintScroll.position}` : "";
+    if (!hintKey || hintKey === lastHintRef.current) return;
+    lastHintRef.current = hintKey;
+    setHintPulse(true);
+    const timer = setTimeout(() => setHintPulse(false), 1200);
+    return () => clearTimeout(timer);
+  }, [hintScroll]);
+
+  useEffect(() => {
+    if (!campaignId) return;
+    const handleSelfEffect = (event) => {
+      if (Number(event?.detail?.campaignId) !== Number(campaignId)) return;
+      refreshSelfEffects();
+    };
+    const handleStorage = (event) => {
+      if (!event?.key || !event?.key.startsWith("bfw:self-effect:")) return;
+      const parts = event.key.split(":");
+      const keyCampaignId = parts[2];
+      if (Number(keyCampaignId) !== Number(campaignId)) return;
+      refreshSelfEffects();
+    };
+    window.addEventListener("bfw:self-effect", handleSelfEffect);
+    window.addEventListener("storage", handleStorage);
+    return () => {
+      window.removeEventListener("bfw:self-effect", handleSelfEffect);
+      window.removeEventListener("storage", handleStorage);
+    };
+  }, [campaignId, refreshSelfEffects]);
+
   const openSelfItemsModal = () => {
     setShowSelfItemsModal(true);
     loadSelfItems();
@@ -219,6 +300,7 @@ export default function GameScreen() {
         throw new Error(data?.detail || 'Use failed.');
       }
       await loadSelfItems();
+      await refreshSelfEffects();
     } catch (err) {
       setSelfItemsError(err?.message || 'Use failed.');
     } finally {
@@ -402,6 +484,8 @@ export default function GameScreen() {
     setLetterStatus((prev) => applyAbsentLetters(prev, letters));
   }, [statusEffects]);
 
+  const cartographerLetters = useMemo(() => getCartographersLetters(statusEffects), [statusEffects]);
+
   useEffect(() => {
     if (!hintScroll?.letter) return;
     setLetterStatus((prev) => applyOracleCorrectLetter(prev, hintScroll.letter));
@@ -511,6 +595,7 @@ export default function GameScreen() {
       }
       setMercyBonus(Number(data?.bonus ?? 10));
       setStatusEffects((prev) => prev.filter((entry) => entry.effect_key !== "candle_of_mercy"));
+      await refreshSelfEffects();
       setShowMercyModal(true);
     } catch (err) {
       console.error("Mercy redemption failed:", err);
@@ -908,11 +993,6 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
               Voidbrand: <span className="voidbrand-word">{String(voidbrandWord).toUpperCase()}</span> is forbidden for your first guess.
             </div>
           )}
-          {hintScroll && (
-            <div className="game-hint-banner">
-              Oracle's Whisper: letter {hintScroll.letter} in position {hintScroll.position}
-            </div>
-          )}
           <div className="game-top-row">
             <div className="camp-menu game-top-half" ref={campMenuRef}>
               <div className="camp-menu-card">
@@ -1053,6 +1133,17 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
               ›
             </button>
           </div>
+          {hintScroll && (
+            <div className={`game-hint-banner${hintPulse ? " is-fresh" : ""}`}>
+              <div className="oracle-hint-title">Oracle's Whisper</div>
+              <div className="oracle-hint-detail">
+                <span className="oracle-hint-label">Letter</span>{" "}
+                <span className="oracle-hint-value">{hintScroll.letter}</span>{" "}
+                <span className="oracle-hint-label">in position</span>{" "}
+                <span className="oracle-hint-value">{hintScroll.position}</span>
+              </div>
+            </div>
+          )}
           <div className="game-play-area">
             {spiderSwarm.active && (
               <div className="spider-swarm-layer">
@@ -1131,6 +1222,7 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
               getJesterDanceStyle={jesterDance.getStyle}
               sealedLetter={sealActive ? sealedLetter : null}
               voidLetters={voidActive && voidbrandWord ? String(voidbrandWord).toUpperCase().split("") : []}
+              cartographerLetters={cartographerLetters}
             />
           </div>
           <DayReplayInfoModal

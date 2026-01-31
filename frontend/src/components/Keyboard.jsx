@@ -10,6 +10,7 @@ export default function Keyboard({
   getJesterDanceStyle = null,
   sealedLetter = null,
   voidLetters = [],
+  cartographerLetters = [],
 }) {
   const keys = [
     ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
@@ -19,6 +20,8 @@ export default function Keyboard({
 
   const sealedKey = sealedLetter ? String(sealedLetter).toLowerCase() : null;
   const voidKeys = new Set(voidLetters.map((letter) => String(letter).toLowerCase()));
+
+  const cartographerSet = new Set(cartographerLetters.map((letter) => String(letter).toLowerCase()));
 
   const getKeyClass = (key) => {
     const status = letterStatus?.[key.toLowerCase()];
@@ -51,7 +54,7 @@ export default function Keyboard({
             return (
               <button
                 key={key}
-                className={`keyboard-key ${key === 'Enter' ? 'enter-key' : ''} ${key === '⌫' ? 'delete-key' : ''} ${getKeyClass(key)} ${isSealed ? 'sealed-letter' : ''} ${isVoid ? 'void-letter' : ''} ${jesterDance ? 'jester-dance' : ''}`}
+                className={`keyboard-key ${key === 'Enter' ? 'enter-key' : ''} ${key === '⌫' ? 'delete-key' : ''} ${getKeyClass(key)} ${isSealed ? 'sealed-letter' : ''} ${isVoid ? 'void-letter' : ''} ${jesterDance ? 'jester-dance' : ''} ${cartographerSet.has(lowerKey) ? 'cartographer-letter' : ''}`}
                 onClick={() => onKeyPress(key)}
                 style={
                   voidStyle || danceStyle

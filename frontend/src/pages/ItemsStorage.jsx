@@ -190,6 +190,13 @@ export default function ItemsStorage() {
         throw new Error(data?.detail || 'Use failed');
       }
       await loadState();
+      if (!requiresTarget) {
+        try {
+          const key = `bfw:self-effect:${Number(campaignId)}`;
+          localStorage.setItem(key, String(Date.now()));
+          window.dispatchEvent(new CustomEvent("bfw:self-effect", { detail: { campaignId: Number(campaignId) } }));
+        } catch {}
+      }
       return true;
     } catch (err) {
       const message = err?.message || 'Use failed.';
