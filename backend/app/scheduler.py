@@ -1,6 +1,6 @@
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
-from app.crud import handle_campaign_end, update_campaign_ruler, get_db
+from app.crud import handle_campaign_end, get_db
 from app.recap.service import build_and_store_recap
 from datetime import datetime, timedelta, date
 from zoneinfo import ZoneInfo
@@ -32,33 +32,6 @@ def reset_expired_campaigns():
             if today > final_day:
                 print(f"  🔁 Resetting campaign {camp_id} — ended on {final_day}")
                 handle_campaign_end(camp_id)
-
-def update_final_day_rulers():
-    print(f"[{datetime.now(ZoneInfo('America/Chicago'))}] Updating rulers for final-day campaigns...")
-
-    today = datetime.now(ZoneInfo("America/Chicago")).date()
-
-    with get_db() as conn:
-        campaigns = conn.execute("""
-            SELECT id, start_date, cycle_length
-            FROM campaigns
-        """).fetchall()
-
-        for camp_id, start_date_value, cycle_length in campaigns:
-            if isinstance(start_date_value, datetime):
-                start_date = start_date_value.date()
-            elif isinstance(start_date_value, date):
-                start_date = start_date_value
-            else:
-                try:
-                    start_date = datetime.fromisoformat(start_date_value).date()
-                except ValueError:
-                    start_date = datetime.strptime(start_date_value, "%Y-%m-%d").date()
-            final_day = start_date + timedelta(days=cycle_length - 1)
-
-            if today == final_day:
-                print(f"  👑 Updating ruler for campaign {camp_id} — final day {final_day}")
-                update_campaign_ruler(camp_id)
 
 def compute_campaign_daily_stats():
     print(f"[{datetime.now(ZoneInfo('America/Chicago'))}] Computing campaign daily stats...")
@@ -345,6 +318,5 @@ def start_scheduler():
     scheduler.add_job(compute_campaign_daily_word_stats, CronTrigger(hour=0, minute=7, timezone="America/Chicago"))
     scheduler.add_job(compute_campaign_daily_recaps, CronTrigger(hour=0, minute=8, timezone="America/Chicago"))
     scheduler.add_job(compute_global_daily_stats, CronTrigger(hour=0, minute=10, timezone="America/Chicago"))
-    scheduler.add_job(update_final_day_rulers, CronTrigger(hour=0, minute=0, timezone="America/Chicago"))
 
     scheduler.start()
