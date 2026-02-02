@@ -479,6 +479,7 @@ export default function GameScreen() {
     }
   }, [campaignDay, selectedDay]);
 
+  const isCurrentDay = selectedDay === campaignDay?.day;
   useEffect(() => {
     if (!isCurrentDay) return;
     const letters = getCartographersLetters(statusEffects);
@@ -510,8 +511,6 @@ export default function GameScreen() {
     });
     setHintPlaced(true);
   }, [hintScroll, hintPlaced, currentRow, guesses, isCurrentDay]);
-
-  const isCurrentDay = selectedDay === campaignDay?.day;
   const getTargetPayload = useCallback(
     (key) => targetEffects.find((entry) => entry.item_key === key)?.details?.payload?.value || null,
     [targetEffects]
