@@ -421,9 +421,11 @@ export default function GameScreen() {
           activated: doubleDownData.double_down_activated === 1,
           usedThisWeek: doubleDownData.double_down_used_week === 1
         });
-        if (hintData?.hint?.letter && hintData?.hint?.position) {
-          setHintScroll(hintData.hint);
-        }
+      if (hintData?.hint?.letter && hintData?.hint?.position && dayToLoad === campaignDay?.day) {
+        setHintScroll(hintData.hint);
+      } else {
+        setHintScroll(null);
+      }
         const hasEdictEffect = Array.isArray(effectsData?.effects)
           ? effectsData.effects.some((entry) => entry?.item_key === "edict_of_compulsion")
           : false;
@@ -478,21 +480,25 @@ export default function GameScreen() {
   }, [campaignDay, selectedDay]);
 
   useEffect(() => {
+    if (!isCurrentDay) return;
     const letters = getCartographersLetters(statusEffects);
     if (letters.length === 0) return;
 
     setLetterStatus((prev) => applyAbsentLetters(prev, letters));
-  }, [statusEffects]);
+  }, [statusEffects, isCurrentDay]);
 
-  const cartographerLetters = useMemo(() => getCartographersLetters(statusEffects), [statusEffects]);
+  const cartographerLetters = useMemo(
+    () => (isCurrentDay ? getCartographersLetters(statusEffects) : []),
+    [statusEffects, isCurrentDay]
+  );
 
   useEffect(() => {
-    if (!hintScroll?.letter) return;
+    if (!hintScroll?.letter || !isCurrentDay) return;
     setLetterStatus((prev) => applyOracleCorrectLetter(prev, hintScroll.letter));
-  }, [hintScroll]);
+  }, [hintScroll, isCurrentDay]);
 
   useEffect(() => {
-    if (!hintScroll?.letter || hintPlaced) return;
+    if (!hintScroll?.letter || hintPlaced || !isCurrentDay) return;
     const placement = getOraclePlacement(guesses, currentRow, hintScroll);
     if (!placement) return;
 
@@ -503,7 +509,7 @@ export default function GameScreen() {
       return next;
     });
     setHintPlaced(true);
-  }, [hintScroll, hintPlaced, currentRow, guesses]);
+  }, [hintScroll, hintPlaced, currentRow, guesses, isCurrentDay]);
 
   const isCurrentDay = selectedDay === campaignDay?.day;
   const getTargetPayload = useCallback(
@@ -1133,7 +1139,7 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
               ›
             </button>
           </div>
-          {hintScroll && (
+          {hintScroll && isCurrentDay && (
             <div className={`game-hint-banner${hintPulse ? " is-fresh" : ""}`}>
               <div className="oracle-hint-title">Oracle's Whisper</div>
               <div className="oracle-hint-detail">

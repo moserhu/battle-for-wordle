@@ -185,21 +185,22 @@
 
 .shop-items {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
   align-items: stretch;
   width: 100%;
   box-sizing: border-box;
 }
 
 .shop-item-card {
-  background: rgba(15, 22, 34, 0.7);
+  background: rgba(18, 26, 38, 0.6);
   border: 1px solid var(--theme-border-muted);
-  border-radius: 14px;
+  border-radius: 12px;
   padding: 10px;
   display: flex;
   flex-direction: column;
-  min-height: 230px;
+  gap: 8px;
+  min-height: 210px;
 }
 
 .shop-item-card.purchased {
@@ -224,7 +225,7 @@
 .shop-item-sprite {
   height: auto;
   aspect-ratio: 1 / 1;
-  min-height: clamp(110px, 22vw, 180px);
+  min-height: clamp(110px, 24vw, 170px);
   padding: clamp(6px, 1.6vw, 12px);
   border-radius: 10px;
   border: 1px solid rgba(30, 45, 68, 0.5);
@@ -265,7 +266,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 28px;
+  min-height: 24px;
   margin-top: 4px;
 }
 
@@ -283,15 +284,15 @@
 }
 
 .shop-item-info {
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   border: 1px solid rgba(180, 210, 255, 0.5);
   background: rgba(20, 30, 46, 0.8);
   color: var(--theme-text-primary);
   font-family: "Georgia", "Times New Roman", serif;
   font-weight: 700;
-  font-size: 1.05rem;
+  font-size: 1rem;
   line-height: 1;
   text-transform: lowercase;
   display: grid;
@@ -403,7 +404,7 @@
   }
 
   .shop-items {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -423,7 +424,7 @@
   }
 
   .shop-items {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -441,7 +442,7 @@
   }
 
   .shop-items {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
   }
 

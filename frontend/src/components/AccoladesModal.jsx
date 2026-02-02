@@ -34,7 +34,7 @@ const accoladeDescriptions = {
   comeback: "Fail yesterday and solve today.",
   big_spender: "Spend 50+ coins in a single day.",
   hoarder: "Reach 100+ coins in your balance.",
-  shop_regular: "Open the shop 10+ times in a day.",
+  shop_regular: "Open the shop 25+ times in a day.",
   item_master: "Use items 50+ times total.",
   saves_the_day: "Use an item and still clutch (2-3) or ace the word.",
   top_3: "Finish in the top 3 of the campaign at cycle end.",

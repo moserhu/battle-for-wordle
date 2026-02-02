@@ -29,7 +29,7 @@ ACCOLADE_LABELS = {
     "chaos_king": "Chaos King",
 }
 
-SHOP_REGULAR_THRESHOLD = 10
+SHOP_REGULAR_THRESHOLD = 25
 ITEM_MASTER_THRESHOLD = 50
 
 # TODO: confirm thresholds
