@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import './AdminToolsModal.css';
+import WeeklyRewardModal from '../rewards/WeeklyRewardModal';
 
 const API_BASE = process.env.REACT_APP_API_URL || `${window.location.protocol}//${window.location.hostname}`;
 
@@ -229,53 +230,23 @@ export default function AdminToolsModal({
         role="presentation"
       >
         {showWeeklyPreview && (
-          <div className="modal-overlay" onClick={() => setShowWeeklyPreview(false)} role="presentation">
-            <div className="modal" onClick={(e) => e.stopPropagation()} role="presentation">
-              <div className="admin-modal-header">
-                <h2>Weekly Reward (Preview)</h2>
-                <button
-                  className="admin-modal-close"
-                  onClick={() => setShowWeeklyPreview(false)}
-                  type="button"
-                  aria-label="Close weekly reward preview"
-                >
-                  ×
-                </button>
-              </div>
-              <p className="admin-hint">
-                Preview only — this does not grant items and does not block gameplay.
-              </p>
-
-              {weeklyPreviewError && <div className="admin-message">{weeklyPreviewError}</div>}
-
-              <p style={{ marginTop: 10 }}>
-                Pick <b>{weeklyPreviewRequired}</b> recipient{weeklyPreviewRequired === 1 ? '' : 's'}.
-              </p>
-
-              <div style={{ marginTop: 12, textAlign: 'left', maxHeight: 280, overflowY: 'auto' }}>
-                {weeklyPreviewCandidates.map((c) => (
-                  <label key={c.user_id} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '6px 0' }}>
-                    <input
-                      type="checkbox"
-                      checked={weeklyPreviewSelected.includes(c.user_id)}
-                      onChange={() => toggleWeeklyPreviewRecipient(c.user_id)}
-                      disabled={weeklyPreviewBusy}
-                    />
-                    <span>{c.display_name}</span>
-                  </label>
-                ))}
-              </div>
-
-              <div className="modal-buttons" style={{ marginTop: 14 }}>
-                <button
-                  className="troop-btn"
-                  onClick={() => setShowWeeklyPreview(false)}
-                >
-                  Close Preview
-                </button>
-              </div>
-            </div>
-          </div>
+          <WeeklyRewardModal
+            visible={showWeeklyPreview}
+            title="Weekly Reward"
+            preview
+            description={
+              `Pick ${weeklyPreviewRequired} recipient${weeklyPreviewRequired === 1 ? '' : 's'}.`
+            }
+            candidates={weeklyPreviewCandidates}
+            selectedIds={weeklyPreviewSelected}
+            requiredCount={weeklyPreviewRequired}
+            busy={weeklyPreviewBusy}
+            error={weeklyPreviewError}
+            confirmLabel="Close Preview"
+            onToggle={toggleWeeklyPreviewRecipient}
+            onConfirm={() => setShowWeeklyPreview(false)}
+            onClose={() => setShowWeeklyPreview(false)}
+          />
         )}
         <div className="admin-modal-header">
           <h2>Admin Tools</h2>

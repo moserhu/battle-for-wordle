@@ -10,6 +10,7 @@ import { useAuth } from '../auth/AuthProvider';
 import RulerTitleModal from '../components/RulerTitleModal';
 import DayReplayInfoModal from '../components/DayReplayInfoModal';
 import AdminToolsModal from '../components/admin/AdminToolsModal';
+import WeeklyRewardModal from '../components/rewards/WeeklyRewardModal';
 import {
   applyAbsentLetters,
   getCartographersLetters,
@@ -1385,51 +1386,26 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
       </div>
       
       {/* Weekly Winner Reward Modal */}
-      {showWeeklyRewardModal && weeklyReward?.pending && (
-        <div className="troop-modal-overlay">
-          <div className="troop-modal">
-            <h2>Weekly Reward</h2>
-            <p style={{ marginTop: 6 }}>
-              You won the last cycle. Pick <b>{weeklyReward.recipient_count}</b> player{weeklyReward.recipient_count === 1 ? '' : 's'} to receive
-              a bundle of <b>{weeklyReward.whispers_per_recipient}</b> Oracle&apos;s Whisper{weeklyReward.whispers_per_recipient === 1 ? '' : 's'}.
-            </p>
+      <WeeklyRewardModal
+        visible={showWeeklyRewardModal && weeklyReward?.pending}
+        title="Weekly Reward"
+        description={
+          weeklyReward?.pending
+            ? `You won the last cycle. Pick ${weeklyReward.recipient_count} player${weeklyReward.recipient_count === 1 ? '' : 's'} to receive a bundle of ${weeklyReward.whispers_per_recipient} Oracle's Whisper${weeklyReward.whispers_per_recipient === 1 ? '' : 's'}.`
+            : ''
+        }
+        candidates={weeklyReward?.candidates || []}
+        selectedIds={weeklyRecipients}
+        requiredCount={weeklyReward?.recipient_count || 0}
+        busy={weeklyRewardBusy}
+        error={weeklyRewardError}
+        confirmLabel="Confirm Picks"
+        onToggle={toggleWeeklyRecipient}
+        onConfirm={submitWeeklyReward}
+        footerNote="You must complete this before you can play Day 1."
+      />
 
-            {weeklyRewardError && (
-              <div style={{ color: '#ff7b7b', marginTop: 10 }}>{weeklyRewardError}</div>
-            )}
-
-            <div style={{ marginTop: 12, textAlign: 'left', maxHeight: 280, overflowY: 'auto' }}>
-              {(weeklyReward.candidates || []).map((c) => (
-                <label key={c.user_id} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '6px 0' }}>
-                  <input
-                    type="checkbox"
-                    checked={weeklyRecipients.includes(c.user_id)}
-                    onChange={() => toggleWeeklyRecipient(c.user_id)}
-                    disabled={weeklyRewardBusy}
-                  />
-                  <span>{c.display_name}</span>
-                </label>
-              ))}
-            </div>
-
-            <div style={{ marginTop: 14, display: 'flex', gap: 10, justifyContent: 'center' }}>
-              <button
-                className="troop-btn"
-                onClick={submitWeeklyReward}
-                disabled={weeklyRewardBusy || weeklyRecipients.length !== (weeklyReward.recipient_count || 0)}
-              >
-                {weeklyRewardBusy ? 'Saving…' : 'Confirm Picks'}
-              </button>
-            </div>
-
-            <p style={{ marginTop: 10, opacity: 0.85 }}>
-              You must complete this before you can play Day 1.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Troop Modal */}
+{/* Troop Modal */}
       {showTroopModal && (
         <div className="troop-modal-overlay">
           <div className="troop-modal">
