@@ -128,6 +128,29 @@ def init_db():
                 PRIMARY KEY (user_id, campaign_id, item_key)
             )
         """)
+
+        # Weekly winner reward (cycle-gated selection)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS campaign_cycle_rewards (
+                campaign_id INTEGER NOT NULL,
+                cycle_start_date TEXT NOT NULL,
+                winner_user_id INTEGER NOT NULL,
+                recipient_count INTEGER NOT NULL,
+                whispers_per_recipient INTEGER NOT NULL DEFAULT 3,
+                fulfilled BOOLEAN NOT NULL DEFAULT FALSE,
+                fulfilled_at TIMESTAMP,
+                PRIMARY KEY (campaign_id, cycle_start_date)
+            )
+        """)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS campaign_cycle_reward_recipients (
+                campaign_id INTEGER NOT NULL,
+                cycle_start_date TEXT NOT NULL,
+                recipient_user_id INTEGER NOT NULL,
+                PRIMARY KEY (campaign_id, cycle_start_date, recipient_user_id)
+            )
+        """)
+
         conn.execute("""
             CREATE TABLE IF NOT EXISTS campaign_user_status_effects (
                 user_id INTEGER NOT NULL,

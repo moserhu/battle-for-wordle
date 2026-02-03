@@ -120,8 +120,15 @@ export default function GameScreen() {
   const [selfItemsCatalog, setSelfItemsCatalog] = useState([]);
   const [selfPayloadValues, setSelfPayloadValues] = useState({});
   const [selfUseBusy, setSelfUseBusy] = useState('');
+
+  // Weekly winner reward selection (cycle gate)
+  const [weeklyReward, setWeeklyReward] = useState(null);
+  const [showWeeklyRewardModal, setShowWeeklyRewardModal] = useState(false);
+  const [weeklyRecipients, setWeeklyRecipients] = useState([]);
+  const [weeklyRewardBusy, setWeeklyRewardBusy] = useState(false);
+  const [weeklyRewardError, setWeeklyRewardError] = useState('');
   const campMenuRef = useRef(null);
-  
+
   const triggerShake = useCallback(() => {
   setShake(true);
   setTimeout(() => setShake(false), 400);
@@ -265,6 +272,50 @@ export default function GameScreen() {
     loadSelfItems();
   };
 
+  const toggleWeeklyRecipient = (userId) => {
+    if (!weeklyReward?.pending) return;
+    setWeeklyRewardError('');
+    setWeeklyRecipients((prev) => {
+      const exists = prev.includes(userId);
+      if (exists) return prev.filter((id) => id !== userId);
+      // cap selection at required count
+      if (prev.length >= (weeklyReward.recipient_count || 0)) return prev;
+      return [...prev, userId];
+    });
+  };
+
+  const submitWeeklyReward = async () => {
+    if (!weeklyReward?.pending || weeklyRewardBusy) return;
+    const required = weeklyReward.recipient_count || 0;
+    if (weeklyRecipients.length !== required) {
+      setWeeklyRewardError(`Pick exactly ${required} player${required === 1 ? '' : 's'}.`);
+      return;
+    }
+    setWeeklyRewardBusy(true);
+    setWeeklyRewardError('');
+    try {
+      const res = await fetch(`${API_BASE}/api/campaign/rewards/choose`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          campaign_id: campaignId,
+          recipient_user_ids: weeklyRecipients,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.detail || 'Could not save choices.');
+      }
+      setShowWeeklyRewardModal(false);
+      setWeeklyReward(null);
+      setWeeklyRecipients([]);
+    } catch (e) {
+      setWeeklyRewardError(e?.message || 'Could not save choices.');
+    } finally {
+      setWeeklyRewardBusy(false);
+    }
+  };
+
   const handleUseSelfItem = async (itemKey) => {
     if (selfUseBusy) return;
     const item = selfItemByKey.get(itemKey);
@@ -307,10 +358,10 @@ export default function GameScreen() {
       setSelfUseBusy('');
     }
   };
-  
+
   useEffect(() => {
     if (loading) return;
-  
+
     const searchParams = new URLSearchParams(location.search);
     const urlCampaignId = searchParams.get("campaign_id");
     const rawId = urlCampaignId;
@@ -319,13 +370,13 @@ export default function GameScreen() {
       navigate("/home");
       return;
     }
-  
-    const id = parseInt(rawId);  
+
+    const id = parseInt(rawId);
     setCampaignId(id);
-    
+
   }, [loading, location.search, navigate]); // ✅ add navigate
-  
-  
+
+
   useEffect(() => {
     if (!campaignId || !user || loading) return;
 
@@ -361,6 +412,32 @@ export default function GameScreen() {
       const dayToLoad = selectedDay ?? campaignDay?.day;
       if (selectedDay === null && dayToLoad) {
         setSelectedDay(dayToLoad);
+      }
+
+      // Weekly reward: if this is Day 1 and the current ruler has a pending selection, block play until chosen.
+      if (dayToLoad === 1) {
+        try {
+          const rewardRes = await fetch(`${API_BASE}/api/campaign/rewards/pending`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ campaign_id: campaignId }),
+          });
+          const rewardData = await rewardRes.json();
+          if (rewardData?.pending) {
+            setWeeklyReward(rewardData);
+            setWeeklyRecipients([]);
+            setWeeklyRewardError('');
+            setShowWeeklyRewardModal(true);
+          } else {
+            setShowWeeklyRewardModal(false);
+            setWeeklyReward(null);
+          }
+        } catch (e) {
+          // Don't hard-fail the whole screen if reward check fails.
+        }
       }
 
       const stateRes = await fetch(`${API_BASE}/api/game/state`, {
@@ -446,15 +523,15 @@ export default function GameScreen() {
           !hasEdictEffect
         ) {
           setShowDoubleDownModal(true);
-        }        
+        }
       await memberRes.json();
-      
+
       const validGuesses = Array.isArray(progress.guesses) && progress.guesses.length === 6
-  ? progress.guesses.map(row => Array.isArray(row) && row.length === 5 ? row : Array(5).fill("")) 
+  ? progress.guesses.map(row => Array.isArray(row) && row.length === 5 ? row : Array(5).fill(""))
   : EMPTY_GRID;
 
     setGuesses(validGuesses);
-    
+
     setResults(Array.isArray(progress.results) ? progress.results : Array(6).fill(null));
     setLetterStatus(typeof progress.letter_status === "object" && progress.letter_status !== null ? progress.letter_status : {});
     setGameOver(typeof progress.game_over === "boolean" ? progress.game_over : false);
@@ -611,7 +688,7 @@ export default function GameScreen() {
   };
 
   const openAdminModal = () => setShowAdminModal(true);
-  
+
   const checkIfCampaignShouldEnd = useCallback(async () => {
     const res = await fetch(`${API_BASE}/api/campaign/finished_today`, {
       method: "POST",
@@ -621,7 +698,7 @@ export default function GameScreen() {
       },
       body: JSON.stringify({ campaign_id: campaignId }),
     });
-  
+
     const data = await res.json();
     if (data.ended) {
       setCampaignEnded(true);
@@ -679,7 +756,7 @@ export default function GameScreen() {
     return () => clearInterval(interval);
   }, [campaignDay, campaignEnded, checkIfCampaignShouldEnd]);
 
-  
+
   function generateBattleShareText(guesses, results, campaignDay) {
     const board = guesses
       .map((guess, rowIndex) => {
@@ -692,14 +769,14 @@ export default function GameScreen() {
       })
       .filter(Boolean)
       .join("\n");
-  
+
       const nameLine = campaignDay?.name
       ? `🏰 B4W: ${campaignDay.name}`
-      : `🏰 Battle for Wordle`;    
-      
+      : `🏰 Battle for Wordle`;
+
     const solvedRow = results.findIndex(r => r?.every(cell => cell === "correct"));
     const didSolve = solvedRow !== -1;
-  
+
     const didDoubleDown = doubleDownStatus.activated;
     const resultLine = didSolve
       ? (didDoubleDown
@@ -708,11 +785,11 @@ export default function GameScreen() {
       : (didDoubleDown
           ? `💀 Double Down Defeat`
           : `❌ Failed - Disappointment to their Ruler`);
-    
+
     return `${nameLine}\n${resultLine}\n\n${board}`;
   }
-  
-  
+
+
 
 //function to submit the guess
   // This function will be called when the user presses Enter
@@ -895,10 +972,11 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
     setEdictApplied(true);
     submitGuess(edictWord);
   }, [edictWord, isCurrentDay, gameOver, isSubmitting, edictApplied, currentRow, guesses, results, submitGuess]);
-  
+
   const handleKeyPress = useCallback((key) => {
+    if (showWeeklyRewardModal) return;
     if (gameOver || campaignEnded || loadingDay || isSubmitting) return;
-  
+
     // Clear error on any input
     if (errorMsg) setErrorMsg(null);
 
@@ -929,6 +1007,7 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
       }
     }
   }, [
+    showWeeklyRewardModal,
     gameOver,
     campaignEnded,
     loadingDay,
@@ -968,7 +1047,7 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyPress]);
 
-  
+
   const isAdminCampaign = Boolean(campaignDay?.is_admin_campaign);
 
   const rulerBackgroundStyle = !isAdminCampaign && campaignDay?.ruler_background_image_url
@@ -1300,11 +1379,56 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
               </div>
             </div>
           )}
-  
-         
+
+
         </div>
       </div>
-  
+      
+      {/* Weekly Winner Reward Modal */}
+      {showWeeklyRewardModal && weeklyReward?.pending && (
+        <div className="troop-modal-overlay">
+          <div className="troop-modal">
+            <h2>Weekly Reward</h2>
+            <p style={{ marginTop: 6 }}>
+              You won the last cycle. Pick <b>{weeklyReward.recipient_count}</b> player{weeklyReward.recipient_count === 1 ? '' : 's'} to receive
+              a bundle of <b>{weeklyReward.whispers_per_recipient}</b> Oracle&apos;s Whisper{weeklyReward.whispers_per_recipient === 1 ? '' : 's'}.
+            </p>
+
+            {weeklyRewardError && (
+              <div style={{ color: '#ff7b7b', marginTop: 10 }}>{weeklyRewardError}</div>
+            )}
+
+            <div style={{ marginTop: 12, textAlign: 'left', maxHeight: 280, overflowY: 'auto' }}>
+              {(weeklyReward.candidates || []).map((c) => (
+                <label key={c.user_id} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '6px 0' }}>
+                  <input
+                    type="checkbox"
+                    checked={weeklyRecipients.includes(c.user_id)}
+                    onChange={() => toggleWeeklyRecipient(c.user_id)}
+                    disabled={weeklyRewardBusy}
+                  />
+                  <span>{c.display_name}</span>
+                </label>
+              ))}
+            </div>
+
+            <div style={{ marginTop: 14, display: 'flex', gap: 10, justifyContent: 'center' }}>
+              <button
+                className="troop-btn"
+                onClick={submitWeeklyReward}
+                disabled={weeklyRewardBusy || weeklyRecipients.length !== (weeklyReward.recipient_count || 0)}
+              >
+                {weeklyRewardBusy ? 'Saving…' : 'Confirm Picks'}
+              </button>
+            </div>
+
+            <p style={{ marginTop: 10, opacity: 0.85 }}>
+              You must complete this before you can play Day 1.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Troop Modal */}
       {showTroopModal && (
         <div className="troop-modal-overlay">
@@ -1343,7 +1467,7 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
           </div>
         </div>
       )}
-  
+
       {/* Edit Display Name Modal */}
       {/* Failure Modal */}
       {showFailureModal && (
@@ -1351,7 +1475,7 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
             <div className="modal failure-modal">
               <h2>💀 Thou Hast Failed!</h2>
               <p>
-                The sacred word was: 
+                The sacred word was:
                 <strong className='secretWord'> {failedWord}</strong>
               </p>
               <p>
@@ -1442,5 +1566,5 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
         />
     </div>
   );
-  
+
 }
