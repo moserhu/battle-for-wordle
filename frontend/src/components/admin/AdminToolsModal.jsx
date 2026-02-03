@@ -21,6 +21,14 @@ export default function AdminToolsModal({
   const [adminMessage, setAdminMessage] = useState(null);
   const [adminBusy, setAdminBusy] = useState(false);
 
+  // Weekly reward preview (cosmetic only)
+  const [showWeeklyPreview, setShowWeeklyPreview] = useState(false);
+  const [weeklyPreviewCandidates, setWeeklyPreviewCandidates] = useState([]);
+  const [weeklyPreviewRequired, setWeeklyPreviewRequired] = useState(0);
+  const [weeklyPreviewSelected, setWeeklyPreviewSelected] = useState([]);
+  const [weeklyPreviewError, setWeeklyPreviewError] = useState('');
+  const [weeklyPreviewBusy, setWeeklyPreviewBusy] = useState(false);
+
   const sortedAdminEffects = useMemo(() => {
     return [...adminEffects].sort((a, b) => {
       const categoryCompare = String(a.category || "").localeCompare(String(b.category || ""));
@@ -159,6 +167,60 @@ export default function AdminToolsModal({
     await runAdminAction("/api/admin/reset_double_down");
   };
 
+  const toggleWeeklyPreviewRecipient = (userId) => {
+    setWeeklyPreviewError('');
+    setWeeklyPreviewSelected((prev) => {
+      const exists = prev.includes(userId);
+      if (exists) return prev.filter((id) => id !== userId);
+      if (prev.length >= weeklyPreviewRequired) return prev;
+      return [...prev, userId];
+    });
+  };
+
+  const openWeeklyRewardPreview = async () => {
+    if (!campaignId || weeklyPreviewBusy) return;
+    setWeeklyPreviewBusy(true);
+    setWeeklyPreviewError('');
+    try {
+      // Get current user id so we can exclude them from candidates.
+      const meRes = await fetch(`${API_BASE}/api/user/info`, {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const me = await meRes.json();
+      const myUserId = me?.user_id;
+
+      const membersRes = await fetch(`${API_BASE}/api/campaign/members`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ campaign_id: campaignId }),
+      });
+      const membersData = await membersRes.json();
+      const members = Array.isArray(membersData?.members) ? membersData.members : (Array.isArray(membersData) ? membersData : []);
+
+      const total = members.length;
+      const desired = Math.ceil(total / 3);
+      const required = Math.min(desired, Math.max(total - 1, 0));
+
+      const candidates = members
+        .filter((m) => (myUserId ? m.user_id !== myUserId : true))
+        .map((m) => ({
+          user_id: m.user_id,
+          display_name: m.display_name || `User ${m.user_id}`,
+        }));
+
+      setWeeklyPreviewRequired(required);
+      setWeeklyPreviewCandidates(candidates);
+      setWeeklyPreviewSelected([]);
+      setShowWeeklyPreview(true);
+    } catch (e) {
+      setWeeklyPreviewError(e?.message || 'Could not load members for preview.');
+      setShowWeeklyPreview(true);
+    } finally {
+      setWeeklyPreviewBusy(false);
+    }
+  };
+
   return (
     <div className="modal-overlay" onClick={onClose} role="presentation">
       <div
@@ -166,6 +228,55 @@ export default function AdminToolsModal({
         onClick={(event) => event.stopPropagation()}
         role="presentation"
       >
+        {showWeeklyPreview && (
+          <div className="modal-overlay" onClick={() => setShowWeeklyPreview(false)} role="presentation">
+            <div className="modal" onClick={(e) => e.stopPropagation()} role="presentation">
+              <div className="admin-modal-header">
+                <h2>Weekly Reward (Preview)</h2>
+                <button
+                  className="admin-modal-close"
+                  onClick={() => setShowWeeklyPreview(false)}
+                  type="button"
+                  aria-label="Close weekly reward preview"
+                >
+                  ×
+                </button>
+              </div>
+              <p className="admin-hint">
+                Preview only — this does not grant items and does not block gameplay.
+              </p>
+
+              {weeklyPreviewError && <div className="admin-message">{weeklyPreviewError}</div>}
+
+              <p style={{ marginTop: 10 }}>
+                Pick <b>{weeklyPreviewRequired}</b> recipient{weeklyPreviewRequired === 1 ? '' : 's'}.
+              </p>
+
+              <div style={{ marginTop: 12, textAlign: 'left', maxHeight: 280, overflowY: 'auto' }}>
+                {weeklyPreviewCandidates.map((c) => (
+                  <label key={c.user_id} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '6px 0' }}>
+                    <input
+                      type="checkbox"
+                      checked={weeklyPreviewSelected.includes(c.user_id)}
+                      onChange={() => toggleWeeklyPreviewRecipient(c.user_id)}
+                      disabled={weeklyPreviewBusy}
+                    />
+                    <span>{c.display_name}</span>
+                  </label>
+                ))}
+              </div>
+
+              <div className="modal-buttons" style={{ marginTop: 14 }}>
+                <button
+                  className="troop-btn"
+                  onClick={() => setShowWeeklyPreview(false)}
+                >
+                  Close Preview
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         <div className="admin-modal-header">
           <h2>Admin Tools</h2>
           <button
@@ -305,6 +416,20 @@ export default function AdminToolsModal({
             disabled={adminBusy}
           >
             Reset Double Down
+          </button>
+        </div>
+
+        <div className="admin-section">
+          <label className="admin-label">Weekly Reward (Preview)</label>
+          <p className="admin-hint" style={{ marginTop: 6 }}>
+            Cosmetic preview of the “winner picks recipients” modal. No backend changes.
+          </p>
+          <button
+            className="admin-action-btn secondary"
+            onClick={openWeeklyRewardPreview}
+            disabled={adminBusy || weeklyPreviewBusy}
+          >
+            Preview Weekly Reward Picker
           </button>
         </div>
 
