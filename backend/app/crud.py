@@ -3,6 +3,7 @@ from psycopg.rows import tuple_row
 from datetime import datetime
 import string
 import random
+import math
 from zoneinfo import ZoneInfo  
 from hashlib import sha256
 from collections import Counter
@@ -31,6 +32,7 @@ from app.accolades.service import (
 )
 from app.utils.campaigns import resolve_campaign_day
 from app.media.storage import create_presigned_download
+from app.rewards import get_weekly_reward_pending, choose_weekly_reward_recipients
 
 DB_URL = os.getenv("DATABASE_URL")
 
@@ -590,6 +592,22 @@ def validate_guess(word: str, user_id: int, campaign_id: int, day_override: int 
             conn, campaign_id, day_override
         )
         is_admin_flag = is_admin_campaign(conn, campaign_id)
+
+        # Weekly winner reward gate: winner must choose recipients before playing day 1 of the new cycle.
+        if target_day == 1:
+            start_row = conn.execute(
+                "SELECT start_date FROM campaigns WHERE id = %s",
+                (campaign_id,)
+            ).fetchone()
+            cycle_start_date = start_row[0] if start_row else None
+            if cycle_start_date:
+                reward_row = conn.execute("""
+                    SELECT winner_user_id, fulfilled
+                    FROM campaign_cycle_rewards
+                    WHERE campaign_id = %s AND cycle_start_date = %s
+                """, (campaign_id, cycle_start_date)).fetchone()
+                if reward_row and reward_row[0] == user_id and not bool(reward_row[1]):
+                    raise HTTPException(status_code=403, detail="Weekly reward selection required before playing Day 1.")
 
         if target_day < current_day:
             completed_row = conn.execute("""
@@ -1445,6 +1463,33 @@ def handle_campaign_end(campaign_id: int):
 
         # 2. Reset campaign to start over
         today_str = datetime.now(ZoneInfo("America/Chicago")).strftime("%Y-%m-%d")
+
+        # If we have a winner, create a pending weekly reward for the *new* cycle.
+        # Winner must choose recipients before playing day 1.
+        if standings:
+            member_count = len(standings)
+            # Dalton spec: recipients = ceil(total_players / 3), but winner cannot pick themselves.
+            desired = int(math.ceil(member_count / 3))
+            recipient_count = min(desired, max(member_count - 1, 0))
+            if recipient_count > 0:
+                conn.execute("""
+                    INSERT INTO campaign_cycle_rewards (
+                        campaign_id,
+                        cycle_start_date,
+                        winner_user_id,
+                        recipient_count,
+                        whispers_per_recipient,
+                        fulfilled
+                    ) VALUES (%s, %s, %s, %s, %s, FALSE)
+                    ON CONFLICT (campaign_id, cycle_start_date)
+                    DO UPDATE SET
+                        winner_user_id = EXCLUDED.winner_user_id,
+                        recipient_count = EXCLUDED.recipient_count,
+                        whispers_per_recipient = EXCLUDED.whispers_per_recipient,
+                        fulfilled = FALSE,
+                        fulfilled_at = NULL
+                """, (campaign_id, today_str, user_id, recipient_count, 3))
+
         conn.execute("""
             UPDATE campaigns
             SET start_date = %s,
@@ -2508,3 +2553,16 @@ def get_current_day_hint(user_id: int, campaign_id: int):
             return {"hint": None}
 
         return {"hint": payload}
+
+# ------------------------------
+# Weekly winner reward (cycle gate)
+# ------------------------------
+
+def get_weekly_reward_pending_for_user(user_id: int, campaign_id: int):
+    with get_db() as conn:
+        return get_weekly_reward_pending(conn, user_id, campaign_id)
+
+
+def choose_weekly_reward_recipients_for_user(user_id: int, campaign_id: int, recipient_user_ids: list[int]):
+    with get_db() as conn:
+        return choose_weekly_reward_recipients(conn, user_id, campaign_id, recipient_user_ids)

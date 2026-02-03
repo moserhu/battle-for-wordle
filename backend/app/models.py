@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 
 class GuessRequest(BaseModel):
     word: str
@@ -107,3 +107,7 @@ class RulerBackgroundConfirm(BaseModel):
 class ArmyNameUpdate(BaseModel):
     campaign_id: int
     army_name: str
+
+class WeeklyRewardChoose(BaseModel):
+    campaign_id: int
+    recipient_user_ids: List[int]

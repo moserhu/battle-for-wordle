@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import './AdminToolsModal.css';
+import WeeklyRewardModal from '../rewards/WeeklyRewardModal';
 
 const API_BASE = process.env.REACT_APP_API_URL || `${window.location.protocol}//${window.location.hostname}`;
 
@@ -20,6 +21,14 @@ export default function AdminToolsModal({
   const [adminStreak, setAdminStreak] = useState("");
   const [adminMessage, setAdminMessage] = useState(null);
   const [adminBusy, setAdminBusy] = useState(false);
+
+  // Weekly reward preview (cosmetic only)
+  const [showWeeklyPreview, setShowWeeklyPreview] = useState(false);
+  const [weeklyPreviewCandidates, setWeeklyPreviewCandidates] = useState([]);
+  const [weeklyPreviewRequired, setWeeklyPreviewRequired] = useState(0);
+  const [weeklyPreviewSelected, setWeeklyPreviewSelected] = useState([]);
+  const [weeklyPreviewError, setWeeklyPreviewError] = useState('');
+  const [weeklyPreviewBusy, setWeeklyPreviewBusy] = useState(false);
 
   const sortedAdminEffects = useMemo(() => {
     return [...adminEffects].sort((a, b) => {
@@ -159,6 +168,60 @@ export default function AdminToolsModal({
     await runAdminAction("/api/admin/reset_double_down");
   };
 
+  const toggleWeeklyPreviewRecipient = (userId) => {
+    setWeeklyPreviewError('');
+    setWeeklyPreviewSelected((prev) => {
+      const exists = prev.includes(userId);
+      if (exists) return prev.filter((id) => id !== userId);
+      if (prev.length >= weeklyPreviewRequired) return prev;
+      return [...prev, userId];
+    });
+  };
+
+  const openWeeklyRewardPreview = async () => {
+    if (!campaignId || weeklyPreviewBusy) return;
+    setWeeklyPreviewBusy(true);
+    setWeeklyPreviewError('');
+    try {
+      // Get current user id so we can exclude them from candidates.
+      const meRes = await fetch(`${API_BASE}/api/user/info`, {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const me = await meRes.json();
+      const myUserId = me?.user_id;
+
+      const membersRes = await fetch(`${API_BASE}/api/campaign/members`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ campaign_id: campaignId }),
+      });
+      const membersData = await membersRes.json();
+      const members = Array.isArray(membersData?.members) ? membersData.members : (Array.isArray(membersData) ? membersData : []);
+
+      const total = members.length;
+      const desired = Math.ceil(total / 3);
+      const required = Math.min(desired, Math.max(total - 1, 0));
+
+      const candidates = members
+        .filter((m) => (myUserId ? m.user_id !== myUserId : true))
+        .map((m) => ({
+          user_id: m.user_id,
+          display_name: m.display_name || `User ${m.user_id}`,
+        }));
+
+      setWeeklyPreviewRequired(required);
+      setWeeklyPreviewCandidates(candidates);
+      setWeeklyPreviewSelected([]);
+      setShowWeeklyPreview(true);
+    } catch (e) {
+      setWeeklyPreviewError(e?.message || 'Could not load members for preview.');
+      setShowWeeklyPreview(true);
+    } finally {
+      setWeeklyPreviewBusy(false);
+    }
+  };
+
   return (
     <div className="modal-overlay" onClick={onClose} role="presentation">
       <div
@@ -166,6 +229,25 @@ export default function AdminToolsModal({
         onClick={(event) => event.stopPropagation()}
         role="presentation"
       >
+        {showWeeklyPreview && (
+          <WeeklyRewardModal
+            visible={showWeeklyPreview}
+            title="Weekly Reward"
+            preview
+            description={
+              `Pick ${weeklyPreviewRequired} recipient${weeklyPreviewRequired === 1 ? '' : 's'}.`
+            }
+            candidates={weeklyPreviewCandidates}
+            selectedIds={weeklyPreviewSelected}
+            requiredCount={weeklyPreviewRequired}
+            busy={weeklyPreviewBusy}
+            error={weeklyPreviewError}
+            confirmLabel="Close Preview"
+            onToggle={toggleWeeklyPreviewRecipient}
+            onConfirm={() => setShowWeeklyPreview(false)}
+            onClose={() => setShowWeeklyPreview(false)}
+          />
+        )}
         <div className="admin-modal-header">
           <h2>Admin Tools</h2>
           <button
@@ -305,6 +387,20 @@ export default function AdminToolsModal({
             disabled={adminBusy}
           >
             Reset Double Down
+          </button>
+        </div>
+
+        <div className="admin-section">
+          <label className="admin-label">Weekly Reward (Preview)</label>
+          <p className="admin-hint" style={{ marginTop: 6 }}>
+            Cosmetic preview of the “winner picks recipients” modal. No backend changes.
+          </p>
+          <button
+            className="admin-action-btn secondary"
+            onClick={openWeeklyRewardPreview}
+            disabled={adminBusy || weeklyPreviewBusy}
+          >
+            Preview Weekly Reward Picker
           </button>
         </div>
 
