@@ -51,10 +51,6 @@ export default function Campaigns() {
 
       const data = await res.json();
       if (res.ok && Array.isArray(data)) {
-        if (!manageMode && data.length === 1 && data[0]?.campaign_id) {
-          navigate(`/campaign/${data[0].campaign_id}`);
-          return;
-        }
         setCampaigns(data);
       } else {
         setCampaigns([]);
