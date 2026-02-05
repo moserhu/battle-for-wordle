@@ -7,7 +7,7 @@ from app.auth import get_current_user
 from app.admin.routes import router as admin_router
 from app.updates.routes import router as updates_router
 from app.auth import create_access_token
-from app.models import UserOnly, UpdateUserInfo, CampaignAndUserOnly, ShopPurchase, UseItemRequest, ItemTargetRequest, ArmyNameUpdate
+from app.models import UserOnly, UpdateUserInfo, CampaignAndUserOnly, ShopPurchase, UseItemRequest, ItemTargetRequest, ArmyNameUpdate, WeeklyRewardChoose
 from app.recap import service as recap_service
 from prometheus_fastapi_instrumentator import Instrumentator
 
@@ -229,6 +229,19 @@ def use_campaign_item(data: UseItemRequest, current_user: dict = Depends(get_cur
 @app.post("/api/campaign/items/hint")
 def get_campaign_hint(data: CampaignOnly, current_user: dict = Depends(get_current_user)):
     return crud.get_current_day_hint(current_user["user_id"], data.campaign_id)
+
+# Weekly winner reward: force winner to choose recipients before playing day 1
+@app.post("/api/campaign/rewards/pending")
+def get_weekly_reward_pending(data: CampaignOnly, current_user: dict = Depends(get_current_user)):
+    return crud.get_weekly_reward_pending_for_user(current_user["user_id"], data.campaign_id)
+
+@app.post("/api/campaign/rewards/choose")
+def choose_weekly_reward_recipients(data: WeeklyRewardChoose, current_user: dict = Depends(get_current_user)):
+    return crud.choose_weekly_reward_recipients_for_user(
+        current_user["user_id"],
+        data.campaign_id,
+        data.recipient_user_ids,
+    )
 
 app.include_router(admin_router)
 app.include_router(updates_router)
