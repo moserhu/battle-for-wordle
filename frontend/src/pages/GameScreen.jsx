@@ -718,7 +718,8 @@ export default function GameScreen() {
   // This function will be called when the user presses Enter
   // It will send the current guess to the server and update the results
 const submitGuess = useCallback(async (forcedGuess = null) => {
-  const baseAttempts = doubleDownStatus.activated ? 3 : 6;
+  // Double Down attempt limit should only apply to the current campaign day
+  const baseAttempts = (isCurrentDay && doubleDownStatus.activated) ? 3 : 6;
   const maxAttempts = hasExecutioner ? Math.max(1, baseAttempts - 1) : baseAttempts;
   if (isSubmitting || currentRow >= maxAttempts || gameOver) return;
 
@@ -860,6 +861,7 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
   }
 }, [
   doubleDownStatus,
+  isCurrentDay,
   hasExecutioner,
   isSubmitting,
   currentRow,
