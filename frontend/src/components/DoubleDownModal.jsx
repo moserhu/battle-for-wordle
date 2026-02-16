@@ -26,9 +26,9 @@ export default function DoubleDownModal({ visible, onAccept, onDecline, showActi
         <h2>Double Down?</h2>
         <p>
           You can only use <strong>Double Down once per week</strong>.
-          If you accept and guess the word within 3 tries, <strong>your troops will double</strong>.
+          Choose wisely — the <strong>troops you earn for the day you pick will be doubled</strong>.
           <br />
-          If you miss, you’ll get <strong>no troops</strong> for the day.
+          You will still play a normal round; if you solve, we double the points for the row you finish on.
         </p>
         {showActions && (
           <div className="dd-buttons">

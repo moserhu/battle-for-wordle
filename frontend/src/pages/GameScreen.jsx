@@ -545,7 +545,7 @@ export default function GameScreen() {
   const spiderSwarm = useSpiderSwarm(targetEffects);
   const canGoBack = selectedDay && selectedDay > 1;
   const canGoForward = selectedDay && campaignDay?.day && selectedDay < campaignDay.day;
-  const baseMaxRows = isCurrentDay && doubleDownStatus.activated ? 3 : 6;
+  const baseMaxRows = 6;
   let maxVisibleRows = baseMaxRows;
   const hasExecutioner = isCurrentDay && hasExecutionersCut(targetEffects);
   if (hasExecutioner) {
@@ -718,8 +718,8 @@ export default function GameScreen() {
   // This function will be called when the user presses Enter
   // It will send the current guess to the server and update the results
 const submitGuess = useCallback(async (forcedGuess = null) => {
-  // Double Down attempt limit should only apply to the current campaign day
-  const baseAttempts = (isCurrentDay && doubleDownStatus.activated) ? 3 : 6;
+  // Double Down no longer changes the number of attempts. (Still respect Executioner's Cut.)
+  const baseAttempts = 6;
   const maxAttempts = hasExecutioner ? Math.max(1, baseAttempts - 1) : baseAttempts;
   if (isSubmitting || currentRow >= maxAttempts || gameOver) return;
 
@@ -818,7 +818,7 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
       }
 
       let baseTroops = [150, 100, 60, 40, 30, 10][currentRow];
-      const awardedTroops = doubleDownStatus.activated && currentRow <= 2 ? baseTroops * 2 : baseTroops;
+      const awardedTroops = doubleDownStatus.activated ? baseTroops * 2 : baseTroops;
 
       if (currentRow <= 2) {
         confetti({ particleCount: 150, spread: 100, origin: { y: 0.6 } });
@@ -1314,7 +1314,7 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
             <h2>🎖 Victory!</h2>
             <p>
               You gained <strong>{troopsEarned}</strong> troops
-              {doubleDownStatus.activated && currentRow <= 2 && <span> with Double Down! ⚔️</span>}
+              {doubleDownStatus.activated && <span> with Double Down! ⚔️</span>}
               </p>
             <div className="modal-buttons">
               <button
