@@ -818,7 +818,7 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
       }
 
       let baseTroops = [150, 100, 60, 40, 30, 10][currentRow];
-      const awardedTroops = doubleDownStatus.activated && currentRow <= 2 ? baseTroops * 2 : baseTroops;
+      const awardedTroops = doubleDownStatus.activated ? baseTroops * 2 : baseTroops;
 
       if (currentRow <= 2) {
         confetti({ particleCount: 150, spread: 100, origin: { y: 0.6 } });
