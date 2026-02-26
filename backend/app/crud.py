@@ -816,7 +816,9 @@ def validate_guess(word: str, user_id: int, campaign_id: int, day_override: int 
             WHERE user_id = %s AND campaign_id = %s
         """, (user_id, campaign_id)).fetchone()
         is_double_down = dd_row and dd_row[0] == 1 and target_day == current_day
-        max_rows = 3 if is_double_down else 6
+
+        # Double Down no longer changes the number of guesses you get.
+        max_rows = 6
         if "executioners_cut" in active_effects:
             max_rows = max(1, max_rows - 1)
         new_game_over = correct or current_row + 1 == max_rows
@@ -832,25 +834,17 @@ def validate_guess(word: str, user_id: int, campaign_id: int, day_override: int 
 
             score_to_add = points_by_row.get(current_row, 0)
 
+            # New Double Down: play normally; if you solve today, double the solved-row points.
             if is_double_down:
-                if current_row <= 2:
-                    score_to_add *= 2
-                    conn.execute("""
-                        UPDATE campaign_members
-                        SET score = score + %s,
-                            double_down_activated = 0,
-                            double_down_used_week = 1,
-                            double_down_date = %s
-                        WHERE user_id = %s AND campaign_id = %s
-                    """, (score_to_add, target_date_str, user_id, campaign_id))
-                else:
-                    conn.execute("""
-                        UPDATE campaign_members
-                        SET double_down_activated = 0,
-                            double_down_used_week = 1,
-                            double_down_date = %s
-                        WHERE user_id = %s AND campaign_id = %s
-                    """, (target_date_str, user_id, campaign_id))
+                score_to_add *= 2
+                conn.execute("""
+                    UPDATE campaign_members
+                    SET score = score + %s,
+                        double_down_activated = 0,
+                        double_down_used_week = 1,
+                        double_down_date = %s
+                    WHERE user_id = %s AND campaign_id = %s
+                """, (score_to_add, target_date_str, user_id, campaign_id))
             else:
                 conn.execute("""
                     UPDATE campaign_members
@@ -865,6 +859,7 @@ def validate_guess(word: str, user_id: int, campaign_id: int, day_override: int 
                 SET troops = campaign_daily_troops.troops + EXCLUDED.troops
             """, (user_id, campaign_id, target_date_str, score_to_add))
 
+        # Consume Double Down once the day is complete (solve or fail).
         elif new_game_over and is_double_down:
             conn.execute("""
                 UPDATE campaign_members
@@ -928,7 +923,7 @@ def validate_guess(word: str, user_id: int, campaign_id: int, day_override: int 
 
             guesses_used = (current_row + 1) if correct else max_rows
             used_double_down = 1 if is_double_down else 0
-            double_down_success = 1 if (is_double_down and correct and current_row <= 2) else 0
+            double_down_success = 1 if (is_double_down and correct) else 0
             base_troops = points_by_row.get(current_row, 0)
             double_down_bonus = (score_to_add - base_troops) if double_down_success else 0
             troops_earned = score_to_add if correct else 0
