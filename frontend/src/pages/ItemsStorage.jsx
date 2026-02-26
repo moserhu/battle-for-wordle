@@ -15,9 +15,12 @@ import voidbrandSprite from '../assets/items/curses/voidbrand.png';
 import edictOfCompulsionSprite from '../assets/items/curses/edict_of_compulsion.png';
 import executionersCutSprite from '../assets/items/curses/executioners_cut.png';
 import sendInTheClownSprite from '../assets/items/illusions/clown.png';
-import { oracleWhisper, cartographersInsight, candleOfMercy } from '../components/items/blessings';
-import { bloodOathInk, spiderSwarm, sendInTheClown, danceOfTheJester, coneOfCold } from '../components/items/illusions';
-import { sealOfSilence, voidbrand, executionersCut, edictOfCompulsion } from '../components/items/curses';
+import { oracleWhisper, cartographersInsight, candleOfMercy } from '../components/items/blessings/index';
+import { bloodOathInk, spiderSwarm, sendInTheClown, danceOfTheJester, coneOfCold } from '../components/items/illusions/index';
+import { sealOfSilence } from '../components/items/curses/seal_of_silence';
+import { voidbrand } from '../components/items/curses/voidbrand';
+import { executionersCut } from '../components/items/curses/executioners_cut';
+import { edictOfCompulsion } from '../components/items/curses/edict_of_compulsion';
 
 const API_BASE = process.env.REACT_APP_API_URL || `${window.location.protocol}//${window.location.hostname}`;
 

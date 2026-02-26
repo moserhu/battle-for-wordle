@@ -11,9 +11,9 @@ import RulerTitleModal from '../components/RulerTitleModal';
 import DayReplayInfoModal from '../components/DayReplayInfoModal';
 import AdminToolsModal from '../components/admin/AdminToolsModal';
 import WeeklyRewardModal from '../components/rewards/WeeklyRewardModal';
-import { applyAbsentLetters, getCartographersLetters, applyOracleCorrectLetter, getOraclePlacement, hasCandleOfMercy } from '../components/items/blessings';
-import { hasBloodOathInk, useClownJumpscare, ClownOverlay, useSpiderSwarm, getSpiderMotionProps, useJesterDance, getConeTurns, decrementConeTurns, shouldShowConeOverlay, getConeOpacity } from '../components/items/illusions';
-import { hasExecutionersCut } from '../components/items/curses';
+import { applyAbsentLetters, getCartographersLetters, applyOracleCorrectLetter, getOraclePlacement, hasCandleOfMercy } from '../components/items/blessings/index';
+import { hasBloodOathInk, useClownJumpscare, ClownOverlay, useSpiderSwarm, getSpiderMotionProps, useJesterDance, getConeTurns, decrementConeTurns, shouldShowConeOverlay, getConeOpacity } from '../components/items/illusions/index';
+import { hasExecutionersCut } from '../components/items/curses/executioners_cut';
 
 const API_BASE = process.env.REACT_APP_API_URL || `${window.location.protocol}//${window.location.hostname}`;
 
@@ -922,7 +922,6 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
   }
 }, [
   doubleDownStatus,
-  isCurrentDay,
   hasExecutioner,
   isSubmitting,
   currentRow,
