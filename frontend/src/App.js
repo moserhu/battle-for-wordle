@@ -7,6 +7,8 @@ import './App.css';
 import AccountScreen from './pages/AccountScreen';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import MainLandingPage from './pages/MainLandingPage';
 import Invite from './pages/Invite';
 import Leaderboard from './pages/Leaderboard';
@@ -24,7 +26,7 @@ function AppShell() {
   const location = useLocation();
 
   // 🔒 routes where NavBar should be hidden
-  const hideNavOn = ['/', '/login', '/register', '/invite'];
+  const hideNavOn = ['/', '/login', '/register', '/invite', '/forgot-password', '/reset-password'];
   const hideNav = hideNavOn.includes(location.pathname);
 
   return (
@@ -125,6 +127,18 @@ function AppShell() {
                 <Login />
               </RedirectIfAuthenticated>
             }
+          />
+          <Route
+            path="/forgot-password"
+            element={
+              <RedirectIfAuthenticated>
+                <ForgotPassword />
+              </RedirectIfAuthenticated>
+            }
+          />
+          <Route
+            path="/reset-password"
+            element={<ResetPassword />}
           />
           <Route
             path="/register"

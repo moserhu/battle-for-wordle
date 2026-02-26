@@ -7,7 +7,7 @@ from app.auth import get_current_user
 from app.admin.routes import router as admin_router
 from app.updates.routes import router as updates_router
 from app.auth import create_access_token
-from app.models import UserOnly, UpdateUserInfo, CampaignAndUserOnly, ShopPurchase, UseItemRequest, ItemTargetRequest, ArmyNameUpdate
+from app.models import UserOnly, UpdateUserInfo, CampaignAndUserOnly, ShopPurchase, UseItemRequest, ItemTargetRequest, ArmyNameUpdate, ForgotPasswordRequest, ResetPasswordRequest
 from app.recap import service as recap_service
 from prometheus_fastapi_instrumentator import Instrumentator
 
@@ -71,6 +71,16 @@ def login(user: models.UserLogin):
     user_data = crud.login_user(user.email, user.password)
     token = create_access_token({"user_id": user_data["user_id"]})
     return {"access_token": token, "user": user_data}
+
+
+@app.post("/api/auth/forgot_password")
+def forgot_password(data: ForgotPasswordRequest):
+    return crud.request_password_reset(data.email)
+
+
+@app.post("/api/auth/reset_password")
+def do_reset_password(data: ResetPasswordRequest):
+    return crud.reset_password(data.token, data.new_password)
 
 @app.post("/api/campaign/create")
 def create_campaign(camp: models.NewCampaign, current_user: dict = Depends(get_current_user)):

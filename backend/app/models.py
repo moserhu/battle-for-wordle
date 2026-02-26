@@ -107,3 +107,12 @@ class RulerBackgroundConfirm(BaseModel):
 class ArmyNameUpdate(BaseModel):
     campaign_id: int
     army_name: str
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
