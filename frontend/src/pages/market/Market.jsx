@@ -701,16 +701,7 @@ export default function Market() {
       <header className="market-header">
         <div className="market-header-grid">
           <div className="market-title-card market-card">
-            <h1 className="market-title">{campaignName} Market</h1>
-            <div className="market-title-actions">
-              <div className="market-coins">
-                <span className="market-coins-value">
-                  {coins}
-                  <span className="market-coins-icon" aria-hidden="true">
-                    <FontAwesomeIcon icon={faCoins} />
-                  </span>
-                </span>
-              </div>
+            <div className="market-title-slot market-title-slot--left">
               <button
                 className="btn market-back-btn"
                 onClick={() => navigate(`/campaign/${campaignId}`)}
@@ -728,9 +719,29 @@ export default function Market() {
                   }}
                   type="button"
                 >
-                  Overview
+                  Back
                 </button>
               )}
+            </div>
+
+            <div className="market-title-slot market-title-slot--center">
+              <div className="market-title-shell">
+                <h1 className="market-title">
+                  <span className="market-title-line">{campaignName}</span>
+                  <span className="market-title-line market-title-line--sub">Market</span>
+                </h1>
+              </div>
+            </div>
+
+            <div className="market-title-slot market-title-slot--right">
+              <div className="market-coins">
+                <span className="market-coins-value">
+                  {coins}
+                  <span className="market-coins-icon" aria-hidden="true">
+                    <FontAwesomeIcon icon={faCoins} />
+                  </span>
+                </span>
+              </div>
             </div>
           </div>
         </div>
