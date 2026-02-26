@@ -12,7 +12,7 @@ ACCOLADE_LABELS = {
     "comeback": "Comeback",
     "big_spender": "Big Spender",
     "hoarder": "Hoarder",
-    "shop_regular": "Shop Regular",
+    "shop_regular": "Market Regular",
     "item_master": "Item Master",
     "saves_the_day": "Saves the Day",
     "top_3": "Top 3 Finish",

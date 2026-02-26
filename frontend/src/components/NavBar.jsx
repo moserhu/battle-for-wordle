@@ -151,12 +151,12 @@ export default function NavBar() {
 
           <div className="nav-dropdown" ref={shopMenuRef}>
             <button
-              className={`icon-btn nav-primary ${isActive('/shop') || location.pathname.includes('/shop') ? 'active' : ''} ${showShopMenu ? 'menu-open' : ''}`}
-              aria-label="Shop"
-              title="Shop"
+              className={`icon-btn nav-primary ${isActive('/market') || location.pathname.includes('/market') || location.pathname.includes('/shop') ? 'active' : ''} ${showShopMenu ? 'menu-open' : ''}`}
+              aria-label="Market"
+              title="Market"
               onClick={() => {
                 if (singleCampaign) {
-                  navigate(`/campaign/${singleCampaign.campaign_id}/shop`);
+                  navigate(`/campaign/${singleCampaign.campaign_id}/market`);
                   return;
                 }
                 setShowShopMenu((prev) => !prev);
@@ -176,7 +176,7 @@ export default function NavBar() {
                       type="button"
                       onClick={() => {
                         setShowShopMenu(false);
-                        navigate(`/campaign/${camp.campaign_id}/shop`);
+                        navigate(`/campaign/${camp.campaign_id}/market`);
                       }}
                     >
                       {camp.name}

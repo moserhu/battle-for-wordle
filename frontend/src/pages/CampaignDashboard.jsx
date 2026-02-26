@@ -225,8 +225,6 @@ export default function CampaignDashboard() {
   const isAdminCampaign = Boolean(campaignMeta?.is_admin_campaign);
   const displayName = selfMember?.display_name || user?.first_name || 'Player';
   const profileImageUrl = selfMember?.profile_image_thumb_url || selfMember?.profile_image_url || '';
-  const profileImageFullUrl = selfMember?.profile_image_full_url || selfMember?.profile_image_url || '';
-  const armyImageFullUrl = selfMember?.army_image_full_url || selfMember?.army_image_url || '';
   const armyName = selfMember?.army_name || '';
 
   const handleEditRulerTitle = () => {
@@ -304,7 +302,7 @@ export default function CampaignDashboard() {
           coins={coins}
           onBattle={() => navigate(`/game?campaign_id=${cid}`)}
           onInventory={() => navigate(`/campaign/${cid}/items`)}
-          onShop={() => navigate(`/campaign/${cid}/shop`)}
+          onShop={() => navigate(`/campaign/${cid}/market`)}
           streak={streak}
           cutoffCountdown={cutoffCountdown}
           midnightCountdown={midnightCountdown}

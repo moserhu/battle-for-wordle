@@ -119,6 +119,19 @@ def init_db():
             )
         """)
         conn.execute("""
+            UPDATE store_purchases
+            SET category = CASE
+                WHEN item_key IN ('cone_of_cold', 'dance_of_the_jester', 'spider_swarm', 'send_in_the_clown', 'blood_oath_ink')
+                    THEN 'illusion'
+                WHEN item_key IN ('cartographers_insight', 'oracle_whisper', 'candle_of_mercy')
+                    THEN 'blessing'
+                WHEN item_key IN ('seal_of_silence', 'voidbrand', 'executioners_cut', 'edict_of_compulsion')
+                    THEN 'curse'
+                ELSE category
+            END
+            WHERE category IN ('basic', 'spells') OR category IS NULL
+        """)
+        conn.execute("""
             CREATE TABLE IF NOT EXISTS campaign_user_items (
                 user_id INTEGER NOT NULL,
                 campaign_id INTEGER NOT NULL,

@@ -1,5 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../auth/AuthProvider';
 import '../styles/UpdateLogs.css';
 
@@ -13,7 +12,6 @@ const emptyForm = {
 };
 
 export default function UpdateLogs() {
-  const navigate = useNavigate();
   const { user, token } = useAuth();
   const isAdmin = Boolean(user?.is_admin);
 
@@ -33,7 +31,7 @@ export default function UpdateLogs() {
 
   const sortedLogs = useMemo(() => logs, [logs]);
 
-  const loadLogs = async () => {
+  const loadLogs = useCallback(async () => {
     if (!token) return;
     setLoading(true);
     setError('');
@@ -53,11 +51,11 @@ export default function UpdateLogs() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
 
   useEffect(() => {
     loadLogs();
-  }, [token]);
+  }, [loadLogs]);
 
   const openAddModal = () => {
     setEditLogId(null);

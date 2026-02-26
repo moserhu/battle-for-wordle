@@ -66,6 +66,10 @@ class ShopPurchase(BaseModel):
     campaign_id: int
     item_key: str
 
+class ShopReshuffle(BaseModel):
+    campaign_id: int
+    category: str
+
 class UseItemRequest(BaseModel):
     campaign_id: int
     item_key: str

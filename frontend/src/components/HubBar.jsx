@@ -77,8 +77,8 @@ export default function HubBar({
           <button className="btn hub-econ-btn" type="button" onClick={onInventory}>
             Inventory
           </button>
-          <button className="btn btn-shop hub-econ-btn" type="button" onClick={onShop}>
-            Shop
+          <button className="btn btn-market hub-econ-btn" type="button" onClick={onShop}>
+            Market
           </button>
         </div>
         <button

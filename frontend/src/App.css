@@ -91,6 +91,8 @@
   --bg-dashboard-mobile: url('./assets/winter/winter_camp_mobile.png');
   --bg-shop: url('./assets/scenes/shop_16_9.png');
   --bg-shop-mobile: url('./assets/scenes/shop_mobile.png');
+  --bg-market: url('./assets/scenes/shop_16_9.png');
+  --bg-market-mobile: url('./assets/scenes/shop_mobile.png');
   --bg-inventory: url('./assets/scenes/inventory_16_9.png');
   --bg-inventory-mobile: url('./assets/scenes/inventory_mobile.png');
   --bg-account: url('./assets/winter/winter_bedroom_background.png');

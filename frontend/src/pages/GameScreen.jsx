@@ -11,26 +11,9 @@ import RulerTitleModal from '../components/RulerTitleModal';
 import DayReplayInfoModal from '../components/DayReplayInfoModal';
 import AdminToolsModal from '../components/admin/AdminToolsModal';
 import WeeklyRewardModal from '../components/rewards/WeeklyRewardModal';
-import {
-  applyAbsentLetters,
-  getCartographersLetters,
-  applyOracleCorrectLetter,
-  getOraclePlacement,
-  hasCandleOfMercy,
-  hasBloodOathInk,
-  hasExecutionersCut,
-  useClownJumpscare,
-  ClownOverlay,
-  useSpiderSwarm,
-  getSpiderMotionProps,
-} from '../components/items/basic';
-import {
-  useJesterDance,
-  getConeTurns,
-  decrementConeTurns,
-  shouldShowConeOverlay,
-  getConeOpacity
-} from '../components/items/spells';
+import { applyAbsentLetters, getCartographersLetters, applyOracleCorrectLetter, getOraclePlacement, hasCandleOfMercy } from '../components/items/blessings';
+import { hasBloodOathInk, useClownJumpscare, ClownOverlay, useSpiderSwarm, getSpiderMotionProps, useJesterDance, getConeTurns, decrementConeTurns, shouldShowConeOverlay, getConeOpacity } from '../components/items/illusions';
+import { hasExecutionersCut } from '../components/items/curses';
 
 const API_BASE = process.env.REACT_APP_API_URL || `${window.location.protocol}//${window.location.hostname}`;
 
@@ -1129,12 +1112,12 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
                     onClick={() => {
                       setShowCampMenu(false);
                       if (campaignId) {
-                        navigate(`/campaign/${campaignId}/shop`);
+                        navigate(`/campaign/${campaignId}/market`);
                       }
                     }}
                     type="button"
                   >
-                    Shop 💰
+                    Market 💰
                   </button>
                 </div>
               )}

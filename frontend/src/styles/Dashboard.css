@@ -511,13 +511,13 @@
   cursor: not-allowed;
 }
 
-.btn-shop {
+.btn-market {
   background: linear-gradient(135deg, #f6a23a, #e46b1a);
   border-color: #ffd08a;
   color: #2a1302;
 }
 
-.btn-shop:hover:not(.disabled) {
+.btn-market:hover:not(.disabled) {
   background: linear-gradient(135deg, #ffb457, #f07a24);
 }
 

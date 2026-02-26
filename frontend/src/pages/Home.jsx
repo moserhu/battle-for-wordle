@@ -154,7 +154,7 @@ export default function Home() {
             </p>
             <ul className="home-news-list">
               <li>Current Ruler banners now crown each campaign</li>
-              <li>Campaign streaks track daily consistency and unlock shop perks</li>
+              <li>Campaign streaks track daily consistency and unlock market perks</li>
               <li>Coins economy is live with per-guess rewards and pity coins</li>
               <li>Info modals explain Double Down, Coins, and Streaks</li>
               <li>Global leaderboard now toggles Top 10, 50, and 100</li>

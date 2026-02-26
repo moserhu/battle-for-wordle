@@ -3,34 +3,21 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import '../styles/ItemsStorage.css';
-import oracleWhisperSprite from '../assets/items/oracles_whisper.png';
-import cartographersInsightSprite from '../assets/items/cartographers_insight.png';
-import candleOfMercySprite from '../assets/items/candle_of_mercy.png';
-import bloodOathInkSprite from '../assets/items/blood_oath_ink.png';
-import spiderSwarmSprite from '../assets/items/spider_swarm.png';
-import danceOfTheJesterSprite from '../assets/items/dance_of_the_jester.png';
-import coneOfColdSprite from '../assets/items/cone_of_cold.png';
-import sealOfSilenceSprite from '../assets/items/seal_of_silence.png';
-import voidbrandSprite from '../assets/items/voidbrand.png';
-import edictOfCompulsionSprite from '../assets/items/edict_of_compulsion.png';
-import executionersCutSprite from '../assets/items/executioners_cut.png';
-import sendInTheClownSprite from '../assets/items/clown.png';
-import {
-  oracleWhisper,
-  cartographersInsight,
-  candleOfMercy,
-  bloodOathInk,
-  spiderSwarm,
-  executionersCut,
-  edictOfCompulsion,
-  sendInTheClown,
-} from '../components/items/basic';
-import {
-  danceOfTheJester,
-  coneOfCold,
-  sealOfSilence,
-  voidbrand,
-} from '../components/items/spells';
+import oracleWhisperSprite from '../assets/items/blessings/oracles_whisper.png';
+import cartographersInsightSprite from '../assets/items/blessings/cartographers_insight.png';
+import candleOfMercySprite from '../assets/items/blessings/candle_of_mercy.png';
+import bloodOathInkSprite from '../assets/items/illusions/blood_oath_ink.png';
+import spiderSwarmSprite from '../assets/items/illusions/spider_swarm.png';
+import danceOfTheJesterSprite from '../assets/items/illusions/dance_of_the_jester.png';
+import coneOfColdSprite from '../assets/items/illusions/cone_of_cold.png';
+import sealOfSilenceSprite from '../assets/items/curses/seal_of_silence.png';
+import voidbrandSprite from '../assets/items/curses/voidbrand.png';
+import edictOfCompulsionSprite from '../assets/items/curses/edict_of_compulsion.png';
+import executionersCutSprite from '../assets/items/curses/executioners_cut.png';
+import sendInTheClownSprite from '../assets/items/illusions/clown.png';
+import { oracleWhisper, cartographersInsight, candleOfMercy } from '../components/items/blessings';
+import { bloodOathInk, spiderSwarm, sendInTheClown, danceOfTheJester, coneOfCold } from '../components/items/illusions';
+import { sealOfSilence, voidbrand, executionersCut, edictOfCompulsion } from '../components/items/curses';
 
 const API_BASE = process.env.REACT_APP_API_URL || `${window.location.protocol}//${window.location.hostname}`;
 
@@ -260,8 +247,8 @@ export default function ItemsStorage() {
             <p className="items-subtitle">Use items you have stored for this campaign.</p>
           </div>
           <div className="items-header-actions">
-            <button className="btn" onClick={() => navigate(`/campaign/${campaignId}/shop`)}>
-              Visit Shop
+            <button className="btn" onClick={() => navigate(`/campaign/${campaignId}/market`)}>
+              Visit Market
             </button>
             <button className="btn" onClick={() => navigate(`/campaign/${campaignId}`)}>
               Back to Camp

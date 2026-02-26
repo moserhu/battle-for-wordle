@@ -18,7 +18,6 @@ export default function Campaigns() {
   const [manageCampaign, setManageCampaign] = useState(null);
   const [renameValue, setRenameValue] = useState('');
   const [kickList, setKickList] = useState([]);
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [confirmDeleteName, setConfirmDeleteName] = useState('');
   const [inviteCode, setInviteCode] = useState('');
   const [campaignName, setCampaignName] = useState('');
@@ -38,9 +37,6 @@ export default function Campaigns() {
 
   const fetchCampaigns = useCallback(async () => {
       if (!user?.user_id) return;
-      const searchParams = new URLSearchParams(window.location.search);
-      const manageMode = searchParams.get('manage') === '1';
-
       const res = await fetch(`${API_BASE}/api/user/campaigns`, {
         method: 'POST',
         headers: {
@@ -55,7 +51,7 @@ export default function Campaigns() {
       } else {
         setCampaigns([]);
       }
-  }, [user, token, navigate]);
+  }, [user, token]);
 
   const fetchOwnedCampaigns = useCallback(async () => {
     if (!user?.user_id) return;
@@ -318,7 +314,6 @@ export default function Campaigns() {
                           setManageCampaign(camp);
                           setRenameValue(camp.name || '');
                           setKickList([]);
-                          setConfirmingDelete(false);
                           setConfirmDeleteName('');
                           setShowManageModal(true);
                         }}

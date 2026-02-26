@@ -25,7 +25,7 @@ export default function StreakInfoModal({ visible, onClose }) {
         </button>
         <h2>Streaks</h2>
         <p>
-          The <strong>higher</strong> your <strong>streak</strong>, the <strong>better</strong> the shop owner treats you.
+          The <strong>higher</strong> your <strong>streak</strong>, the <strong>better</strong> the market keeper treats you.
           Keep it alive to <strong>unlock</strong> <strong>discounts</strong> and <strong>exclusive items</strong>.
         </p>
       </div>

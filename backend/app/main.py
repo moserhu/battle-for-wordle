@@ -7,7 +7,7 @@ from app.auth import get_current_user
 from app.admin.routes import router as admin_router
 from app.updates.routes import router as updates_router
 from app.auth import create_access_token
-from app.models import UserOnly, UpdateUserInfo, CampaignAndUserOnly, ShopPurchase, UseItemRequest, ItemTargetRequest, ArmyNameUpdate, WeeklyRewardChoose
+from app.models import UserOnly, UpdateUserInfo, CampaignAndUserOnly, ShopPurchase, ShopReshuffle, UseItemRequest, ItemTargetRequest, ArmyNameUpdate, WeeklyRewardChoose
 from app.recap import service as recap_service
 from prometheus_fastapi_instrumentator import Instrumentator
 
@@ -213,8 +213,8 @@ def purchase_shop_item(data: ShopPurchase, current_user: dict = Depends(get_curr
     return crud.purchase_item(current_user["user_id"], data.campaign_id, data.item_key)
 
 @app.post("/api/campaign/shop/reshuffle")
-def reshuffle_shop(data: CampaignOnly, current_user: dict = Depends(get_current_user)):
-    return crud.reshuffle_shop(current_user["user_id"], data.campaign_id)
+def reshuffle_shop(data: ShopReshuffle, current_user: dict = Depends(get_current_user)):
+    return crud.reshuffle_shop(current_user["user_id"], data.campaign_id, data.category)
 
 @app.post("/api/campaign/items/use")
 def use_campaign_item(data: UseItemRequest, current_user: dict = Depends(get_current_user)):

@@ -2075,6 +2075,46 @@ def get_shop_catalog():
         for item in ITEM_CATALOG
     ]
 
+def _select_shop_items_by_category(catalog: list[dict], count_per: int = 2) -> dict[str, list[str]]:
+    categories = {"illusion": [], "blessing": [], "curse": []}
+    for item in catalog:
+        key = item.get("key")
+        category = item.get("category")
+        if key and category in categories:
+            categories[category].append(key)
+    selection: dict[str, list[str]] = {}
+    for category, keys in categories.items():
+        if len(keys) <= count_per:
+            selection[category] = list(keys)
+        else:
+            selection[category] = random.sample(keys, count_per)
+    return selection
+
+def _normalize_shop_rotation(raw_items, catalog: list[dict], count_per: int = 2) -> dict[str, list[str]]:
+    categories = {"illusion": [], "blessing": [], "curse": []}
+    key_to_category = {item.get("key"): item.get("category") for item in catalog}
+    if isinstance(raw_items, dict):
+        for category, keys in raw_items.items():
+            if category in categories and isinstance(keys, list):
+                for key in keys:
+                    if key not in categories[category] and len(categories[category]) < count_per:
+                        categories[category].append(key)
+    elif isinstance(raw_items, list):
+        for key in raw_items:
+            category = key_to_category.get(key)
+            if category in categories and key not in categories[category] and len(categories[category]) < count_per:
+                categories[category].append(key)
+    # Fill missing slots per category.
+    fresh = _select_shop_items_by_category(catalog, count_per)
+    for category in categories:
+        if len(categories[category]) < count_per:
+            for key in fresh.get(category, []):
+                if key not in categories[category]:
+                    categories[category].append(key)
+                if len(categories[category]) >= count_per:
+                    break
+    return categories
+
 def _get_shop_day(conn, campaign_id: int):
     _, _, _, _, target_date = resolve_campaign_day(conn, campaign_id, None)
     return target_date.strftime("%Y-%m-%d")
@@ -2087,17 +2127,20 @@ def _get_or_create_shop_rotation(conn, user_id: int, campaign_id: int, date_str:
     """, (user_id, campaign_id, date_str)).fetchone()
     if rotation_row and rotation_row[0]:
         if isinstance(rotation_row[0], list):
-            return rotation_row[0]
+            normalized = _normalize_shop_rotation(rotation_row[0], ITEM_CATALOG, 2)
+            conn.execute("""
+                UPDATE campaign_shop_rotation
+                SET items = %s, updated_at = CURRENT_TIMESTAMP
+                WHERE user_id = %s AND campaign_id = %s AND date = %s
+            """, (json.dumps(normalized), user_id, campaign_id, date_str))
+            return normalized
         try:
-            return json.loads(rotation_row[0])
+            parsed = json.loads(rotation_row[0])
+            return _normalize_shop_rotation(parsed, ITEM_CATALOG, 2)
         except (json.JSONDecodeError, TypeError):
             pass
 
-    catalog_keys = [item["key"] for item in ITEM_CATALOG]
-    if len(catalog_keys) <= 6:
-        selection = catalog_keys
-    else:
-        selection = random.sample(catalog_keys, 6)
+    selection = _select_shop_items_by_category(ITEM_CATALOG, 2)
     conn.execute("""
         INSERT INTO campaign_shop_rotation (user_id, campaign_id, date, items)
         VALUES (%s, %s, %s, %s)
@@ -2183,7 +2226,7 @@ def get_shop_state(user_id: int, campaign_id: int):
             })
 
         purchased_rows = conn.execute("""
-            SELECT item_key
+            SELECT item_key, details
             FROM campaign_shop_log
             WHERE user_id = %s
               AND campaign_id = %s
@@ -2193,11 +2236,62 @@ def get_shop_state(user_id: int, campaign_id: int):
                 OR DATE(created_at AT TIME ZONE 'America/Chicago') = %s
               )
         """, (user_id, campaign_id, "purchase", today_str, today_str)).fetchall()
-        purchased_items = [row[0] for row in purchased_rows if row[0]]
+        purchased_items = []
+        purchased_by_category = {"illusion": set(), "blessing": set(), "curse": set()}
+        for row in purchased_rows:
+            item_key = row[0]
+            if item_key:
+                purchased_items.append(item_key)
+            details = None
+            if row[1]:
+                try:
+                    details = json.loads(row[1])
+                except json.JSONDecodeError:
+                    details = None
+            category = details.get("category") if isinstance(details, dict) else None
+            if category in purchased_by_category and item_key:
+                purchased_by_category[category].add(item_key)
 
-        rotation_keys = _get_or_create_shop_rotation(conn, user_id, campaign_id, today_str)
+        rotation_by_category = _get_or_create_shop_rotation(conn, user_id, campaign_id, today_str)
         catalog = {item["key"]: item for item in get_shop_catalog()}
-        rotated_items = [catalog[key] for key in rotation_keys if key in catalog]
+        items_by_category = {}
+        for category in ("illusion", "blessing", "curse"):
+            keys = rotation_by_category.get(category, []) if isinstance(rotation_by_category, dict) else []
+            items_by_category[category] = [catalog[key] for key in keys if key in catalog]
+        rotated_items = [item for group in items_by_category.values() for item in group]
+        restock_rows = conn.execute("""
+            SELECT details
+            FROM campaign_shop_log
+            WHERE user_id = %s
+              AND campaign_id = %s
+              AND event_type = %s
+              AND (
+                (details::jsonb ? 'date' AND details::jsonb->>'date' = %s)
+                OR DATE(created_at AT TIME ZONE 'America/Chicago') = %s
+              )
+        """, (user_id, campaign_id, "restock", today_str, today_str)).fetchall()
+        restocks_used_by_category = {"illusion": 0, "blessing": 0, "curse": 0}
+        for row in restock_rows:
+            raw_details = row[0] if row else None
+            details = None
+            if raw_details:
+                try:
+                    details = json.loads(raw_details) if isinstance(raw_details, str) else raw_details
+                except json.JSONDecodeError:
+                    details = None
+            category = details.get("category") if isinstance(details, dict) else None
+            if category in restocks_used_by_category:
+                restocks_used_by_category[category] += 1
+
+        max_restocks_per_shop = 2
+        restocks_remaining_by_category = {
+            category: max(0, max_restocks_per_shop - restocks_used_by_category.get(category, 0))
+            for category in restocks_used_by_category
+        }
+        can_reshuffle_by_category = {
+            category: (len(purchased_by_category[category]) == 0 and restocks_remaining_by_category[category] > 0)
+            for category in purchased_by_category
+        }
 
     return {
         "coins": coins,
@@ -2208,7 +2302,10 @@ def get_shop_state(user_id: int, campaign_id: int):
         "shop_log": shop_log,
         "purchased_today": bool(purchased_items),
         "purchased_item_keys": purchased_items,
-        "can_reshuffle": not purchased_items
+        "can_reshuffle": any(can_reshuffle_by_category.values()),
+        "items_by_category": items_by_category,
+        "can_reshuffle_by_category": can_reshuffle_by_category,
+        "restocks_remaining_by_category": restocks_remaining_by_category
     }
 
 def purchase_item(user_id: int, campaign_id: int, item_key: str):
@@ -2293,7 +2390,9 @@ def purchase_item(user_id: int, campaign_id: int, item_key: str):
         "quantity": new_quantity
     }
 
-def reshuffle_shop(user_id: int, campaign_id: int, cost: int = 3):
+def reshuffle_shop(user_id: int, campaign_id: int, category: str, cost: int = 3):
+    if category not in {"illusion", "blessing", "curse"}:
+        raise HTTPException(status_code=400, detail="Invalid market category.")
     with get_db() as conn:
         today_str = _get_shop_day(conn, campaign_id)
         purchased_row = conn.execute("""
@@ -2306,10 +2405,27 @@ def reshuffle_shop(user_id: int, campaign_id: int, cost: int = 3):
                 (details::jsonb ? 'date' AND details::jsonb->>'date' = %s)
                 OR DATE(created_at AT TIME ZONE 'America/Chicago') = %s
               )
+              AND (details::jsonb ? 'category' AND details::jsonb->>'category' = %s)
             LIMIT 1
-        """, (user_id, campaign_id, "purchase", today_str, today_str)).fetchone()
+        """, (user_id, campaign_id, "purchase", today_str, today_str, category)).fetchone()
         if purchased_row:
-            raise HTTPException(status_code=400, detail="Cannot reshuffle after purchasing today.")
+            raise HTTPException(status_code=400, detail="Cannot reshuffle after purchasing in this stall today.")
+
+        restock_count_row = conn.execute("""
+            SELECT COUNT(1)
+            FROM campaign_shop_log
+            WHERE user_id = %s
+              AND campaign_id = %s
+              AND event_type = %s
+              AND (
+                (details::jsonb ? 'date' AND details::jsonb->>'date' = %s)
+                OR DATE(created_at AT TIME ZONE 'America/Chicago') = %s
+              )
+              AND (details::jsonb ? 'category' AND details::jsonb->>'category' = %s)
+        """, (user_id, campaign_id, "restock", today_str, today_str, category)).fetchone()
+        restock_count = int(restock_count_row[0] or 0) if restock_count_row else 0
+        if restock_count >= 2:
+            raise HTTPException(status_code=400, detail="You can only restock this stall 2 times per day.")
 
         coins_row = conn.execute("""
             SELECT coins
@@ -2320,11 +2436,26 @@ def reshuffle_shop(user_id: int, campaign_id: int, cost: int = 3):
         if coins < cost:
             raise HTTPException(status_code=400, detail="Not enough coins to reshuffle.")
 
-        catalog_keys = [item["key"] for item in ITEM_CATALOG]
-        if len(catalog_keys) <= 6:
-            selection = catalog_keys
+        rotation_row = conn.execute("""
+            SELECT items
+            FROM campaign_shop_rotation
+            WHERE user_id = %s AND campaign_id = %s AND date = %s
+        """, (user_id, campaign_id, today_str)).fetchone()
+        rotation = None
+        if rotation_row and rotation_row[0]:
+            if isinstance(rotation_row[0], list):
+                rotation = _normalize_shop_rotation(rotation_row[0], ITEM_CATALOG, 2)
+            else:
+                try:
+                    rotation = _normalize_shop_rotation(json.loads(rotation_row[0]), ITEM_CATALOG, 2)
+                except (json.JSONDecodeError, TypeError):
+                    rotation = None
+
+        selection_by_category = _select_shop_items_by_category(ITEM_CATALOG, 2)
+        if rotation is None:
+            rotation = selection_by_category
         else:
-            selection = random.sample(catalog_keys, 6)
+            rotation[category] = selection_by_category.get(category, [])
 
         conn.execute("""
             UPDATE campaign_coins
@@ -2339,18 +2470,22 @@ def reshuffle_shop(user_id: int, campaign_id: int, cost: int = 3):
             DO UPDATE SET items = EXCLUDED.items,
                           reshuffles = campaign_shop_rotation.reshuffles + 1,
                           updated_at = CURRENT_TIMESTAMP
-        """, (user_id, campaign_id, today_str, json.dumps(selection)))
+        """, (user_id, campaign_id, today_str, json.dumps(rotation)))
 
-        log_details = json.dumps({"cost": cost, "date": today_str})
+        log_details = json.dumps({"cost": cost, "date": today_str, "category": category})
         conn.execute("""
             INSERT INTO campaign_shop_log (user_id, campaign_id, event_type, details)
             VALUES (%s, %s, %s, %s)
         """, (user_id, campaign_id, "restock", log_details))
 
         catalog = {item["key"]: item for item in get_shop_catalog()}
-        rotated_items = [catalog[key] for key in selection if key in catalog]
+        items_by_category = {}
+        for category_key in ("illusion", "blessing", "curse"):
+            keys = rotation.get(category_key, [])
+            items_by_category[category_key] = [catalog[key] for key in keys if key in catalog]
+        rotated_items = [item for group in items_by_category.values() for item in group]
 
-    return {"coins": coins - cost, "items": rotated_items}
+    return {"coins": coins - cost, "items": rotated_items, "items_by_category": items_by_category}
 
 def use_item(user_id: int, campaign_id: int, item_key: str, target_user_id, effect_payload: dict | None = None):
     item = get_item(item_key)

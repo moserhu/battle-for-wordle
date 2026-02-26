@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import './ImageUploadField.css';
 
 const API_BASE = process.env.REACT_APP_API_URL || `${window.location.protocol}//${window.location.hostname}`;
@@ -22,6 +22,7 @@ export default function ImageUploadField({
   const [preview, setPreview] = useState(value || '');
   const [selectedFile, setSelectedFile] = useState(null);
   const [localPreview, setLocalPreview] = useState('');
+  const localPreviewRef = useRef('');
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const [showConfirm, setShowConfirm] = useState(false);
@@ -30,19 +31,29 @@ export default function ImageUploadField({
     if (!selectedFile) {
       setPreview(value || '');
     }
-  }, [value]);
+  }, [value, selectedFile]);
 
   useEffect(() => {
     if (!selectedFile) {
-      if (localPreview) {
-        URL.revokeObjectURL(localPreview);
-        setLocalPreview('');
+      if (localPreviewRef.current) {
+        URL.revokeObjectURL(localPreviewRef.current);
+        localPreviewRef.current = '';
       }
+      setLocalPreview('');
       return;
     }
     const nextPreview = URL.createObjectURL(selectedFile);
+    if (localPreviewRef.current) {
+      URL.revokeObjectURL(localPreviewRef.current);
+    }
+    localPreviewRef.current = nextPreview;
     setLocalPreview(nextPreview);
-    return () => URL.revokeObjectURL(nextPreview);
+    return () => {
+      if (localPreviewRef.current === nextPreview) {
+        URL.revokeObjectURL(nextPreview);
+        localPreviewRef.current = '';
+      }
+    };
   }, [selectedFile]);
 
   const handleFileSelect = (file) => {

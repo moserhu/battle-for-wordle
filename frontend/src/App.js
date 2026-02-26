@@ -16,7 +16,7 @@ import RequireAuth from './auth/RequireAuth';
 import NavBar from './components/NavBar';
 import Campaigns from './pages/Campaigns';
 import CampaignDashboard from './pages/CampaignDashboard';
-import Shop from './pages/Shop';
+import Market from './pages/market/Market';
 import ItemsStorage from './pages/ItemsStorage';
 import UpdateLogs from './pages/UpdateLogs';
 
@@ -61,10 +61,18 @@ function AppShell() {
             }
           />
           <Route
+            path="/campaign/:campaignId/market"
+            element={
+              <RequireAuth>
+                <Market />
+              </RequireAuth>
+            }
+          />
+          <Route
             path="/campaign/:campaignId/shop"
             element={
               <RequireAuth>
-                <Shop />
+                <Market />
               </RequireAuth>
             }
           />
