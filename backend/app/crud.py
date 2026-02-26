@@ -14,6 +14,8 @@ from datetime import timedelta
 import os
 from dotenv import load_dotenv
 import bcrypt
+import secrets
+from app.utils.email import send_email
 
 # Load environment variables from .env file
 load_dotenv()
@@ -2503,3 +2505,108 @@ def get_current_day_hint(user_id: int, campaign_id: int):
             return {"hint": None}
 
         return {"hint": payload}
+
+
+# =====================
+# Password reset flow
+# =====================
+
+def request_password_reset(email: str):
+    """Create a password reset token for the given email and send via SMTP.
+
+    Always returns {"status": "ok"} to avoid account enumeration.
+    """
+
+    email_norm = (email or "").strip().lower()
+    if not email_norm:
+        return {"status": "ok"}
+
+    app_base_url = os.getenv("APP_BASE_URL", "http://localhost:3000").rstrip("/")
+
+    with get_db() as conn:
+        user_row = conn.execute(
+            "SELECT id FROM users WHERE email = %s",
+            (email_norm,)
+        ).fetchone()
+
+        # If user doesn't exist, do not reveal.
+        if not user_row:
+            return {"status": "ok"}
+
+        user_id = int(user_row[0])
+
+        # Generate token and store only a hash.
+        token = secrets.token_urlsafe(32)
+        token_hash = sha256(token.encode("utf-8")).hexdigest()
+        expires_at = datetime.utcnow() + timedelta(minutes=60)
+
+        # Single active token per user. Issuing a new token invalidates the old one.
+        conn.execute(
+            """
+            INSERT INTO password_reset_tokens (user_id, token_hash, expires_at)
+            VALUES (%s, %s, %s)
+            ON CONFLICT (user_id)
+            DO UPDATE SET token_hash = EXCLUDED.token_hash,
+                          expires_at = EXCLUDED.expires_at,
+                          created_at = CURRENT_TIMESTAMP
+            """,
+            (user_id, token_hash, expires_at)
+        )
+
+    reset_link = f"{app_base_url}/reset-password?token={token}"
+    subject = "Reset your password"
+    body = (
+        "You requested a password reset.\n\n"
+        f"Click this link to set a new password (valid for 60 minutes):\n{reset_link}\n\n"
+        "If you did not request this, you can ignore this email."
+    )
+
+    # If SMTP isn't configured yet, fail loudly so Hunter can wire creds.
+    send_email(email_norm, subject, body)
+
+    return {"status": "ok"}
+
+
+def reset_password(token: str, new_password: str):
+    token = (token or "").strip()
+    if not token:
+        raise HTTPException(status_code=400, detail="Missing reset token")
+
+    if not new_password or len(new_password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+
+    token_hash = sha256(token.encode("utf-8")).hexdigest()
+
+    with get_db() as conn:
+        row = conn.execute(
+            """
+            SELECT user_id, expires_at
+            FROM password_reset_tokens
+            WHERE token_hash = %s
+            """,
+            (token_hash,)
+        ).fetchone()
+
+        if not row:
+            raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+
+        user_id = int(row[0])
+        expires_at = row[1]
+
+        now_utc = datetime.utcnow()
+        compare_now = now_utc if (expires_at is None or getattr(expires_at, "tzinfo", None) is None) else now_utc.replace(tzinfo=expires_at.tzinfo)
+        if expires_at and expires_at < compare_now:
+            # Best-effort cleanup
+            conn.execute("DELETE FROM password_reset_tokens WHERE user_id = %s", (user_id,))
+            raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+
+        hashed_pw = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt())
+        conn.execute(
+            "UPDATE users SET password = %s WHERE id = %s",
+            (hashed_pw, user_id)
+        )
+
+        # Invalidate token after use
+        conn.execute("DELETE FROM password_reset_tokens WHERE user_id = %s", (user_id,))
+
+    return {"status": "ok"}

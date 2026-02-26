@@ -66,6 +66,11 @@ export default function Login() {
         </span>
           </div>
           <button onClick={handleLogin}>Login</button>
+
+          <p className="small-link" style={{ marginTop: 8 }}>
+            <Link to={`/forgot-password?redirectTo=${encodeURIComponent(redirectTo)}`}>Forgot password?</Link>
+          </p>
+
           <p className="small-link">
             Don’t have an account?{" "}
           <Link to={`/register?redirectTo=${encodeURIComponent(redirectTo)}`}>

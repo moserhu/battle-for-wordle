@@ -20,6 +20,17 @@ def init_db():
         conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_image_key TEXT")
         conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_image_thumb_url TEXT")
         conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_image_thumb_key TEXT")
+
+        # Password reset tokens (single active token per user)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS password_reset_tokens (
+                user_id INTEGER PRIMARY KEY,
+                token_hash TEXT NOT NULL,
+                expires_at TIMESTAMP NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
         conn.execute("UPDATE users SET is_admin = TRUE WHERE id = 2")
         conn.execute("ALTER TABLE campaign_members ADD COLUMN IF NOT EXISTS army_image_url TEXT")
         conn.execute("ALTER TABLE campaign_members ADD COLUMN IF NOT EXISTS army_image_key TEXT")
