@@ -171,6 +171,43 @@ describe('Campaigns, Dashboard, and Items pages', () => {
     await waitFor(() => expect(screen.queryByText(/manage campaign/i)).not.toBeInTheDocument());
   });
 
+  test('Campaigns blocks create and rename when campaign name exceeds 32 chars', async () => {
+    const tooLongName = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567';
+    expect(tooLongName.length).toBeGreaterThan(32);
+
+    global.fetch = createFetchRouter({
+      '/api/user/campaigns': [
+        makeResponse([{ campaign_id: 1, name: 'Realm One', daily_completed: false }]),
+      ],
+      '/api/campaigns/owned': [
+        makeResponse([{ id: 1 }]),
+      ],
+    }, ['/api/campaigns/owned']);
+
+    render(<Campaigns />);
+    expect(await screen.findByText(/realm one/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /create campaign/i }));
+    fireEvent.change(screen.getByLabelText(/campaign name/i), { target: { value: tooLongName } });
+    fireEvent.click(screen.getByRole('button', { name: /^create$/i }));
+    expect(window.alert).toHaveBeenCalledWith('Campaign name must be 32 characters or fewer.');
+    expect(global.fetch).not.toHaveBeenCalledWith(
+      expect.stringContaining('/api/campaign/create'),
+      expect.anything()
+    );
+    fireEvent.click(screen.getByRole('button', { name: /^cancel$/i }));
+
+    fireEvent.click(screen.getByLabelText(/manage realm one/i));
+    expect(await screen.findByText(/manage campaign/i)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText(/campaign name/i, { selector: '#renameCampaign' }), { target: { value: tooLongName } });
+    fireEvent.click(screen.getByRole('button', { name: /save name/i }));
+    expect(window.alert).toHaveBeenCalledWith('Campaign name must be 32 characters or fewer.');
+    expect(global.fetch).not.toHaveBeenCalledWith(
+      expect.stringContaining('/api/campaign/update_name'),
+      expect.anything()
+    );
+  });
+
   test('CampaignDashboard loads hub data, recap, leaderboard, and routes actions', async () => {
     mockParams = { id: '44' };
     global.fetch = createFetchRouter({

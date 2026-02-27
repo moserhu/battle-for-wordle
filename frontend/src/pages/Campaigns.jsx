@@ -6,6 +6,7 @@ import ShareCard from '../components/ShareCard';
 import '../styles/Campaigns.css'; // ✅ new stylesheet for this page
 
 const API_BASE = process.env.REACT_APP_API_URL || `${window.location.protocol}//${window.location.hostname}`;
+const CAMPAIGN_NAME_MAX_LENGTH = 32;
 
 export default function Campaigns() {
   const navigate = useNavigate();
@@ -81,6 +82,15 @@ export default function Campaigns() {
   if (loading) return null;
 
   const handleCreate = async () => {
+  const cleanedCampaignName = (campaignName || '').trim();
+  if (!cleanedCampaignName) {
+    alert('Campaign name cannot be empty');
+    return;
+  }
+  if (cleanedCampaignName.length > CAMPAIGN_NAME_MAX_LENGTH) {
+    alert(`Campaign name must be ${CAMPAIGN_NAME_MAX_LENGTH} characters or fewer.`);
+    return;
+  }
   const res = await fetch(`${API_BASE}/api/campaign/create`, {
     method: 'POST',
     headers: {
@@ -88,7 +98,7 @@ export default function Campaigns() {
       'Authorization': `Bearer ${token}`,
     },
     body: JSON.stringify({
-      name: campaignName,
+      name: cleanedCampaignName,
       cycle_length: parseInt(cycleLength),
       is_admin_campaign: isAdmin ? isAdminCampaign : false
     })
@@ -138,6 +148,15 @@ export default function Campaigns() {
 
   const handleRename = async () => {
     if (!manageCampaign) return;
+    const cleanedRename = (renameValue || '').trim();
+    if (!cleanedRename) {
+      alert('Campaign name cannot be empty');
+      return;
+    }
+    if (cleanedRename.length > CAMPAIGN_NAME_MAX_LENGTH) {
+      alert(`Campaign name must be ${CAMPAIGN_NAME_MAX_LENGTH} characters or fewer.`);
+      return;
+    }
     const res = await fetch(`${API_BASE}/api/campaign/update_name`, {
       method: 'POST',
       headers: {
@@ -146,7 +165,7 @@ export default function Campaigns() {
       },
       body: JSON.stringify({
         campaign_id: manageCampaign.campaign_id,
-        name: renameValue,
+        name: cleanedRename,
       }),
     });
     const data = await res.json();
@@ -400,6 +419,7 @@ export default function Campaigns() {
               className="campaigns-modal-input"
               value={campaignName}
               onChange={(e) => setCampaignName(e.target.value)}
+              maxLength={CAMPAIGN_NAME_MAX_LENGTH}
             />
 
             <label className="campaigns-modal-label" htmlFor="cycleLength">
@@ -477,6 +497,7 @@ export default function Campaigns() {
                 className="campaigns-modal-input"
                 value={renameValue}
                 onChange={(e) => setRenameValue(e.target.value)}
+                maxLength={CAMPAIGN_NAME_MAX_LENGTH}
               />
               <button className="campaigns-modal-btn primary" onClick={handleRename}>
                 Save Name

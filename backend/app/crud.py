@@ -101,6 +101,12 @@ def login_user(email, password):
 
 
 def create_campaign(name, user_id, cycle_length, is_admin_campaign: bool = False):
+    cleaned_name = (name or "").strip()
+    if not cleaned_name:
+        raise HTTPException(status_code=400, detail="Campaign name cannot be empty")
+    if len(cleaned_name) > 32:
+        raise HTTPException(status_code=400, detail="Campaign name must be 32 characters or fewer")
+
     code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
     today = datetime.now(ZoneInfo("America/Chicago")).strftime("%Y-%m-%d")
 
@@ -111,7 +117,7 @@ def create_campaign(name, user_id, cycle_length, is_admin_campaign: bool = False
             INSERT INTO campaigns (name, owner_id, invite_code, start_date, cycle_length, is_admin_campaign)
             VALUES (%s, %s, %s, %s, %s, %s)
             RETURNING id
-        """, (name, user_id, code, today, cycle_length, bool(is_admin_campaign)))
+        """, (cleaned_name, user_id, code, today, cycle_length, bool(is_admin_campaign)))
 
         camp_id = cur.fetchone()[0]
 
@@ -1582,6 +1588,8 @@ def update_campaign_name(campaign_id: int, requester_id: int, name: str):
     cleaned = (name or "").strip()
     if not cleaned:
         raise HTTPException(status_code=400, detail="Campaign name cannot be empty")
+    if len(cleaned) > 32:
+        raise HTTPException(status_code=400, detail="Campaign name must be 32 characters or fewer")
 
     with get_db() as conn:
         owner_row = conn.execute(

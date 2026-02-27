@@ -82,9 +82,9 @@ const MARKET_HUB_MAPS = {
     height: 1024,
     areas: {
       // Tuned to actual generated hub map stall silhouettes/signs (1536x1024)
-      illusion: { x: 65, y: 250, width: 470, height: 490 },
-      curse: { x: 495, y: 185, width: 560, height: 500 },
-      blessing: { x: 970, y: 250, width: 500, height: 500 },
+      illusion: { x: 10, y: 250, width: 470, height: 490 },
+      curse: { x: 520, y: 185, width: 450, height: 500 },
+      blessing: { x: 1015, y: 250, width: 470, height: 500 },
     },
   },
   mobile: {
@@ -93,9 +93,9 @@ const MARKET_HUB_MAPS = {
     height: 1536,
     areas: {
       // Tuned to actual generated hub map stall silhouettes/signs (1024x1536)
-      curse: { x: 300, y: 315, width: 425, height: 500 },
-      illusion: { x: 75, y: 760, width: 390, height: 500 },
-      blessing: { x: 545, y: 785, width: 400, height: 485 },
+      curse: { x: 300, y: 230, width: 425, height: 440 },
+      illusion: { x: 50, y: 710, width: 390, height: 500 },
+      blessing: { x: 585, y: 785, width: 400, height: 485 },
     },
   },
 };

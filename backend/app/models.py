@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, constr
 from typing import Optional, List
 
 class GuessRequest(BaseModel):
@@ -14,7 +14,7 @@ class UserLogin(BaseModel):
     password: str
 
 class NewCampaign(BaseModel):
-    name: str
+    name: constr(max_length=32)
     cycle_length: int
     is_admin_campaign: Optional[bool] = False
 
@@ -34,7 +34,7 @@ class CampaignRulerTitle(BaseModel):
 
 class CampaignNameUpdate(BaseModel):
     campaign_id: int
-    name: str
+    name: constr(max_length=32)
 
 class UserRegister(BaseModel):
     first_name: str

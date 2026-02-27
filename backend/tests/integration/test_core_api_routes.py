@@ -167,6 +167,26 @@ class CoreApiRoutesIntegrationTests(unittest.TestCase):
     self.assertEqual(res.status_code, 403)
     self.assertEqual(res.json(), {"detail": "Forbidden"})
 
+  def test_campaign_create_rejects_name_over_32_chars(self):
+    too_long_name = "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567"
+    self.assertGreater(len(too_long_name), 32)
+    with patch.object(app_main.crud, "create_campaign") as mock_create:
+      res = self.client.post("/api/campaign/create", json={
+        "name": too_long_name, "cycle_length": 7, "is_admin_campaign": False
+      })
+    self.assertEqual(res.status_code, 422)
+    mock_create.assert_not_called()
+
+  def test_campaign_update_name_rejects_name_over_32_chars(self):
+    too_long_name = "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567"
+    self.assertGreater(len(too_long_name), 32)
+    with patch.object(app_main.crud, "update_campaign_name") as mock_update:
+      res = self.client.post("/api/campaign/update_name", json={
+        "campaign_id": 3, "name": too_long_name
+      })
+    self.assertEqual(res.status_code, 422)
+    mock_update.assert_not_called()
+
 
 if __name__ == "__main__":
   unittest.main()
