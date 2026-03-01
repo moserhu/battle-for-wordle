@@ -2124,8 +2124,13 @@ def _normalize_shop_rotation(raw_items, catalog: list[dict], count_per: int = 2)
     return categories
 
 def _get_shop_day(conn, campaign_id: int):
-    _, _, _, _, target_date = resolve_campaign_day(conn, campaign_id, None)
-    return target_date.strftime("%Y-%m-%d")
+    """Return the shop's daily reset key.
+
+    Shop inventory + purchase limits reset at **midnight America/Chicago** (calendar day),
+    intentionally independent of the campaign's word-day cutoff logic.
+    """
+    now_ct = datetime.now(ZoneInfo("America/Chicago"))
+    return now_ct.strftime("%Y-%m-%d")
 
 def _get_or_create_shop_rotation(conn, user_id: int, campaign_id: int, date_str: str):
     rotation_row = conn.execute("""
