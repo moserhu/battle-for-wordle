@@ -1,12 +1,12 @@
 export const cartographersInsight = {
-  key: 'cartographers_insight',
-  name: "Cartographer's Insight",
+  key: 'grace_of_the_guiding_star',
+  name: 'Grace of the Guiding Star',
   category: 'blessing',
-  description: 'The map rejects a pair of paths; two letters are cast aside.',
+  description: 'Reveal four letters that are not in today\'s answer.',
 };
 
 export const getCartographersLetters = (statusEffects) => {
-  const effect = statusEffects.find((entry) => entry.effect_key === "cartographers_insight");
+  const effect = statusEffects.find((entry) => entry.effect_key === "grace_of_the_guiding_star");
   const letters = effect?.payload?.unused_letters;
   return Array.isArray(letters) ? letters : [];
 };

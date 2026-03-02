@@ -19,7 +19,7 @@ import bcrypt
 # Load environment variables from .env file
 load_dotenv()
 
-from app.items import ITEM_CATALOG, get_item
+from app.items import ITEM_CATALOG, SHOP_ITEM_CATALOG, LEGACY_ITEM_KEY_ALIASES, get_item
 from app.accolades.service import (
     award_accolade,
     is_lucky_strike,
@@ -407,6 +407,9 @@ def load_valid_words():
 
 VALID_WORDS = load_valid_words()
 EXCLUSIVE_ALL_KEYS = {item["key"] for item in ITEM_CATALOG if item.get("exclusive_all")}
+CURSE_ITEM_KEYS = {item["key"] for item in ITEM_CATALOG if item.get("category") == "curse"}
+VOWELS = {"a", "e", "i", "o", "u"}
+CONSONANTS = [letter for letter in string.ascii_lowercase if letter not in VOWELS]
 
 def load_playable_words():
     base_dir = os.path.dirname(__file__)
@@ -415,6 +418,93 @@ def load_playable_words():
         return [line.strip().lower() for line in f if line.strip()]
 
 PLAYABLE_WORDS = set(load_playable_words())
+
+
+def _is_curse_lock_dispersed_for_day(conn, user_id: int, campaign_id: int, target_day: int) -> bool:
+    row = conn.execute("""
+        SELECT effect_value, active
+        FROM campaign_user_status_effects
+        WHERE user_id = %s AND campaign_id = %s AND effect_key = %s
+    """, (user_id, campaign_id, "cursed")).fetchone()
+    if not row:
+        return False
+
+    payload = {}
+    if row[0]:
+        try:
+            payload = json.loads(row[0])
+        except json.JSONDecodeError:
+            payload = {}
+    payload_day = payload.get("day")
+    is_active = bool(row[1]) if row[1] is not None else True
+    return payload_day == target_day and not is_active
+
+
+def _has_active_curse_effect_today(conn, user_id: int, campaign_id: int, target_date_str: str) -> bool:
+    row = conn.execute("""
+        SELECT 1
+        FROM campaign_item_events
+        WHERE campaign_id = %s
+          AND target_user_id = %s
+          AND event_type = %s
+          AND item_key = ANY(%s)
+          AND (details::json->>'effective_on') = %s
+        LIMIT 1
+    """, (campaign_id, user_id, "use", list(CURSE_ITEM_KEYS), target_date_str)).fetchone()
+    return bool(row)
+
+
+def _get_infernal_penalty_payload(conn, user_id: int, campaign_id: int, target_day: int):
+    row = conn.execute("""
+        SELECT effect_value
+        FROM campaign_user_status_effects
+        WHERE user_id = %s AND campaign_id = %s AND effect_key = %s
+    """, (user_id, campaign_id, "infernal_mandate")).fetchone()
+    payload = {"day": target_day, "penalty_applied": 0}
+    if row and row[0]:
+        try:
+            parsed = json.loads(row[0])
+            if isinstance(parsed, dict):
+                payload = parsed
+        except json.JSONDecodeError:
+            payload = {"day": target_day, "penalty_applied": 0}
+    if payload.get("day") != target_day:
+        payload = {"day": target_day, "penalty_applied": 0}
+    payload["penalty_applied"] = int(payload.get("penalty_applied", 0) or 0)
+    return payload
+
+
+def _save_infernal_penalty_payload(conn, user_id: int, campaign_id: int, payload: dict):
+    conn.execute("""
+        INSERT INTO campaign_user_status_effects (
+            user_id, campaign_id, effect_key, effect_value, applied_at, active
+        )
+        VALUES (%s, %s, %s, %s, CURRENT_TIMESTAMP, TRUE)
+        ON CONFLICT (user_id, campaign_id, effect_key)
+        DO UPDATE SET effect_value = EXCLUDED.effect_value,
+                      applied_at = EXCLUDED.applied_at,
+                      active = TRUE
+    """, (user_id, campaign_id, "infernal_mandate", json.dumps(payload)))
+
+
+def _apply_infernal_penalty(conn, user_id: int, campaign_id: int, target_day: int, amount: int):
+    if amount <= 0:
+        return 0
+    payload = _get_infernal_penalty_payload(conn, user_id, campaign_id, target_day)
+    already_applied = int(payload.get("penalty_applied", 0) or 0)
+    remaining_cap = max(20 - already_applied, 0)
+    applied = min(amount, remaining_cap)
+    if applied <= 0:
+        return 0
+
+    payload["penalty_applied"] = already_applied + applied
+    _save_infernal_penalty_payload(conn, user_id, campaign_id, payload)
+    conn.execute("""
+        UPDATE campaign_members
+        SET score = GREATEST(score - %s, 0)
+        WHERE user_id = %s AND campaign_id = %s
+    """, (applied, user_id, campaign_id))
+    return applied
 
 def initialize_campaign_words(campaign_id: int, num_days: int, conn):
     words = load_playable_words()
@@ -590,9 +680,6 @@ def validate_guess(word: str, user_id: int, campaign_id: int, day_override: int 
         5: 4
     }
 
-    if word.lower() not in VALID_WORDS:
-        raise HTTPException(status_code=204, detail="Invalid word")
-
     with get_db() as conn:
         _, cycle_length, current_day, target_day, target_date = resolve_campaign_day(
             conn, campaign_id, day_override
@@ -633,6 +720,7 @@ def validate_guess(word: str, user_id: int, campaign_id: int, day_override: int 
         secret = secret_row[0]
 
         guess = word.lower()
+        is_valid_word = guess in VALID_WORDS
         result = ['absent'] * 5
         secret_counts = Counter(secret)
 
@@ -716,7 +804,10 @@ def validate_guess(word: str, user_id: int, campaign_id: int, day_override: int 
                     payload = details.get("payload") or {}
                 except json.JSONDecodeError:
                     payload = {}
-            active_effects[effect_row[0]] = payload
+            active_effects[_canonical_item_key(effect_row[0])] = payload
+
+        # Dispel Curse does not remove active curse effects.
+        # It only unlocks blessing usage checks in use_item.
 
         clown_payload = None
         clown_row = conn.execute("""
@@ -762,19 +853,80 @@ def validate_guess(word: str, user_id: int, campaign_id: int, day_override: int 
                 WHERE user_id = %s AND campaign_id = %s AND effect_key = %s
             """, (json.dumps(clown_payload), user_id, campaign_id, "send_in_the_clown"))
 
-        seal_payload = active_effects.get("seal_of_silence", {}).get("value")
-        if seal_payload and current_row < 2 and seal_payload in guess:
-            raise HTTPException(status_code=400, detail="That letter is sealed for the first two guesses.")
-
-        edict_payload = active_effects.get("edict_of_compulsion", {}).get("value")
+        edict_payload = active_effects.get("hex_of_forced_utterance", {}).get("value")
         if edict_payload and current_row == 0 and guess != edict_payload:
             raise HTTPException(status_code=400, detail="Your first guess must follow the edict.")
 
-        voidbrand_payload = active_effects.get("voidbrand", {}).get("value")
-        if voidbrand_payload and current_row == 0:
-            banned_letters = set(voidbrand_payload)
-            if any(letter in banned_letters for letter in guess):
-                raise HTTPException(status_code=400, detail="That word is forbidden for the first guess.")
+        vowel_voodoo_payload = active_effects.get("vowel_voodoo", {}).get("value")
+        if vowel_voodoo_payload and current_row < 2:
+            blocked_vowels = {letter for letter in str(vowel_voodoo_payload).lower() if letter in VOWELS}
+            if blocked_vowels and any(letter in blocked_vowels for letter in guess):
+                raise HTTPException(status_code=400, detail="A hexed vowel is blocked for your first two guesses.")
+
+        consonant_cleaver_payload = active_effects.get("consonant_cleaver", {}).get("value")
+        if consonant_cleaver_payload and current_row < 2:
+            blocked_consonants = {letter for letter in str(consonant_cleaver_payload).lower() if letter.isalpha()}
+            if blocked_consonants and any(letter in blocked_consonants for letter in guess):
+                raise HTTPException(status_code=400, detail="A cleaved consonant is blocked for your first two guesses.")
+
+        infernal_active = "infernal_mandate" in active_effects
+        infernal_penalty_applied = 0
+        infernal_rule_broken = False
+        infernal_violation_type = None
+        if not is_valid_word:
+            if infernal_active:
+                infernal_rule_broken = True
+                infernal_violation_type = "playable_word"
+                infernal_penalty_applied += _apply_infernal_penalty(conn, user_id, campaign_id, target_day, 5)
+                if infernal_penalty_applied > 0:
+                    # Persist troop deduction before returning an invalid-word response.
+                    # validate_guess exits via HTTPException here, which would otherwise
+                    # roll back the transaction context.
+                    conn.commit()
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "message": "Invalid word",
+                        "infernal_penalty_applied": infernal_penalty_applied,
+                        "infernal_rule_broken": True,
+                        "infernal_violation_type": infernal_violation_type,
+                    },
+                )
+            raise HTTPException(status_code=204, detail="Invalid word")
+
+        if infernal_active and current_row > 0:
+            required_positions = {}
+            required_letters = set()
+            for row_index in range(current_row):
+                prior_guess = guesses[row_index] if row_index < len(guesses) else None
+                prior_result = results_data[row_index] if row_index < len(results_data) else None
+                if not prior_guess or not prior_result:
+                    continue
+                for idx in range(5):
+                    status_value = prior_result[idx] if idx < len(prior_result) else None
+                    letter = str(prior_guess[idx]).lower() if idx < len(prior_guess) else ""
+                    if not letter:
+                        continue
+                    if status_value == "correct":
+                        required_positions[idx] = letter
+                        required_letters.add(letter)
+                    elif status_value == "present":
+                        required_letters.add(letter)
+
+            broke_hard_mode = False
+            for idx, letter in required_positions.items():
+                if guess[idx] != letter:
+                    broke_hard_mode = True
+                    break
+            if not broke_hard_mode:
+                for letter in required_letters:
+                    if letter not in guess:
+                        broke_hard_mode = True
+                        break
+            if broke_hard_mode:
+                infernal_rule_broken = True
+                infernal_violation_type = "letters"
+                infernal_penalty_applied += _apply_infernal_penalty(conn, user_id, campaign_id, target_day, 5)
 
         if current_row == 0:
             conn.execute("""
@@ -825,7 +977,7 @@ def validate_guess(word: str, user_id: int, campaign_id: int, day_override: int 
 
         # Double Down no longer changes the number of guesses you get.
         max_rows = 6
-        if "executioners_cut" in active_effects:
+        if "reapers_scythe" in active_effects:
             max_rows = max(1, max_rows - 1)
         new_game_over = correct or current_row + 1 == max_rows
 
@@ -1146,7 +1298,10 @@ def validate_guess(word: str, user_id: int, campaign_id: int, day_override: int 
             "result": result,
             "correct": correct,
             "word": secret,
-            "clown_triggered": clown_triggered
+            "clown_triggered": clown_triggered,
+            "infernal_penalty_applied": infernal_penalty_applied,
+            "infernal_rule_broken": infernal_rule_broken,
+            "infernal_violation_type": infernal_violation_type,
         }
 
 def activate_double_down(user_id: int, campaign_id: int):
@@ -1854,6 +2009,7 @@ def get_active_target_effects(user_id: int, campaign_id: int):
               AND (details::json->>'effective_on') = %s
         """, (campaign_id, user_id, "use", target_date_str)).fetchall()
 
+        dispelled = _is_curse_lock_dispersed_for_day(conn, user_id, campaign_id, target_day)
         effects = []
         for row in rows:
             payload = None
@@ -1862,9 +2018,10 @@ def get_active_target_effects(user_id: int, campaign_id: int):
                     payload = json.loads(row[1])
                 except json.JSONDecodeError:
                     payload = {"raw": row[1]}
-            effects.append({"item_key": row[0], "details": payload})
+            item_key = _canonical_item_key(row[0])
+            effects.append({"item_key": item_key, "details": payload})
 
-    return {"day": target_day, "effects": effects}
+    return {"day": target_day, "effects": effects, "curse_dispersed": dispelled}
 
 def get_current_status_effects(user_id: int, campaign_id: int):
     with get_db() as conn:
@@ -1879,6 +2036,7 @@ def get_current_status_effects(user_id: int, campaign_id: int):
     effects = []
     for row in rows:
         effect_key, effect_value, expires_at = row
+        effect_key = _canonical_item_key(effect_key)
         if expires_at:
             compare_now = now_ct if expires_at.tzinfo else now_ct.replace(tzinfo=None)
             if expires_at < compare_now:
@@ -1890,7 +2048,7 @@ def get_current_status_effects(user_id: int, campaign_id: int):
             except json.JSONDecodeError:
                 payload = {"raw": effect_value}
 
-        if effect_key in ("oracle_whisper", "cartographers_insight"):
+        if effect_key in ("oracle_whisper", "grace_of_the_guiding_star", "twin_fates", "god_of_the_easy_tongue"):
             if not payload or payload.get("day") != target_day:
                 continue
 
@@ -1905,13 +2063,15 @@ def redeem_candle_of_mercy(user_id: int, campaign_id: int):
     with get_db() as conn:
         _, _, _, target_day, target_date = resolve_campaign_day(conn, campaign_id, None)
         target_date_str = target_date.strftime("%Y-%m-%d")
+        admin_testing_override = is_admin_campaign(conn, campaign_id) and is_admin_user(conn, user_id)
 
-        status_row = conn.execute("""
-            SELECT effect_value
-            FROM campaign_user_status_effects
-            WHERE user_id = %s AND campaign_id = %s AND effect_key = %s AND active = TRUE
+        qty_row = conn.execute("""
+            SELECT quantity
+            FROM campaign_user_items
+            WHERE user_id = %s AND campaign_id = %s AND item_key = %s
         """, (user_id, campaign_id, "candle_of_mercy")).fetchone()
-        if not status_row:
+        qty = qty_row[0] if qty_row else 0
+        if qty <= 0 and not admin_testing_override:
             raise HTTPException(status_code=400, detail="Candle of Mercy is not available")
 
         result_row = conn.execute("""
@@ -1934,11 +2094,7 @@ def redeem_candle_of_mercy(user_id: int, campaign_id: int):
         if redeemed_row:
             raise HTTPException(status_code=400, detail="Candle of Mercy already redeemed today")
 
-        try:
-            payload = json.loads(status_row[0]) if status_row[0] else {}
-            bonus = int(payload.get("bonus_troops_on_fail", 10))
-        except (json.JSONDecodeError, ValueError, TypeError):
-            bonus = 10
+        bonus = 10
 
         conn.execute("""
             UPDATE campaign_members
@@ -1965,11 +2121,12 @@ def redeem_candle_of_mercy(user_id: int, campaign_id: int):
             VALUES (%s, %s, %s, %s, %s)
         """, (user_id, campaign_id, "candle_of_mercy", "redeem", log_details))
 
-        conn.execute("""
-            UPDATE campaign_user_status_effects
-            SET active = FALSE
-            WHERE user_id = %s AND campaign_id = %s AND effect_key = %s
-        """, (user_id, campaign_id, "candle_of_mercy"))
+        if not admin_testing_override:
+            conn.execute("""
+                UPDATE campaign_user_items
+                SET quantity = quantity - 1
+                WHERE user_id = %s AND campaign_id = %s AND item_key = %s
+            """, (user_id, campaign_id, "candle_of_mercy"))
 
     return {"bonus": bonus}
 
@@ -2080,8 +2237,13 @@ def get_global_leaderboard(limit: int = 10):
 def get_shop_catalog():
     return [
         {k: v for k, v in item.items() if k != "handler"}
-        for item in ITEM_CATALOG
+        for item in SHOP_ITEM_CATALOG
     ]
+
+def _canonical_item_key(item_key: str | None) -> str | None:
+    if not item_key:
+        return item_key
+    return LEGACY_ITEM_KEY_ALIASES.get(item_key, item_key)
 
 def _select_shop_items_by_category(catalog: list[dict], count_per: int = 2) -> dict[str, list[str]]:
     categories = {"illusion": [], "blessing": [], "curse": []}
@@ -2105,7 +2267,11 @@ def _normalize_shop_rotation(raw_items, catalog: list[dict], count_per: int = 2)
         for category, keys in raw_items.items():
             if category in categories and isinstance(keys, list):
                 for key in keys:
-                    if key not in categories[category] and len(categories[category]) < count_per:
+                    if (
+                        key_to_category.get(key) == category
+                        and key not in categories[category]
+                        and len(categories[category]) < count_per
+                    ):
                         categories[category].append(key)
     elif isinstance(raw_items, list):
         for key in raw_items:
@@ -2140,20 +2306,36 @@ def _get_or_create_shop_rotation(conn, user_id: int, campaign_id: int, date_str:
     """, (user_id, campaign_id, date_str)).fetchone()
     if rotation_row and rotation_row[0]:
         if isinstance(rotation_row[0], list):
-            normalized = _normalize_shop_rotation(rotation_row[0], ITEM_CATALOG, 2)
+            normalized = _normalize_shop_rotation(rotation_row[0], SHOP_ITEM_CATALOG, 2)
             conn.execute("""
                 UPDATE campaign_shop_rotation
                 SET items = %s, updated_at = CURRENT_TIMESTAMP
                 WHERE user_id = %s AND campaign_id = %s AND date = %s
             """, (json.dumps(normalized), user_id, campaign_id, date_str))
             return normalized
+        if isinstance(rotation_row[0], dict):
+            normalized = _normalize_shop_rotation(rotation_row[0], SHOP_ITEM_CATALOG, 2)
+            if normalized != rotation_row[0]:
+                conn.execute("""
+                    UPDATE campaign_shop_rotation
+                    SET items = %s, updated_at = CURRENT_TIMESTAMP
+                    WHERE user_id = %s AND campaign_id = %s AND date = %s
+                """, (json.dumps(normalized), user_id, campaign_id, date_str))
+            return normalized
         try:
             parsed = json.loads(rotation_row[0])
-            return _normalize_shop_rotation(parsed, ITEM_CATALOG, 2)
+            normalized = _normalize_shop_rotation(parsed, SHOP_ITEM_CATALOG, 2)
+            if normalized != parsed:
+                conn.execute("""
+                    UPDATE campaign_shop_rotation
+                    SET items = %s, updated_at = CURRENT_TIMESTAMP
+                    WHERE user_id = %s AND campaign_id = %s AND date = %s
+                """, (json.dumps(normalized), user_id, campaign_id, date_str))
+            return normalized
         except (json.JSONDecodeError, TypeError):
             pass
 
-    selection = _select_shop_items_by_category(ITEM_CATALOG, 2)
+    selection = _select_shop_items_by_category(SHOP_ITEM_CATALOG, 2)
     conn.execute("""
         INSERT INTO campaign_shop_rotation (user_id, campaign_id, date, items)
         VALUES (%s, %s, %s, %s)
@@ -2209,8 +2391,8 @@ def get_shop_state(user_id: int, campaign_id: int):
                 FROM campaign_shop_log
                 WHERE user_id = %s AND campaign_id = %s AND event_type = %s
                   AND (
-                    (details::jsonb ? 'date' AND details::jsonb->>'date' = %s)
-                    OR DATE(created_at AT TIME ZONE 'America/Chicago') = %s
+                    ((COALESCE(details, '{}')::jsonb ? 'date') AND COALESCE(details, '{}')::jsonb->>'date' = %s)
+                    OR ((NOT (COALESCE(details, '{}')::jsonb ? 'date')) AND DATE(created_at AT TIME ZONE 'America/Chicago') = %s)
                   )
             """, (user_id, campaign_id, "open", today_str, today_str)).fetchone()[0]
             if open_count >= SHOP_REGULAR_THRESHOLD:
@@ -2245,8 +2427,8 @@ def get_shop_state(user_id: int, campaign_id: int):
               AND campaign_id = %s
               AND event_type = %s
               AND (
-                (details::jsonb ? 'date' AND details::jsonb->>'date' = %s)
-                OR DATE(created_at AT TIME ZONE 'America/Chicago') = %s
+                ((COALESCE(details, '{}')::jsonb ? 'date') AND COALESCE(details, '{}')::jsonb->>'date' = %s)
+                OR ((NOT (COALESCE(details, '{}')::jsonb ? 'date')) AND DATE(created_at AT TIME ZONE 'America/Chicago') = %s)
               )
         """, (user_id, campaign_id, "purchase", today_str, today_str)).fetchall()
         purchased_items = []
@@ -2279,8 +2461,8 @@ def get_shop_state(user_id: int, campaign_id: int):
               AND campaign_id = %s
               AND event_type = %s
               AND (
-                (details::jsonb ? 'date' AND details::jsonb->>'date' = %s)
-                OR DATE(created_at AT TIME ZONE 'America/Chicago') = %s
+                ((COALESCE(details, '{}')::jsonb ? 'date') AND COALESCE(details, '{}')::jsonb->>'date' = %s)
+                OR ((NOT (COALESCE(details, '{}')::jsonb ? 'date')) AND DATE(created_at AT TIME ZONE 'America/Chicago') = %s)
               )
         """, (user_id, campaign_id, "restock", today_str, today_str)).fetchall()
         restocks_used_by_category = {"illusion": 0, "blessing": 0, "curse": 0}
@@ -2329,6 +2511,11 @@ def purchase_item(user_id: int, campaign_id: int, item_key: str):
     with get_db() as conn:
         is_admin_flag = is_admin_campaign(conn, campaign_id)
         today_str = _get_shop_day(conn, campaign_id)
+        rotation_by_category = _get_or_create_shop_rotation(conn, user_id, campaign_id, today_str)
+        category_key = str(item.get("category") or "").lower()
+        available_items = rotation_by_category.get(category_key, []) if isinstance(rotation_by_category, dict) else []
+        if item_key not in available_items:
+            raise HTTPException(status_code=400, detail="Item is not currently available in this stall.")
         purchased_row = conn.execute("""
             SELECT 1
             FROM campaign_shop_log
@@ -2337,8 +2524,8 @@ def purchase_item(user_id: int, campaign_id: int, item_key: str):
               AND event_type = %s
               AND item_key = %s
               AND (
-                (details::jsonb ? 'date' AND details::jsonb->>'date' = %s)
-                OR DATE(created_at AT TIME ZONE 'America/Chicago') = %s
+                ((COALESCE(details, '{}')::jsonb ? 'date') AND COALESCE(details, '{}')::jsonb->>'date' = %s)
+                OR ((NOT (COALESCE(details, '{}')::jsonb ? 'date')) AND DATE(created_at AT TIME ZONE 'America/Chicago') = %s)
               )
             LIMIT 1
         """, (user_id, campaign_id, "purchase", item_key, today_str, today_str)).fetchone()
@@ -2415,10 +2602,10 @@ def reshuffle_shop(user_id: int, campaign_id: int, category: str, cost: int = 3)
               AND campaign_id = %s
               AND event_type = %s
               AND (
-                (details::jsonb ? 'date' AND details::jsonb->>'date' = %s)
-                OR DATE(created_at AT TIME ZONE 'America/Chicago') = %s
+                ((COALESCE(details, '{}')::jsonb ? 'date') AND COALESCE(details, '{}')::jsonb->>'date' = %s)
+                OR ((NOT (COALESCE(details, '{}')::jsonb ? 'date')) AND DATE(created_at AT TIME ZONE 'America/Chicago') = %s)
               )
-              AND (details::jsonb ? 'category' AND details::jsonb->>'category' = %s)
+              AND (COALESCE(details, '{}')::jsonb ? 'category' AND COALESCE(details, '{}')::jsonb->>'category' = %s)
             LIMIT 1
         """, (user_id, campaign_id, "purchase", today_str, today_str, category)).fetchone()
         if purchased_row:
@@ -2431,10 +2618,10 @@ def reshuffle_shop(user_id: int, campaign_id: int, category: str, cost: int = 3)
               AND campaign_id = %s
               AND event_type = %s
               AND (
-                (details::jsonb ? 'date' AND details::jsonb->>'date' = %s)
-                OR DATE(created_at AT TIME ZONE 'America/Chicago') = %s
+                ((COALESCE(details, '{}')::jsonb ? 'date') AND COALESCE(details, '{}')::jsonb->>'date' = %s)
+                OR ((NOT (COALESCE(details, '{}')::jsonb ? 'date')) AND DATE(created_at AT TIME ZONE 'America/Chicago') = %s)
               )
-              AND (details::jsonb ? 'category' AND details::jsonb->>'category' = %s)
+              AND (COALESCE(details, '{}')::jsonb ? 'category' AND COALESCE(details, '{}')::jsonb->>'category' = %s)
         """, (user_id, campaign_id, "restock", today_str, today_str, category)).fetchone()
         restock_count = int(restock_count_row[0] or 0) if restock_count_row else 0
         if restock_count >= 2:
@@ -2457,14 +2644,16 @@ def reshuffle_shop(user_id: int, campaign_id: int, category: str, cost: int = 3)
         rotation = None
         if rotation_row and rotation_row[0]:
             if isinstance(rotation_row[0], list):
-                rotation = _normalize_shop_rotation(rotation_row[0], ITEM_CATALOG, 2)
+                rotation = _normalize_shop_rotation(rotation_row[0], SHOP_ITEM_CATALOG, 2)
+            elif isinstance(rotation_row[0], dict):
+                rotation = _normalize_shop_rotation(rotation_row[0], SHOP_ITEM_CATALOG, 2)
             else:
                 try:
-                    rotation = _normalize_shop_rotation(json.loads(rotation_row[0]), ITEM_CATALOG, 2)
+                    rotation = _normalize_shop_rotation(json.loads(rotation_row[0]), SHOP_ITEM_CATALOG, 2)
                 except (json.JSONDecodeError, TypeError):
                     rotation = None
 
-        selection_by_category = _select_shop_items_by_category(ITEM_CATALOG, 2)
+        selection_by_category = _select_shop_items_by_category(SHOP_ITEM_CATALOG, 2)
         if rotation is None:
             rotation = selection_by_category
         else:
@@ -2500,7 +2689,15 @@ def reshuffle_shop(user_id: int, campaign_id: int, category: str, cost: int = 3)
 
     return {"coins": coins - cost, "items": rotated_items, "items_by_category": items_by_category}
 
-def use_item(user_id: int, campaign_id: int, item_key: str, target_user_id, effect_payload: dict | None = None):
+def use_item(
+    user_id: int,
+    campaign_id: int,
+    item_key: str,
+    target_user_id,
+    effect_payload: dict | None = None,
+    accept_blessing_cost: bool = False,
+    consume_candle_of_mercy: bool = False,
+):
     item = get_item(item_key)
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
@@ -2512,14 +2709,46 @@ def use_item(user_id: int, campaign_id: int, item_key: str, target_user_id, effe
     with get_db() as conn:
         _, cycle_length, current_day, target_day, target_date = resolve_campaign_day(conn, campaign_id, None)
         is_admin_flag = is_admin_campaign(conn, campaign_id)
+        target_date_str = target_date.strftime("%Y-%m-%d")
         affects_others = bool(item.get("affects_others"))
         requires_target = bool(item.get("requires_target"))
 
+        if current_day == cycle_length and target_day == current_day:
+            raise HTTPException(status_code=400, detail="Items cannot be used on the final day of the cycle.")
+
+        has_curse = _has_active_curse_effect_today(conn, user_id, campaign_id, target_date_str)
+        lock_dispersed = _is_curse_lock_dispersed_for_day(conn, user_id, campaign_id, target_day)
+
+        if item_key == "dispel_curse" and not has_curse:
+            raise HTTPException(status_code=400, detail="Dispel Curse can only be used while cursed.")
+
+        if item.get("category") == "blessing" and item_key != "dispel_curse":
+            if has_curse and not lock_dispersed:
+                raise HTTPException(status_code=400, detail="While hexed, you may not use blessings.")
+
+        blessing_cost_applied = 0
+        candle_consumed = False
+        is_blessing = item.get("category") == "blessing"
+        if is_blessing and item_key == "candle_of_mercy":
+            raise HTTPException(
+                status_code=400,
+                detail="Candle of Mercy cannot be used proactively. It is only available in retroactive confirmation prompts.",
+            )
+        if is_blessing and not accept_blessing_cost:
+            raise HTTPException(status_code=400, detail="Blessings require sacrifice confirmation.")
+        if (
+            is_blessing
+            and consume_candle_of_mercy
+            and current_day == cycle_length
+            and target_day == current_day
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail="Candle of Mercy cannot pay blessing sacrifice on the final day of the cycle.",
+            )
+
         if affects_others and requires_target and not target_user_id:
             raise HTTPException(status_code=400, detail="Target required for this item")
-
-        if affects_others and current_day == cycle_length and target_day == current_day:
-            raise HTTPException(status_code=400, detail="Cannot use target items on the final day")
 
         if affects_others and requires_target:
             member_row = conn.execute("""
@@ -2539,6 +2768,30 @@ def use_item(user_id: int, campaign_id: int, item_key: str, target_user_id, effe
         if qty <= 0:
             raise HTTPException(status_code=400, detail="Item not available")
 
+        if is_blessing:
+            if consume_candle_of_mercy:
+                candle_row = conn.execute("""
+                    SELECT quantity
+                    FROM campaign_user_items
+                    WHERE user_id = %s AND campaign_id = %s AND item_key = %s
+                """, (user_id, campaign_id, "candle_of_mercy")).fetchone()
+                candle_qty = candle_row[0] if candle_row else 0
+                if candle_qty <= 0:
+                    raise HTTPException(status_code=400, detail="No Candle of Mercy available.")
+                conn.execute("""
+                    UPDATE campaign_user_items
+                    SET quantity = quantity - 1
+                    WHERE user_id = %s AND campaign_id = %s AND item_key = %s
+                """, (user_id, campaign_id, "candle_of_mercy"))
+                candle_consumed = True
+            else:
+                blessing_cost_applied = 5
+                conn.execute("""
+                    UPDATE campaign_members
+                    SET score = GREATEST(score - %s, 0)
+                    WHERE user_id = %s AND campaign_id = %s
+                """, (blessing_cost_applied, user_id, campaign_id))
+
         if payload_type:
             payload_value = (effect_payload or {}).get("value")
             if payload_value is None:
@@ -2550,12 +2803,32 @@ def use_item(user_id: int, campaign_id: int, item_key: str, target_user_id, effe
             elif payload_type == "word":
                 if len(payload_value) != 5 or not payload_value.isalpha():
                     raise HTTPException(status_code=400, detail="Choose a valid 5-letter word.")
-                if item_key == "voidbrand" and payload_value not in PLAYABLE_WORDS:
-                    raise HTTPException(status_code=400, detail="Word must come from the playable word list.")
-                if item_key != "voidbrand" and payload_value not in VALID_WORDS:
+                if item_key == "hex_of_forced_utterance" and len(set(payload_value)) < 4:
+                    raise HTTPException(status_code=400, detail="Word must include at least 4 unique letters.")
+                if payload_value not in VALID_WORDS:
                     raise HTTPException(status_code=400, detail="Word must be a valid guess.")
             else:
                 raise HTTPException(status_code=400, detail="Unsupported payload type.")
+        elif item_key == "vowel_voodoo":
+            raw_value = (effect_payload or {}).get("value")
+            if raw_value:
+                payload_value = str(raw_value).strip().lower()
+                if len(payload_value) != 2 or any(letter not in VOWELS for letter in payload_value):
+                    raise HTTPException(status_code=400, detail="Choose exactly two vowels.")
+                if len(set(payload_value)) != 2:
+                    raise HTTPException(status_code=400, detail="Vowels must be unique.")
+            else:
+                payload_value = "".join(random.sample(sorted(VOWELS), 2))
+            payload_type = "vowels"
+        elif item_key == "consonant_cleaver":
+            payload_value = "".join(random.sample(CONSONANTS, 4))
+            payload_type = "letters"
+        elif item_key == "veil_of_obscured_sight":
+            raw_value = str((effect_payload or {}).get("value") or "").strip().lower()
+            if raw_value and raw_value not in {"left", "right"}:
+                raise HTTPException(status_code=400, detail="Choose LEFT or RIGHT.")
+            payload_value = raw_value or random.choice(["left", "right"])
+            payload_type = "side"
 
         details_payload = {"name": item["name"], "category": item["category"]}
         sender_row = conn.execute("""
@@ -2664,7 +2937,13 @@ def use_item(user_id: int, campaign_id: int, item_key: str, target_user_id, effe
         """, (user_id, campaign_id, item_key)).fetchone()
         remaining = remaining_row[0] if remaining_row else 0
 
-    return {"item_key": item_key, "remaining": remaining, "hint": hint_payload}
+    return {
+        "item_key": item_key,
+        "remaining": remaining,
+        "hint": hint_payload,
+        "blessing_troop_cost_applied": blessing_cost_applied,
+        "candle_consumed": candle_consumed,
+    }
 
 def get_current_day_hint(user_id: int, campaign_id: int):
     with get_db() as conn:

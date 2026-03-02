@@ -3,6 +3,7 @@ import os
 import sys
 import unittest
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from unittest.mock import patch
 
 
@@ -45,8 +46,9 @@ class ShopRotationPersistenceTests(unittest.TestCase):
       self.skipTest(f"backend app.crud import unavailable: {IMPORT_ERROR}")
 
   def test_get_shop_day_formats_resolved_target_date(self):
-    fake_date = datetime(2026, 2, 26)
-    with patch.object(crud, "resolve_campaign_day", return_value=(None, None, None, None, fake_date)):
+    fake_now = datetime(2026, 2, 26, 8, 30, tzinfo=ZoneInfo("America/Chicago"))
+    with patch.object(crud, "datetime") as mock_datetime:
+      mock_datetime.now.return_value = fake_now
       result = crud._get_shop_day(object(), 9)
     self.assertEqual(result, "2026-02-26")
 
@@ -56,6 +58,33 @@ class ShopRotationPersistenceTests(unittest.TestCase):
       result = crud._get_or_create_shop_rotation(conn, 1, 2, "2026-02-26")
     self.assertEqual(result["blessing"], ["b1"])
     mock_norm.assert_called_once()
+    update_calls = [c for c in conn.calls if "UPDATE campaign_shop_rotation" in c[0]]
+    self.assertEqual(len(update_calls), 1)
+    params = update_calls[0][1]
+    self.assertEqual(json.loads(params[0]), {"illusion": ["i1"], "blessing": ["b1"], "curse": ["c1"]})
+    self.assertEqual(params[1:], (1, 2, "2026-02-26"))
+
+  def test_get_or_create_shop_rotation_skips_update_for_already_normalized_json(self):
+    normalized = {"illusion": ["i1", "i2"], "blessing": ["b1", "b2"], "curse": ["c1", "c2"]}
+    conn = _FakeConn(select_row=(json.dumps(normalized),))
+    with patch.object(crud, "_normalize_shop_rotation", return_value=normalized) as mock_norm:
+      result = crud._get_or_create_shop_rotation(conn, 1, 2, "2026-02-26")
+
+    self.assertEqual(result, normalized)
+    mock_norm.assert_called_once()
+    update_calls = [c for c in conn.calls if "UPDATE campaign_shop_rotation" in c[0]]
+    self.assertEqual(update_calls, [])
+
+  def test_get_or_create_shop_rotation_accepts_jsonb_dict_without_reroll(self):
+    stored = {"illusion": ["i1", "i2"], "blessing": ["b1", "b2"], "curse": ["c1", "c2"]}
+    conn = _FakeConn(select_row=(stored,))
+    with patch.object(crud, "_normalize_shop_rotation", return_value=stored) as mock_norm:
+      result = crud._get_or_create_shop_rotation(conn, 3, 4, "2026-02-26")
+
+    self.assertEqual(result, stored)
+    mock_norm.assert_called_once_with(stored, crud.SHOP_ITEM_CATALOG, 2)
+    insert_calls = [c for c in conn.calls if "INSERT INTO campaign_shop_rotation" in c[0]]
+    self.assertEqual(insert_calls, [])
     update_calls = [c for c in conn.calls if "UPDATE campaign_shop_rotation" in c[0]]
     self.assertEqual(update_calls, [])
 

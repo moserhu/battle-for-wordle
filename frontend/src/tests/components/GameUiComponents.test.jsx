@@ -102,7 +102,7 @@ describe('Game UI components', () => {
     expect(danceStyle).toHaveBeenCalled();
   });
 
-  test('WordGrid renders result colors, edict label, active cell, and grayed rows', () => {
+  test('WordGrid renders result colors, active cell, and grayed rows', () => {
     const guesses = [
       ['C', 'R', 'A', 'N', 'E'],
       ['', '', '', '', ''],
@@ -124,11 +124,9 @@ describe('Game UI components', () => {
         correctColor="#123456"
         edictRow={0}
         executionerRow={1}
-        edictSender="Ruler"
       />
     );
 
-    expect(screen.getByText(/ruler/i)).toBeInTheDocument();
     const rows = container.querySelectorAll('.word-row');
     expect(rows[0].className).toMatch(/edict-row/);
     expect(rows[1].className).toMatch(/executioner-row/);
@@ -136,5 +134,53 @@ describe('Game UI components', () => {
     const cells = container.querySelectorAll('.letter-box');
     expect(Array.from(cells).some((c) => c.style.backgroundColor === 'rgb(18, 52, 86)')).toBe(true);
     expect(Array.from(cells).some((c) => c.style.boxShadow.includes('rgba'))).toBe(true);
+  });
+
+  test('WordGrid keeps five cells per row even when guess/result rows are short', () => {
+    const guesses = [
+      ['U', 'S', 'E'],
+      ['A', 'B', 'C', '', ''],
+    ];
+    const results = [
+      ['absent', 'present', 'absent'],
+      ['correct', null, null, null, null],
+    ];
+
+    const { container } = render(
+      <WordGrid
+        guesses={guesses}
+        results={results}
+        currentRow={1}
+        currentCol={3}
+        obscuredSightSide="left"
+        obscuredSightActive
+      />
+    );
+
+    const rows = container.querySelectorAll('.word-row');
+    expect(rows).toHaveLength(2);
+    expect(rows[0].querySelectorAll('.letter-box')).toHaveLength(5);
+    expect(rows[1].querySelectorAll('.letter-box')).toHaveLength(5);
+  });
+
+  test('WordGrid keeps five cells when guess rows are sparse arrays', () => {
+    const sparseRow = Array(5);
+    sparseRow[0] = 'U';
+    sparseRow[1] = 'S';
+    sparseRow[2] = 'E';
+    const guesses = [sparseRow];
+    const results = [['absent', 'present', 'absent', null, null]];
+
+    const { container } = render(
+      <WordGrid
+        guesses={guesses}
+        results={results}
+        currentRow={0}
+        currentCol={3}
+      />
+    );
+
+    const row = container.querySelector('.word-row');
+    expect(row.querySelectorAll('.letter-box')).toHaveLength(5);
   });
 });

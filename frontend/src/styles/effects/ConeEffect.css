@@ -30,5 +30,5 @@
   backdrop-filter: blur(4px) saturate(115%);
   border: 1px solid rgba(170, 210, 255, 0.28);
   pointer-events: none;
-  z-index: 2;
+  z-index: 950;
 }

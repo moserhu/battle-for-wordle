@@ -330,12 +330,6 @@ export default function CampaignDashboard() {
         initialTitle={rulerTitle}
         onSave={handleSaveRulerTitle}
         onClose={() => setShowRulerModal(false)}
-        token={token}
-        campaignId={cid}
-        rulerBackdropUrl={campaignMeta?.ruler_background_image_url || ''}
-        onBackdropSaved={(url) => {
-          setCampaignMeta((prev) => (prev ? { ...prev, ruler_background_image_url: url } : prev));
-        }}
       />
       <AccoladesModal
         open={showAccoladesModal}
@@ -358,6 +352,51 @@ export default function CampaignDashboard() {
           <div className="dash-panel">Loading…</div>
         ) : (
           <section className="dash-panels">
+            {/* Leaderboard */}
+            <div className="dash-panel">
+              <div className="dash-panel-header">
+                <h2>Leaderboard</h2>
+              </div>
+              {leaderboard.length === 0 ? (
+                <p>No scores yet.</p>
+              ) : (
+                <ol className="leaderboard-list">
+                  {leaderboard.map((p) => (
+                    <li key={p.user_id || p.username} className="leaderboard-row">
+                      <div
+                        className="lb-player"
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => setPreviewPlayer(p)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            setPreviewPlayer(p);
+                          }
+                        }}
+                      >
+                        <div className="lb-avatar">
+                          {p.profile_image_thumb_url || p.profile_image_url ? (
+                            <img src={p.profile_image_thumb_url || p.profile_image_url} alt="" />
+                          ) : (
+                            <span>?</span>
+                          )}
+                        </div>
+                        <span className="lb-name" style={{ color: p.color || 'inherit' }}>
+                          {p.display_name || p.username}
+                        </span>
+                      </div>
+                      <span className="lb-score">{p.score} troops</span>
+                    </li>
+                  ))}
+                </ol>
+              )}
+              <div style={{ marginTop: 12 }}>
+                <button className="btn" onClick={() => navigate(`/leaderboard/${cid}`)}>
+                  The Pretty Leaderboard
+                </button>
+              </div>
+            </div>
+
             {/* Recap */}
             <div className="dash-panel">
               <div className="dash-panel-header">
@@ -435,51 +474,6 @@ export default function CampaignDashboard() {
                   )}
                 </>
               )}
-            </div>
-
-            {/* Leaderboard */}
-            <div className="dash-panel">
-              <div className="dash-panel-header">
-                <h2>Leaderboard</h2>
-              </div>
-              {leaderboard.length === 0 ? (
-                <p>No scores yet.</p>
-              ) : (
-                <ol className="leaderboard-list">
-                  {leaderboard.map((p) => (
-                    <li key={p.user_id || p.username} className="leaderboard-row">
-                      <div
-                        className="lb-player"
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => setPreviewPlayer(p)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            setPreviewPlayer(p);
-                          }
-                        }}
-                      >
-                        <div className="lb-avatar">
-                          {p.profile_image_thumb_url || p.profile_image_url ? (
-                            <img src={p.profile_image_thumb_url || p.profile_image_url} alt="" />
-                          ) : (
-                            <span>?</span>
-                          )}
-                        </div>
-                        <span className="lb-name" style={{ color: p.color || 'inherit' }}>
-                          {p.display_name || p.username}
-                        </span>
-                      </div>
-                      <span className="lb-score">{p.score} troops</span>
-                    </li>
-                  ))}
-                </ol>
-              )}
-              <div style={{ marginTop: 12 }}>
-                <button className="btn" onClick={() => navigate(`/leaderboard/${cid}`)}>
-                  The Pretty Leaderboard
-                </button>
-              </div>
             </div>
 
           </section>

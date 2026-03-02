@@ -84,7 +84,7 @@ class ShopApiIntegrationTests(unittest.TestCase):
     ):
       response = self.client.post(
         "/api/campaign/shop/purchase",
-        json={"campaign_id": 7, "item_key": "voidbrand"},
+        json={"campaign_id": 7, "item_key": "reapers_scythe"},
       )
 
     self.assertEqual(response.status_code, 400)

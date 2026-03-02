@@ -1,4 +1,2 @@
-export { sealOfSilence } from './seal_of_silence';
-export { voidbrand } from './voidbrand';
-export { executionersCut, hasExecutionersCut } from './executioners_cut';
-export { edictOfCompulsion } from './edict_of_compulsion';
+export { executionersCut, hasExecutionersCut } from './reapers_scythe';
+export { edictOfCompulsion } from './hex_of_forced_utterance';

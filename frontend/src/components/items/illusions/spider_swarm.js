@@ -5,7 +5,7 @@ export const spiderSwarm = {
   key: 'spider_swarm',
   name: 'Spider Swarm',
   category: 'illusion',
-  description: 'A skittering omen crosses the board.',
+  description: 'Spiders scurry all over the game board.',
 };
 
 export const hasSpiderSwarm = (targetEffects) =>

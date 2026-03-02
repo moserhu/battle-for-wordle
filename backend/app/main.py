@@ -223,7 +223,9 @@ def use_campaign_item(data: UseItemRequest, current_user: dict = Depends(get_cur
         data.campaign_id,
         data.item_key,
         data.target_user_id,
-        data.effect_payload
+        data.effect_payload,
+        accept_blessing_cost=bool(data.accept_blessing_cost),
+        consume_candle_of_mercy=bool(data.consume_candle_of_mercy),
     )
 
 @app.post("/api/campaign/items/hint")

@@ -2,7 +2,7 @@ export const coneOfCold = {
   key: 'cone_of_cold',
   name: 'Cone of Cold',
   category: 'illusion',
-  description: 'A chill creeps in, dimming sight for a time.',
+  description: 'Blur the board heavily, then partially, over 2 guesses.',
 };
 
 export const hasConeOfCold = (targetEffects) =>

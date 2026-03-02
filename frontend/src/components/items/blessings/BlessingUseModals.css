@@ -1,0 +1,111 @@
+.blessing-use-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(7, 10, 18, 0.74);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1100;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+.blessing-confirm-modal {
+  width: min(92vw, 500px);
+  background:
+    radial-gradient(120% 160% at 8% 8%, rgba(255, 246, 184, 0.95), rgba(224, 193, 84, 0.9) 48%, rgba(30, 66, 140, 0.94) 100%),
+    linear-gradient(145deg, rgba(255, 227, 120, 0.92), rgba(58, 104, 198, 0.95));
+  border: 2px solid rgba(255, 228, 126, 0.9);
+  box-shadow:
+    0 16px 38px rgba(11, 20, 44, 0.6),
+    inset 0 0 26px rgba(255, 244, 190, 0.48);
+  color: #102248;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.blessing-confirm-modal .curse-info-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.blessing-confirm-modal .self-items-close {
+  border: none;
+  background: transparent;
+  color: #102248;
+  font-size: 1.35rem;
+  cursor: pointer;
+}
+
+.blessing-confirm-modal .blessing-title {
+  margin: 0;
+  color: #0e3a88;
+}
+
+.blessing-confirm-body {
+  background: rgba(255, 247, 210, 0.72);
+  border: 1px solid rgba(77, 122, 212, 0.42);
+  color: #162f61;
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.blessing-confirm-body p {
+  margin: 8px 0;
+  line-height: 1.35;
+}
+
+.blessing-confirm-item-art {
+  width: 180px;
+  height: 180px;
+  display: block;
+  margin: 4px auto 12px;
+  object-fit: contain;
+  border-radius: 20px;
+}
+
+.blessing-confirm-modal .troop-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: linear-gradient(145deg, #ffd74f, #f2b81f);
+  border-color: rgba(138, 102, 12, 0.65);
+  color: #1b2d59;
+  box-shadow: 0 6px 14px rgba(20, 50, 108, 0.25);
+}
+
+.blessing-confirm-modal .troop-btn.close-btn {
+  background: linear-gradient(145deg, #5f8ce0, #365ea8);
+  border-color: rgba(20, 42, 90, 0.7);
+  color: #eef4ff;
+}
+
+.blessing-confirm-modal .troop-btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.05);
+}
+
+.blessing-confirm-modal .troop-btn.blessing-sacrifice-btn {
+  border: 2px solid #8d1e2a;
+  box-shadow:
+    0 0 0 1px rgba(141, 30, 42, 0.45),
+    0 6px 14px rgba(20, 50, 108, 0.25);
+}
+
+.blessing-confirm-modal .troop-btn.blessing-candle-btn {
+  border: 2px solid #1e57c8;
+  box-shadow:
+    0 0 0 1px rgba(30, 87, 200, 0.45),
+    0 6px 14px rgba(20, 50, 108, 0.25);
+}
+
+.blessing-confirm-actions {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}

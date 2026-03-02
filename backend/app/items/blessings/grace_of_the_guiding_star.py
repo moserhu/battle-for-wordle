@@ -4,7 +4,7 @@ from datetime import timedelta
 from fastapi import HTTPException
 from app.utils.campaigns import resolve_campaign_day
 
-def _cartographers_insight(conn, user_id: int, campaign_id: int):
+def _grace_of_the_guiding_star(conn, user_id: int, campaign_id: int):
     _, _, _, target_day, target_date = resolve_campaign_day(conn, campaign_id, None)
     word_row = conn.execute(
         "SELECT word FROM campaign_words WHERE campaign_id = %s AND day = %s",
@@ -34,7 +34,7 @@ def _cartographers_insight(conn, user_id: int, campaign_id: int):
     alphabet = [chr(c) for c in range(ord("A"), ord("Z") + 1)]
     unused = [c for c in alphabet if c not in word and c not in used_letters]
     random.shuffle(unused)
-    revealed = unused[:2] if len(unused) >= 2 else unused
+    revealed = unused[:4] if len(unused) >= 4 else unused
 
     payload = {"day": target_day, "unused_letters": revealed}
     expires_at = target_date + timedelta(days=1)
@@ -46,15 +46,15 @@ def _cartographers_insight(conn, user_id: int, campaign_id: int):
                       applied_at = EXCLUDED.applied_at,
                       expires_at = EXCLUDED.expires_at,
                       active = TRUE
-    """, (user_id, campaign_id, "cartographers_insight", json.dumps(payload), expires_at))
+    """, (user_id, campaign_id, "grace_of_the_guiding_star", json.dumps(payload), expires_at))
 
     return {"cartography": payload}
 
-cartographers_insight_item = {
-    "key": "cartographers_insight",
-    "name": "Cartographer's Insight",
-    "description": "The map rejects a pair of paths; two letters are cast aside.",
-    "cost": 5,
+grace_of_the_guiding_star_item = {
+    "key": "grace_of_the_guiding_star",
+    "name": "Grace of the Guiding Star",
+    "description": "Reveal four letters that are not in today's answer.",
+    "cost": 8,
     "category": "blessing",
-    "handler": _cartographers_insight
+    "handler": _grace_of_the_guiding_star
 }

@@ -14,11 +14,10 @@ import bloodOathInkSprite from '../../assets/items/illusions/blood_oath_ink.png'
 import spiderSwarmSprite from '../../assets/items/illusions/spider_swarm.png';
 import danceOfTheJesterSprite from '../../assets/items/illusions/dance_of_the_jester.png';
 import coneOfColdSprite from '../../assets/items/illusions/cone_of_cold.png';
-import sealOfSilenceSprite from '../../assets/items/curses/seal_of_silence.png';
-import voidbrandSprite from '../../assets/items/curses/voidbrand.png';
 import edictOfCompulsionSprite from '../../assets/items/curses/edict_of_compulsion.png';
 import executionersCutSprite from '../../assets/items/curses/executioners_cut.png';
 import sendInTheClownSprite from '../../assets/items/illusions/clown.png';
+import wanderingGlyphPlaceholderSprite from '../../assets/ui/wandering_glyph_placeholder.svg';
 import marketHubMapDesktop from '../../assets/market/market_hub_map_desktop.png';
 import marketHubMapMobile from '../../assets/market/market_hub_map_mobile.png';
 import subshopIllusionDesktop from '../../assets/market/subshop_illusion_desktop.png';
@@ -490,7 +489,6 @@ export default function Market() {
   const [canReshuffleByCategory, setCanReshuffleByCategory] = useState({ illusion: true, blessing: true, curse: true });
   const [restocksRemainingByCategory, setRestocksRemainingByCategory] = useState({ illusion: 2, blessing: 2, curse: 2 });
   const [purchasedItemKeys, setPurchasedItemKeys] = useState([]);
-  const [canReshuffle, setCanReshuffle] = useState(true);
   const [selectedItem, setSelectedItem] = useState(null);
   const [isAdminCampaign, setIsAdminCampaign] = useState(false);
   const [activeCategory, setActiveCategory] = useState(CATEGORY_META[0].key);
@@ -501,17 +499,24 @@ export default function Market() {
 
   const spriteByKey = {
     oracle_whisper: oracleWhisperSprite,
-    cartographers_insight: cartographersInsightSprite,
+    grace_of_the_guiding_star: cartographersInsightSprite,
     candle_of_mercy: candleOfMercySprite,
-    blood_oath_ink: bloodOathInkSprite,
+    phantoms_mirage: bloodOathInkSprite,
     spider_swarm: spiderSwarmSprite,
-    dance_of_the_jester: danceOfTheJesterSprite,
+    earthquake: danceOfTheJesterSprite,
     cone_of_cold: coneOfColdSprite,
-    seal_of_silence: sealOfSilenceSprite,
-    voidbrand: voidbrandSprite,
-    edict_of_compulsion: edictOfCompulsionSprite,
-    executioners_cut: executionersCutSprite,
+    hex_of_forced_utterance: edictOfCompulsionSprite,
+    reapers_scythe: executionersCutSprite,
+    vowel_voodoo: edictOfCompulsionSprite,
+    veil_of_obscured_sight: executionersCutSprite,
+    consonant_cleaver: executionersCutSprite,
+    infernal_mandate: executionersCutSprite,
     send_in_the_clown: sendInTheClownSprite,
+    dispel_curse: candleOfMercySprite,
+    twin_fates: oracleWhisperSprite,
+    god_of_the_easy_tongue: cartographersInsightSprite,
+    sigil_of_the_wandering_glyph: wanderingGlyphPlaceholderSprite,
+    time_stop: coneOfColdSprite,
   };
 
   useEffect(() => {
@@ -597,7 +602,6 @@ export default function Market() {
       setCoins(Number(state?.coins ?? 0));
       setItemsByCategory(grouped);
       setPurchasedItemKeys(Array.isArray(state?.purchased_item_keys) ? state.purchased_item_keys : []);
-      setCanReshuffle(Boolean(state?.can_reshuffle));
       if (reshuffleByCategory) {
         setCanReshuffleByCategory({
           illusion: Boolean(reshuffleByCategory.illusion ?? true),
@@ -667,7 +671,7 @@ export default function Market() {
   };
 
   const handleReshuffle = async (categoryKey) => {
-    if (reshuffleBusy || !canReshuffle || !canReshuffleByCategory[categoryKey]) return;
+    if (reshuffleBusy || !canReshuffleByCategory[categoryKey]) return;
     setReshuffleBusy(true);
     setError('');
     try {

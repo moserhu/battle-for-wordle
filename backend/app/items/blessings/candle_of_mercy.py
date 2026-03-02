@@ -16,8 +16,8 @@ def _candle_of_mercy(conn, user_id: int, campaign_id: int):
 candle_of_mercy_item = {
     "key": "candle_of_mercy",
     "name": "Candle of Mercy",
-    "description": "In loss, a small ember still answers your name.",
-    "cost": 5,
+    "description": "If you fail today's word, redeem for a 10-troop mercy bonus.",
+    "cost": 8,
     "category": "blessing",
     "handler": _candle_of_mercy
 }

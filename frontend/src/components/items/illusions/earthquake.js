@@ -1,14 +1,14 @@
 import React from 'react';
 
 export const danceOfTheJester = {
-  key: 'dance_of_the_jester',
-  name: 'Dance of the Jester',
+  key: 'earthquake',
+  name: 'Earthquake',
   category: 'illusion',
-  description: 'Mocking laughter stirs the tiles with a restless jig.',
+  description: 'Shake and jostle all the tiles on the board.',
 };
 
 export const hasDanceOfTheJester = (targetEffects) =>
-  targetEffects.some((entry) => entry.item_key === "dance_of_the_jester");
+  targetEffects.some((entry) => entry.item_key === "earthquake");
 
 const hashToken = (token, seed) => {
   const str = `${token}-${seed}`;

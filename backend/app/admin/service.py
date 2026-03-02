@@ -4,15 +4,24 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from fastapi import HTTPException
 
-from app.crud import get_db, is_admin_user, VALID_WORDS, PLAYABLE_WORDS
+from app.crud import get_db, is_admin_user, VALID_WORDS
 from app.items import ITEM_CATALOG, get_item
 from app.utils.campaigns import resolve_campaign_day
+
+VOWELS = {"a", "e", "i", "o", "u"}
+CONSONANTS = {chr(c) for c in range(ord("a"), ord("z") + 1)} - VOWELS
+
 
 def require_admin(conn, user_id: int):
     if not is_admin_user(conn, user_id):
         raise HTTPException(status_code=403, detail="Admin privileges required")
 
 def list_admin_effects(user_id: int):
+    payload_overrides = {
+        "vowel_voodoo": "vowels",
+        "consonant_cleaver": "letters",
+        "veil_of_obscured_sight": "side",
+    }
     with get_db() as conn:
         require_admin(conn, user_id)
         return [
@@ -22,7 +31,7 @@ def list_admin_effects(user_id: int):
                 "category": item.get("category"),
                 "affects_others": bool(item.get("affects_others")),
                 "requires_target": bool(item.get("requires_target")),
-                "payload_type": item.get("payload_type")
+                "payload_type": payload_overrides.get(item["key"], item.get("payload_type"))
             }
             for item in ITEM_CATALOG
         ]
@@ -69,7 +78,7 @@ def _admin_status_payload(conn, user_id: int, campaign_id: int, effect_key: str)
         expires_at = datetime.combine(target_date + timedelta(days=1), datetime.min.time())
         return payload, expires_at
 
-    if effect_key == "cartographers_insight":
+    if effect_key == "grace_of_the_guiding_star":
         word_row = conn.execute(
             "SELECT word FROM campaign_words WHERE campaign_id = %s AND day = %s",
             (campaign_id, target_day)
@@ -97,7 +106,7 @@ def _admin_status_payload(conn, user_id: int, campaign_id: int, effect_key: str)
         alphabet = [chr(c) for c in range(ord("A"), ord("Z") + 1)]
         unused = [c for c in alphabet if c not in word and c not in used_letters]
         random.shuffle(unused)
-        revealed = unused[:2] if len(unused) >= 2 else unused
+        revealed = unused[:4] if len(unused) >= 4 else unused
 
         payload = {"day": target_day, "unused_letters": revealed}
         expires_at = target_date + timedelta(days=1)
@@ -106,6 +115,35 @@ def _admin_status_payload(conn, user_id: int, campaign_id: int, effect_key: str)
     if effect_key == "candle_of_mercy":
         payload = {"bonus": 10}
         return payload, None
+
+    if effect_key == "twin_fates":
+        word_row = conn.execute(
+            "SELECT word FROM campaign_words WHERE campaign_id = %s AND day = %s",
+            (campaign_id, target_day)
+        ).fetchone()
+        if not word_row:
+            raise HTTPException(status_code=404, detail="No word assigned for that day")
+        word = str(word_row[0] or "").upper()
+        pos_by_letter = {}
+        for idx, letter in enumerate(word):
+            pos_by_letter.setdefault(letter, []).append(idx + 1)
+        twins = [{"letter": k, "positions": v} for k, v in pos_by_letter.items() if len(v) >= 2]
+        payload = {"day": target_day, "letters": twins}
+        expires_at = target_date + timedelta(days=1)
+        return payload, expires_at
+
+    if effect_key == "god_of_the_easy_tongue":
+        word_row = conn.execute(
+            "SELECT word FROM campaign_words WHERE campaign_id = %s AND day = %s",
+            (campaign_id, target_day)
+        ).fetchone()
+        vowel_count = 0
+        if word_row and word_row[0]:
+            word = str(word_row[0]).upper()
+            vowel_count = sum(1 for ch in word if ch in {"A", "E", "I", "O", "U"})
+        payload = {"day": target_day, "vowel_count": vowel_count}
+        expires_at = target_date + timedelta(days=1)
+        return payload, expires_at
 
     return None, None
 
@@ -127,12 +165,33 @@ def admin_add_effect(user_id: int, campaign_id: int, effect_key: str, effect_pay
         elif payload_type == "word":
             if len(payload_value) != 5 or not payload_value.isalpha():
                 raise HTTPException(status_code=400, detail="Choose a valid 5-letter word.")
-            if effect_key == "voidbrand" and payload_value not in PLAYABLE_WORDS:
-                raise HTTPException(status_code=400, detail="Word must come from the playable list.")
-            if effect_key != "voidbrand" and payload_value not in VALID_WORDS:
+            if effect_key == "hex_of_forced_utterance" and len(set(payload_value)) < 4:
+                raise HTTPException(status_code=400, detail="Word must include at least 4 unique letters.")
+            if payload_value not in VALID_WORDS:
                 raise HTTPException(status_code=400, detail="Word must be a valid guess.")
         else:
             raise HTTPException(status_code=400, detail="Unsupported payload type.")
+    elif effect_key == "vowel_voodoo":
+        payload_value = str((effect_payload or {}).get("value") or "").strip().lower()
+        if len(payload_value) != 2 or any(letter not in VOWELS for letter in payload_value):
+            raise HTTPException(status_code=400, detail="Choose exactly two vowels.")
+        if len(set(payload_value)) != 2:
+            raise HTTPException(status_code=400, detail="Vowels must be unique.")
+    elif effect_key == "consonant_cleaver":
+        raw_value = str((effect_payload or {}).get("value") or "").strip().lower()
+        if raw_value:
+            if len(raw_value) != 4 or any(letter not in CONSONANTS for letter in raw_value):
+                raise HTTPException(status_code=400, detail="Choose exactly four consonants.")
+            if len(set(raw_value)) != 4:
+                raise HTTPException(status_code=400, detail="Consonants must be unique.")
+            payload_value = raw_value
+        else:
+            payload_value = "".join(random.sample(sorted(CONSONANTS), 4))
+    elif effect_key == "veil_of_obscured_sight":
+        raw_value = str((effect_payload or {}).get("value") or "").strip().lower()
+        if raw_value and raw_value not in {"left", "right"}:
+            raise HTTPException(status_code=400, detail="Choose LEFT or RIGHT.")
+        payload_value = raw_value or random.choice(["left", "right"])
 
     with get_db() as conn:
         require_admin(conn, user_id)
@@ -175,12 +234,33 @@ def admin_add_effect(user_id: int, campaign_id: int, effect_key: str, effect_pay
                 details_payload["payload"] = {"type": "row", "value": row_value}
             if payload_type:
                 details_payload["payload"] = {"type": payload_type, "value": payload_value}
+            elif effect_key == "vowel_voodoo":
+                details_payload["payload"] = {"type": "vowels", "value": payload_value}
+            elif effect_key == "consonant_cleaver":
+                details_payload["payload"] = {"type": "letters", "value": payload_value}
+            elif effect_key == "veil_of_obscured_sight":
+                details_payload["payload"] = {"type": "side", "value": payload_value}
             details = json.dumps(details_payload)
             conn.execute("""
                 INSERT INTO campaign_item_events (user_id, campaign_id, item_key, target_user_id, event_type, details)
                 VALUES (%s, %s, %s, %s, %s, %s)
             """, (user_id, campaign_id, effect_key, user_id, "use", details))
             return {"status": "applied", "effect_key": effect_key, "effect_type": "target"}
+
+        if effect_key == "dispel_curse":
+            _, _, _, target_day, _ = resolve_campaign_day(conn, campaign_id, None)
+            payload = {"day": target_day, "dispelled": True}
+            conn.execute("""
+                INSERT INTO campaign_user_status_effects (
+                    user_id, campaign_id, effect_key, effect_value, applied_at, active
+                )
+                VALUES (%s, %s, %s, %s, CURRENT_TIMESTAMP, FALSE)
+                ON CONFLICT (user_id, campaign_id, effect_key)
+                DO UPDATE SET effect_value = EXCLUDED.effect_value,
+                              applied_at = EXCLUDED.applied_at,
+                              active = FALSE
+            """, (user_id, campaign_id, "cursed", json.dumps(payload)))
+            return {"status": "applied", "effect_key": effect_key, "effect_type": "status"}
 
         conn.execute("""
             UPDATE campaign_user_status_effects
@@ -219,6 +299,11 @@ def admin_clear_effects(user_id: int, campaign_id: int):
             SET active = FALSE
             WHERE user_id = %s AND campaign_id = %s
         """, (user_id, campaign_id))
+        # Remove Dispel Curse marker so blessing unlock state is fully reset.
+        conn.execute("""
+            DELETE FROM campaign_user_status_effects
+            WHERE user_id = %s AND campaign_id = %s AND effect_key = %s
+        """, (user_id, campaign_id, "cursed"))
         conn.execute("""
             DELETE FROM campaign_item_events
             WHERE campaign_id = %s AND target_user_id = %s
@@ -229,7 +314,7 @@ def admin_clear_effects(user_id: int, campaign_id: int):
 def admin_reset_day(user_id: int, campaign_id: int):
     with get_db() as conn:
         require_admin(conn, user_id)
-        _, _, _, _, target_date = resolve_campaign_day(conn, campaign_id, None)
+        _, _, _, target_day, target_date = resolve_campaign_day(conn, campaign_id, None)
         target_date_str = target_date.strftime("%Y-%m-%d")
 
         conn.execute("""
@@ -256,6 +341,27 @@ def admin_reset_day(user_id: int, campaign_id: int):
             DELETE FROM campaign_daily_troops
             WHERE user_id = %s AND campaign_id = %s AND date = %s
         """, (user_id, campaign_id, target_date_str))
+
+        # Reset infernal mandate daily penalty usage so testing starts clean.
+        infernal_row = conn.execute("""
+            SELECT effect_value
+            FROM campaign_user_status_effects
+            WHERE user_id = %s AND campaign_id = %s AND effect_key = %s
+        """, (user_id, campaign_id, "infernal_mandate")).fetchone()
+        if infernal_row and infernal_row[0]:
+            try:
+                payload = json.loads(infernal_row[0])
+            except (TypeError, json.JSONDecodeError):
+                payload = None
+            if isinstance(payload, dict) and int(payload.get("day", 0) or 0) == int(target_day):
+                if int(payload.get("penalty_applied", 0) or 0) != 0:
+                    payload["penalty_applied"] = 0
+                    conn.execute("""
+                        UPDATE campaign_user_status_effects
+                        SET effect_value = %s,
+                            applied_at = CURRENT_TIMESTAMP
+                        WHERE user_id = %s AND campaign_id = %s AND effect_key = %s
+                    """, (json.dumps(payload), user_id, campaign_id, "infernal_mandate"))
 
     return {"status": "reset", "date": target_date_str}
 
@@ -334,6 +440,25 @@ def admin_add_streak(user_id: int, campaign_id: int, amount: int):
 
     return {"streak": next_streak}
 
+def admin_add_troops(user_id: int, campaign_id: int, amount: int):
+    with get_db() as conn:
+        require_admin(conn, user_id)
+        row = conn.execute("""
+            SELECT score
+            FROM campaign_members
+            WHERE user_id = %s AND campaign_id = %s
+        """, (user_id, campaign_id)).fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Campaign membership not found")
+        current = int(row[0] or 0)
+        next_score = max(0, current + int(amount))
+        conn.execute("""
+            UPDATE campaign_members
+            SET score = %s
+            WHERE user_id = %s AND campaign_id = %s
+        """, (next_score, user_id, campaign_id))
+    return {"score": next_score}
+
 def admin_reset_double_down(user_id: int, campaign_id: int):
     with get_db() as conn:
         require_admin(conn, user_id)
@@ -346,3 +471,48 @@ def admin_reset_double_down(user_id: int, campaign_id: int):
         """, (user_id, campaign_id))
 
     return {"status": "reset"}
+
+
+def admin_set_word(user_id: int, campaign_id: int, word: str):
+    normalized_word = str(word or "").strip().lower()
+    if len(normalized_word) != 5 or not normalized_word.isalpha():
+        raise HTTPException(status_code=400, detail="Word must be exactly 5 letters.")
+    if normalized_word not in VALID_WORDS:
+        raise HTTPException(status_code=400, detail="Word must be a valid guess word.")
+
+    with get_db() as conn:
+        require_admin(conn, user_id)
+        _, _, _, target_day, target_date = resolve_campaign_day(conn, campaign_id, None)
+        target_date_str = target_date.strftime("%Y-%m-%d")
+
+        updated = conn.execute("""
+            UPDATE campaign_words
+            SET word = %s
+            WHERE campaign_id = %s AND day = %s
+        """, (normalized_word, campaign_id, target_day))
+        if updated.rowcount == 0:
+            raise HTTPException(status_code=404, detail="No campaign word found for today.")
+
+        # Keep testing predictable after changing the answer.
+        conn.execute("""
+            DELETE FROM campaign_guesses
+            WHERE user_id = %s AND campaign_id = %s AND date = %s
+        """, (user_id, campaign_id, target_date_str))
+        conn.execute("""
+            DELETE FROM campaign_guess_states
+            WHERE user_id = %s AND campaign_id = %s AND date = %s
+        """, (user_id, campaign_id, target_date_str))
+        conn.execute("""
+            DELETE FROM campaign_daily_progress
+            WHERE user_id = %s AND campaign_id = %s AND date = %s
+        """, (user_id, campaign_id, target_date_str))
+        conn.execute("""
+            DELETE FROM campaign_user_daily_results
+            WHERE user_id = %s AND campaign_id = %s AND date = %s
+        """, (user_id, campaign_id, target_date_str))
+        conn.execute("""
+            DELETE FROM campaign_first_guesses
+            WHERE user_id = %s AND campaign_id = %s AND date = %s
+        """, (user_id, campaign_id, target_date_str))
+
+    return {"status": "updated", "word": normalized_word.upper(), "day": target_day}

@@ -69,6 +69,12 @@
   font-family: var(--theme-font);
 }
 
+.admin-select-wide {
+  flex: 1 1 100%;
+  width: 100%;
+  min-width: 0;
+}
+
 .admin-action-btn {
   padding: 8px 14px;
   border-radius: 10px;

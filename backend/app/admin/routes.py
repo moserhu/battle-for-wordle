@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends
 from app.auth import get_current_user
 from app.models import CampaignOnly
 from app.admin import service
-from app.admin.models import AdminEffectRequest, AdminAmountRequest
+from app.admin.models import AdminEffectRequest, AdminAmountRequest, AdminWordRequest
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -36,6 +36,15 @@ def admin_add_coins(data: AdminAmountRequest, current_user: dict = Depends(get_c
 def admin_add_streak(data: AdminAmountRequest, current_user: dict = Depends(get_current_user)):
     return service.admin_add_streak(current_user["user_id"], data.campaign_id, data.amount)
 
+@router.post("/add_troops")
+def admin_add_troops(data: AdminAmountRequest, current_user: dict = Depends(get_current_user)):
+    return service.admin_add_troops(current_user["user_id"], data.campaign_id, data.amount)
+
 @router.post("/reset_double_down")
 def admin_reset_double_down(data: CampaignOnly, current_user: dict = Depends(get_current_user)):
     return service.admin_reset_double_down(current_user["user_id"], data.campaign_id)
+
+
+@router.post("/set_word")
+def admin_set_word(data: AdminWordRequest, current_user: dict = Depends(get_current_user)):
+    return service.admin_set_word(current_user["user_id"], data.campaign_id, data.word)

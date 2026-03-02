@@ -75,12 +75,12 @@ class GameplayApiIntegrationTests(unittest.TestCase):
     with patch.object(app_main.crud, "get_targetable_members_with_item_status", return_value=payload) as mock_targets:
       response = self.client.post(
         "/api/campaign/targets/item",
-        json={"campaign_id": 22, "item_key": "voidbrand"},
+        json={"campaign_id": 22, "item_key": "hex_of_forced_utterance"},
       )
 
     self.assertEqual(response.status_code, 200)
     self.assertEqual(response.json(), payload)
-    mock_targets.assert_called_once_with(22, 314, "voidbrand")
+    mock_targets.assert_called_once_with(22, 314, "hex_of_forced_utterance")
 
   def test_mercy_redeem_endpoint_passes_through_crud_payload(self):
     with patch.object(app_main.crud, "redeem_candle_of_mercy", return_value={"bonus": 10}) as mock_redeem:
@@ -127,7 +127,7 @@ class GameplayApiIntegrationTests(unittest.TestCase):
     ):
       response = self.client.post(
         "/api/campaign/items/use",
-        json={"campaign_id": 9, "item_key": "voidbrand", "target_user_id": None, "effect_payload": None},
+        json={"campaign_id": 9, "item_key": "hex_of_forced_utterance", "target_user_id": None, "effect_payload": None},
       )
 
     self.assertEqual(response.status_code, 400)

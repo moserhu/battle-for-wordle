@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import GameScreen from '../../pages/GameScreen';
 
 const mockNavigate = jest.fn();
@@ -34,23 +34,57 @@ jest.mock('../../components/WordGrid', () => (props) => (
     <div data-testid="grid-current-col">{props.currentCol}</div>
     <div data-testid="grid-row-0">{(props.guesses?.[0] || []).join('')}</div>
     <div data-testid="grid-row-1">{(props.guesses?.[1] || []).join('')}</div>
+    <div data-testid="grid-obscured-side">{props.obscuredSightSide || ''}</div>
+    <div data-testid="grid-obscured-active">{String(Boolean(props.obscuredSightActive))}</div>
   </div>
 ));
 
-jest.mock('../../components/Keyboard', () => function MockKeyboard({ onKeyPress }) {
-  const keys = ['C', 'R', 'A', 'N', 'E', 'Q', 'Enter', '⌫'];
+jest.mock('../../components/Keyboard', () => function MockKeyboard({
+  onKeyPress,
+  cursedLetters = [],
+  obscuredSightSide = null,
+  obscuredSightActive = false,
+}) {
+  const rows = [
+    ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
+    ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'],
+    ['Enter', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', '⌫'],
+  ];
+  const cursedSet = new Set(cursedLetters.map((letter) => String(letter).toUpperCase()));
+  const isVeilBlocked = (row, colIndex, key) => {
+    if (!obscuredSightActive || (obscuredSightSide !== 'left' && obscuredSightSide !== 'right')) {
+      return false;
+    }
+    if (obscuredSightSide === 'left' && key === 'Enter') return false;
+    if (obscuredSightSide === 'right' && key === '⌫') return false;
+    const midpoint = (row.length - 1) / 2;
+    return obscuredSightSide === 'left' ? colIndex < midpoint : colIndex > midpoint;
+  };
+
   return (
     <div data-testid="keyboard">
-      {keys.map((key) => (
-        <button key={key} type="button" onClick={() => onKeyPress(key)}>
-          {key}
-        </button>
-      ))}
+      {rows.flatMap((row) =>
+        row.map((key, colIndex) => {
+          const veilBlocked = isVeilBlocked(row, colIndex, key);
+          return (
+            <button
+              key={key}
+              type="button"
+              className={`${cursedSet.has(key) ? 'cursed-letter' : ''} ${veilBlocked ? 'veil-obscured-key' : ''}`.trim()}
+              onClick={() => onKeyPress(key)}
+            >
+              {key}
+            </button>
+          );
+        }),
+      )}
     </div>
   );
 });
 
-jest.mock('../../components/DoubleDownModal', () => () => null);
+jest.mock('../../components/DoubleDownModal', () => ({ visible }) => (
+  visible ? <div data-testid="double-down-modal" /> : null
+));
 jest.mock('../../components/RulerTitleModal', () => () => null);
 jest.mock('../../components/DayReplayInfoModal', () => () => null);
 jest.mock('../../components/admin/AdminToolsModal', () => () => null);
@@ -99,6 +133,12 @@ jest.mock('../../components/items/illusions', () => ({
   decrementConeTurns: (n) => Math.max(0, Number(n || 0) - 1),
   shouldShowConeOverlay: () => false,
   getConeOpacity: () => 0,
+  hasTimeStop: () => false,
+  TIME_STOP_REVEAL_DELAY_MS: 1200,
+  WanderingGlyphOverlay: ({ targetEffects }) =>
+    targetEffects.some((entry) => entry.item_key === 'sigil_of_the_wandering_glyph')
+      ? <div data-testid="wandering-glyph" />
+      : null,
 }));
 
 jest.mock('../../components/items/curses', () => ({
@@ -277,10 +317,67 @@ describe('GameScreen page', () => {
 
     await waitForInitialLoad();
     expect(screen.getByText(/ruler name/i)).toBeInTheDocument();
-    expect(screen.getByText(/oracle's whisper/i)).toBeInTheDocument();
+    const hintBanner = screen.getByText(/oracle's whisper/i).closest('.game-hint-banner');
+    expect(hintBanner).toBeInTheDocument();
     expect(screen.getByText(/letter/i)).toBeInTheDocument();
-    expect(screen.getByText('K')).toBeInTheDocument();
-    expect(screen.getByText('3')).toBeInTheDocument();
+    expect(hintBanner).toHaveTextContent('K');
+    expect(hintBanner).toHaveTextContent('3');
+  });
+
+  test('resets selected day when switching campaigns', async () => {
+    global.fetch = createFetchMock({
+      '/api/campaign/progress': [
+        makeResponse({
+          day: 2,
+          total: 7,
+          name: 'Campaign A',
+          king: 'Ruler A',
+          ruler_id: 42,
+          is_admin_campaign: false,
+          ruler_title: 'Current Ruler',
+        }),
+        makeResponse({
+          day: 7,
+          total: 10,
+          name: 'Campaign B',
+          king: 'Ruler B',
+          ruler_id: 77,
+          is_admin_campaign: false,
+          ruler_title: 'Current Ruler',
+        }),
+      ],
+      '/api/game/state': [
+        makeResponse({
+          guesses: emptyGrid(),
+          results: Array(6).fill(null),
+          letter_status: {},
+          game_over: false,
+          current_row: 0,
+          word: null,
+        }),
+        makeResponse({
+          guesses: emptyGrid(),
+          results: Array(6).fill(null),
+          letter_status: {},
+          game_over: false,
+          current_row: 0,
+          word: null,
+        }),
+      ],
+    });
+
+    const { rerender } = render(<GameScreen />);
+    await waitForInitialLoad(/day 2 of 7/i);
+
+    mockLocationSearch = '?campaign_id=99';
+    rerender(<GameScreen />);
+
+    await waitForInitialLoad(/day 7 of 10/i);
+    await waitFor(() => {
+      expect(global.fetch.callsByPath('/api/game/state').length).toBeGreaterThanOrEqual(2);
+    });
+    const lastStateCall = global.fetch.lastCallByPath('/api/game/state');
+    expect(JSON.parse(lastStateCall.options.body)).toEqual({ campaign_id: 99, day: 7 });
   });
 
   test('opens inventory modal and filters to self-use items with positive quantity', async () => {
@@ -289,12 +386,12 @@ describe('GameScreen page', () => {
         makeResponse({
           items: [
             { key: 'oracle_whisper', name: "Oracle's Whisper", requires_target: false, payload_type: 'letter', description: 'Hint' },
-            { key: 'voidbrand', name: 'Voidbrand', requires_target: true, description: 'Targeted' },
+            { key: 'hex_of_forced_utterance', name: 'Hex of Forced Utterance', requires_target: true, description: 'Targeted' },
             { key: 'candle_of_mercy', name: 'Candle of Mercy', requires_target: false, description: 'Mercy' },
           ],
           inventory: [
             { item_key: 'oracle_whisper', quantity: 2 },
-            { item_key: 'voidbrand', quantity: 1 },
+            { item_key: 'hex_of_forced_utterance', quantity: 1 },
             { item_key: 'candle_of_mercy', quantity: 0 },
           ],
         }),
@@ -308,7 +405,7 @@ describe('GameScreen page', () => {
 
     expect(await screen.findByText(/inventory/i)).toBeInTheDocument();
     expect(screen.getByText(/oracle's whisper/i)).toBeInTheDocument();
-    expect(screen.queryByText(/voidbrand/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/hex of forced utterance/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/candle of mercy/i)).not.toBeInTheDocument();
   });
 
@@ -509,5 +606,740 @@ describe('GameScreen page', () => {
     expect(screen.getByTestId('grid-current-row')).toHaveTextContent('0');
     expect(screen.getByTestId('grid-row-0')).toHaveTextContent('CRANE');
     expect(global.fetch.callsByPath('/api/guess')).toHaveLength(1);
+  });
+
+  test('does not open double down modal on load when forced utterance alias is active', async () => {
+    global.fetch = createFetchMock({
+      '/api/campaign/self_member': [
+        makeResponse({}),
+        makeResponse({ double_down_activated: 1, double_down_used_week: 0 }),
+      ],
+      '/api/campaign/items/active': [
+        makeResponse({
+          effects: [
+            {
+              item_key: 'edict_of_compulsion',
+              details: { payload: { value: 'crane' }, sender_name: 'Hex Caster' },
+            },
+          ],
+        }),
+      ],
+    });
+
+    render(<GameScreen />);
+    await waitForInitialLoad();
+
+    expect(screen.queryByTestId('double-down-modal')).not.toBeInTheDocument();
+  });
+
+  test('does not open double down modal on load and opens after first guess in normal flow', async () => {
+    global.fetch = createFetchMock({
+      '/api/campaign/self_member': [
+        makeResponse({}),
+        makeResponse({ double_down_activated: 0, double_down_used_week: 0 }),
+      ],
+      '/api/guess': [
+        makeResponse({
+          result: ['absent', 'absent', 'absent', 'absent', 'absent'],
+          word: 'cigar',
+          clown_triggered: false,
+          infernal_penalty_applied: 0,
+        }),
+      ],
+    });
+
+    render(<GameScreen />);
+    await waitForInitialLoad();
+
+    expect(screen.queryByTestId('double-down-modal')).not.toBeInTheDocument();
+
+    for (const key of ['C', 'R', 'A', 'N', 'E', 'Enter']) {
+      fireEvent.click(screen.getByRole('button', { name: key }));
+    }
+
+    await waitFor(() => {
+      expect(global.fetch.callsByPath('/api/guess')).toHaveLength(1);
+    });
+    expect(await screen.findByTestId('double-down-modal')).toBeInTheDocument();
+  });
+
+  test('does not open double down modal on reload when guesses already started', async () => {
+    const guesses = emptyGrid();
+    guesses[0] = ['C', 'R', 'A', 'N', 'E'];
+    guesses[1] = ['B', 'L', 'I', 'N', 'K'];
+    global.fetch = createFetchMock({
+      '/api/game/state': [
+        makeResponse({
+          guesses,
+          results: [
+            ['absent', 'absent', 'absent', 'absent', 'absent'],
+            ['absent', 'absent', 'absent', 'absent', 'absent'],
+            null, null, null, null,
+          ],
+          letter_status: {},
+          game_over: false,
+          current_row: 2,
+          word: null,
+        }),
+      ],
+      '/api/campaign/self_member': [
+        makeResponse({}),
+        makeResponse({ double_down_activated: 0, double_down_used_week: 0 }),
+      ],
+    });
+
+    render(<GameScreen />);
+    await waitForInitialLoad();
+    await waitFor(() => {
+      expect(screen.getByTestId('grid-current-row')).toHaveTextContent('2');
+    });
+    expect(screen.queryByTestId('double-down-modal')).not.toBeInTheDocument();
+  });
+
+  test('does not open double down modal after forced utterance auto-submits a guess', async () => {
+    global.fetch = createFetchMock({
+      '/api/campaign/self_member': [
+        makeResponse({}),
+        makeResponse({ double_down_activated: 0, double_down_used_week: 0 }),
+      ],
+      '/api/campaign/items/active': [
+        makeResponse({
+          effects: [
+            {
+              item_key: 'hex_of_forced_utterance',
+              details: { payload: { value: 'crane' }, sender_name: 'Hex Caster' },
+            },
+          ],
+        }),
+      ],
+      '/api/guess': [
+        makeResponse({
+          result: ['absent', 'absent', 'absent', 'absent', 'absent'],
+          word: 'cigar',
+          clown_triggered: false,
+          infernal_penalty_applied: 0,
+        }),
+      ],
+    });
+
+    render(<GameScreen />);
+    await waitForInitialLoad();
+
+    await waitFor(() => {
+      expect(global.fetch.callsByPath('/api/guess')).toHaveLength(1);
+    });
+    expect(screen.queryByTestId('double-down-modal')).not.toBeInTheDocument();
+  });
+
+  test('opens double down modal after next guess when forced utterance is active and row one is reached', async () => {
+    const guesses = emptyGrid();
+    guesses[0] = ['C', 'R', 'A', 'N', 'E'];
+    global.fetch = createFetchMock({
+      '/api/game/state': [
+        makeResponse({
+          guesses,
+          results: [
+            ['absent', 'absent', 'absent', 'absent', 'absent'],
+            null, null, null, null, null,
+          ],
+          letter_status: {},
+          game_over: false,
+          current_row: 1,
+          word: null,
+        }),
+      ],
+      '/api/campaign/self_member': [
+        makeResponse({}),
+        makeResponse({ double_down_activated: 0, double_down_used_week: 0 }),
+      ],
+      '/api/campaign/items/active': [
+        makeResponse({
+          effects: [
+            {
+              item_key: 'hex_of_forced_utterance',
+              details: { payload: { value: 'crane' }, sender_name: 'Hex Caster' },
+            },
+          ],
+        }),
+      ],
+      '/api/guess': [
+        makeResponse({
+          result: ['absent', 'absent', 'absent', 'absent', 'absent'],
+          word: 'cigar',
+          clown_triggered: false,
+          infernal_penalty_applied: 0,
+        }),
+      ],
+    });
+
+    render(<GameScreen />);
+    await waitForInitialLoad();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('grid-current-row')).toHaveTextContent('1');
+      expect(screen.getByTestId('grid-current-col')).toHaveTextContent('0');
+    });
+    expect(screen.queryByTestId('double-down-modal')).not.toBeInTheDocument();
+
+    for (const key of ['B', 'L', 'I', 'N', 'K']) {
+      fireEvent.keyDown(window, { key });
+    }
+    fireEvent.keyDown(window, { key: 'Enter' });
+
+    await waitFor(() => {
+      expect(global.fetch.callsByPath('/api/guess')).toHaveLength(1);
+    });
+    expect(await screen.findByTestId('double-down-modal')).toBeInTheDocument();
+  });
+
+  test('shows infernal troop-loss modal for invalid non-playable words', async () => {
+    global.fetch = createFetchMock({
+      '/api/campaign/items/active': [
+        makeResponse({
+          effects: [
+            {
+              item_key: 'infernal_mandate',
+              details: { sender_name: 'Infernal Judge' },
+            },
+          ],
+        }),
+      ],
+      '/api/guess': [
+        makeResponse(
+          {
+            detail: {
+              message: 'Invalid word',
+              infernal_penalty_applied: 5,
+              infernal_rule_broken: true,
+              infernal_violation_type: 'playable_word',
+            },
+          },
+          { ok: false, status: 400 },
+        ),
+      ],
+    });
+
+    render(<GameScreen />);
+    await waitForInitialLoad();
+
+    for (const key of ['C', 'R', 'A', 'N', 'E', 'Enter']) {
+      fireEvent.click(screen.getByRole('button', { name: key }));
+    }
+
+    await waitFor(() => {
+      expect(global.fetch.callsByPath('/api/guess')).toHaveLength(1);
+    });
+    expect(await screen.findByText(/you lost/i)).toBeInTheDocument();
+    expect(screen.getByText(/you must play a playable word or risk losing/i).closest('p')).toHaveTextContent(/5 more troops/i);
+  });
+
+  test('shows curse hex button and modal details when player is cursed', async () => {
+    global.fetch = createFetchMock({
+      '/api/campaign/items/active': [
+        makeResponse({
+          effects: [
+            {
+              item_key: 'vowel_voodoo',
+              details: {
+                sender_name: 'TheNightKing',
+                payload: { value: 'ae' },
+              },
+            },
+          ],
+        }),
+      ],
+    });
+
+    render(<GameScreen />);
+    await waitForInitialLoad();
+
+    const curseButton = screen.getByRole('button', { name: /curse details/i });
+    expect(curseButton).toBeInTheDocument();
+
+    fireEvent.click(curseButton);
+
+    expect(await screen.findByText(/hex mark detected/i)).toBeInTheDocument();
+    expect(screen.getByText(/theNightKing/i)).toBeInTheDocument();
+    expect(screen.getByText(/vowel voodoo/i)).toBeInTheDocument();
+    expect(screen.getByText(/effect:/i).closest('p')).toHaveTextContent(/vowels a, e are blocked/i);
+  });
+
+  test('highlights obscured sight side payload in curse modal', async () => {
+    global.fetch = createFetchMock({
+      '/api/campaign/items/active': [
+        makeResponse({
+          effects: [
+            {
+              item_key: 'veil_of_obscured_sight',
+              details: {
+                sender_name: 'FogCaller',
+                payload: { value: 'left' },
+              },
+            },
+          ],
+        }),
+      ],
+    });
+
+    render(<GameScreen />);
+    await waitForInitialLoad();
+
+    fireEvent.click(screen.getByRole('button', { name: /curse details/i }));
+    expect(await screen.findByText(/hex mark detected/i)).toBeInTheDocument();
+    const emphasized = document.querySelector('.curse-info-effect-emphasis');
+    expect(emphasized).toBeTruthy();
+    expect(emphasized).toHaveTextContent('LEFT');
+    expect(screen.getByText(/effect:/i).closest('p')).toHaveTextContent(/left columns are obscured/i);
+  });
+
+  test('applies obscured sight board effect to selected side during first two guesses', async () => {
+    global.fetch = createFetchMock({
+      '/api/campaign/items/active': [
+        makeResponse({
+          effects: [
+            {
+              item_key: 'veil_of_obscured_sight',
+              details: {
+                sender_name: 'FogCaller',
+                payload: { value: 'right' },
+              },
+            },
+          ],
+        }),
+      ],
+    });
+
+    render(<GameScreen />);
+    await waitForInitialLoad();
+
+    expect(screen.getByTestId('grid-obscured-side')).toHaveTextContent('right');
+    expect(screen.getByTestId('grid-obscured-active')).toHaveTextContent('true');
+  });
+
+  test('does not apply obscured sight board effect after the second guess row', async () => {
+    global.fetch = createFetchMock({
+      '/api/game/state': [
+        makeResponse({
+          guesses: emptyGrid(),
+          results: Array(6).fill(null),
+          letter_status: {},
+          game_over: false,
+          current_row: 2,
+          word: null,
+        }),
+      ],
+      '/api/campaign/items/active': [
+        makeResponse({
+          effects: [
+            {
+              item_key: 'veil_of_obscured_sight',
+              details: {
+                sender_name: 'FogCaller',
+                payload: { value: 'left' },
+              },
+            },
+          ],
+        }),
+      ],
+    });
+
+    render(<GameScreen />);
+    await waitForInitialLoad();
+
+    expect(screen.getByTestId('grid-obscured-side')).toHaveTextContent('left');
+    expect(screen.getByTestId('grid-obscured-active')).toHaveTextContent('false');
+  });
+
+  test('left obscured sight keeps Enter and blacked keys usable', async () => {
+    global.fetch = createFetchMock({
+      '/api/campaign/items/active': [
+        makeResponse({
+          effects: [
+            {
+              item_key: 'veil_of_obscured_sight',
+              details: {
+                sender_name: 'FogCaller',
+                payload: { value: 'left' },
+              },
+            },
+          ],
+        }),
+      ],
+    });
+
+    render(<GameScreen />);
+    await waitForInitialLoad();
+
+    const enterKey = screen.getByRole('button', { name: 'Enter' });
+    const leftKey = screen.getByRole('button', { name: 'Q' });
+    expect(enterKey).not.toBeDisabled();
+    expect(leftKey).not.toBeDisabled();
+    expect(leftKey).toHaveClass('veil-obscured-key');
+
+    fireEvent.click(leftKey);
+    expect(screen.getByTestId('grid-row-0')).toHaveTextContent('Q');
+  });
+
+  test('right obscured sight keeps Delete and blacked keys usable', async () => {
+    global.fetch = createFetchMock({
+      '/api/campaign/items/active': [
+        makeResponse({
+          effects: [
+            {
+              item_key: 'veil_of_obscured_sight',
+              details: {
+                sender_name: 'FogCaller',
+                payload: { value: 'right' },
+              },
+            },
+          ],
+        }),
+      ],
+    });
+
+    render(<GameScreen />);
+    await waitForInitialLoad();
+
+    const deleteKey = screen.getByRole('button', { name: '⌫' });
+    const rightKey = screen.getByRole('button', { name: 'P' });
+    expect(deleteKey).not.toBeDisabled();
+    expect(rightKey).not.toBeDisabled();
+    expect(rightKey).toHaveClass('veil-obscured-key');
+
+    fireEvent.click(rightKey);
+    expect(screen.getByTestId('grid-row-0')).toHaveTextContent('P');
+  });
+
+  test('shows new blessing status banners from status effects payloads', async () => {
+    global.fetch = createFetchMock({
+      '/api/campaign/items/status': [
+        makeResponse({
+          effects: [
+            { effect_key: 'god_of_the_easy_tongue', payload: { day: 2, vowel_count: 3 } },
+            {
+              effect_key: 'twin_fates',
+              payload: {
+                day: 2,
+                letters: [
+                  { letter: 'a', positions: [1, 4] },
+                  { letter: 'e', positions: [2, 5] },
+                ],
+              },
+            },
+          ],
+        }),
+      ],
+    });
+
+    render(<GameScreen />);
+    await waitForInitialLoad();
+
+    expect(screen.getByText(/god of the easy tongue/i)).toBeInTheDocument();
+    expect(screen.getByText(/today's word has/i)).toBeInTheDocument();
+    expect(screen.getByText(/twin fates/i)).toBeInTheDocument();
+    expect(screen.getByText(/A at 1, 4 \| E at 2, 5/i)).toBeInTheDocument();
+  });
+
+  test('blocks hexed letters from vowel voodoo on early rows', async () => {
+    global.fetch = createFetchMock({
+      '/api/campaign/items/active': [
+        makeResponse({
+          effects: [
+            {
+              item_key: 'vowel_voodoo',
+              details: {
+                sender_name: 'HexCaster',
+                payload: { value: 'ae' },
+              },
+            },
+          ],
+        }),
+      ],
+    });
+
+    render(<GameScreen />);
+    await waitForInitialLoad();
+
+    expect(screen.getByRole('button', { name: 'A' })).toHaveClass('cursed-letter');
+
+    fireEvent.click(screen.getByRole('button', { name: 'A' }));
+
+    await waitFor(() => {
+      expect(document.querySelector('.grid-outer.shake')).toBeTruthy();
+    });
+    expect(screen.getByTestId('grid-row-0')).toHaveTextContent('');
+  });
+
+  test('does not mark vowel voodoo letters after the second row', async () => {
+    global.fetch = createFetchMock({
+      '/api/game/state': [
+        makeResponse({
+          guesses: emptyGrid(),
+          results: Array(6).fill(null),
+          letter_status: {},
+          game_over: false,
+          current_row: 2,
+          word: null,
+        }),
+      ],
+      '/api/campaign/items/active': [
+        makeResponse({
+          effects: [
+            {
+              item_key: 'vowel_voodoo',
+              details: {
+                sender_name: 'HexCaster',
+                payload: { value: 'ae' },
+              },
+            },
+          ],
+        }),
+      ],
+    });
+
+    render(<GameScreen />);
+    await waitForInitialLoad();
+
+    expect(screen.getByRole('button', { name: 'A' })).not.toHaveClass('cursed-letter');
+    expect(screen.getByRole('button', { name: 'E' })).not.toHaveClass('cursed-letter');
+  });
+
+  test('marks consonant cleaver blocked letters as cursed on the keyboard', async () => {
+    global.fetch = createFetchMock({
+      '/api/campaign/items/active': [
+        makeResponse({
+          effects: [
+            {
+              item_key: 'consonant_cleaver',
+              details: {
+                sender_name: 'HexCaster',
+                payload: { value: 'crne' },
+              },
+            },
+          ],
+        }),
+      ],
+    });
+
+    render(<GameScreen />);
+    await waitForInitialLoad();
+
+    expect(screen.getByRole('button', { name: 'C' })).toHaveClass('cursed-letter');
+    expect(screen.getByRole('button', { name: 'R' })).toHaveClass('cursed-letter');
+    expect(screen.getByRole('button', { name: 'N' })).toHaveClass('cursed-letter');
+    expect(screen.getByRole('button', { name: 'E' })).toHaveClass('cursed-letter');
+  });
+
+  test('does not mark consonant cleaver letters after the second row', async () => {
+    global.fetch = createFetchMock({
+      '/api/game/state': [
+        makeResponse({
+          guesses: emptyGrid(),
+          results: Array(6).fill(null),
+          letter_status: {},
+          game_over: false,
+          current_row: 2,
+          word: null,
+        }),
+      ],
+      '/api/campaign/items/active': [
+        makeResponse({
+          effects: [
+            {
+              item_key: 'consonant_cleaver',
+              details: {
+                sender_name: 'HexCaster',
+                payload: { value: 'crne' },
+              },
+            },
+          ],
+        }),
+      ],
+    });
+
+    render(<GameScreen />);
+    await waitForInitialLoad();
+
+    expect(screen.getByRole('button', { name: 'C' })).not.toHaveClass('cursed-letter');
+    expect(screen.getByRole('button', { name: 'R' })).not.toHaveClass('cursed-letter');
+    expect(screen.getByRole('button', { name: 'N' })).not.toHaveClass('cursed-letter');
+    expect(screen.getByRole('button', { name: 'E' })).not.toHaveClass('cursed-letter');
+  });
+
+  test('infernal mandate locks green letters and shows troop-loss modal on missing discovered letters', async () => {
+    global.fetch = createFetchMock({
+      '/api/campaign/items/active': [
+        makeResponse({
+          effects: [
+            {
+              item_key: 'infernal_mandate',
+              details: { sender_name: 'Infernal Judge' },
+            },
+          ],
+        }),
+      ],
+      '/api/guess': [
+        makeResponse({
+          result: ['correct', 'present', 'absent', 'absent', 'absent'],
+          word: 'cigar',
+          clown_triggered: false,
+          infernal_penalty_applied: 0,
+        }),
+        makeResponse({
+          result: ['correct', 'absent', 'absent', 'absent', 'absent'],
+          word: 'cigar',
+          clown_triggered: false,
+          infernal_penalty_applied: 5,
+        }),
+      ],
+    });
+
+    render(<GameScreen />);
+    await waitForInitialLoad();
+
+    for (const key of ['C', 'R', 'A', 'N', 'E', 'Enter']) {
+      fireEvent.click(screen.getByRole('button', { name: key }));
+    }
+
+    await waitFor(() => {
+      expect(global.fetch.callsByPath('/api/guess')).toHaveLength(1);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('grid-row-1')).toHaveTextContent('C');
+    });
+
+    for (const key of ['A', 'N', 'Q', 'E', 'Enter']) {
+      fireEvent.click(screen.getByRole('button', { name: key }));
+    }
+
+    await waitFor(() => {
+      expect(global.fetch.callsByPath('/api/guess')).toHaveLength(2);
+    });
+
+    expect(await screen.findByText(/you lost/i)).toBeInTheDocument();
+    expect(screen.getByText(/use all discovered letters in every guess/i)).toBeInTheDocument();
+  });
+
+  test('infernal mandate shows cap warning when rule is broken without additional troop loss', async () => {
+    global.fetch = createFetchMock({
+      '/api/campaign/items/active': [
+        makeResponse({
+          effects: [
+            {
+              item_key: 'infernal_mandate',
+              details: { sender_name: 'Infernal Judge' },
+            },
+          ],
+        }),
+      ],
+      '/api/guess': [
+        makeResponse({
+          result: ['correct', 'present', 'absent', 'absent', 'absent'],
+          word: 'cigar',
+          clown_triggered: false,
+          infernal_penalty_applied: 0,
+        }),
+        makeResponse({
+          result: ['correct', 'absent', 'absent', 'absent', 'absent'],
+          word: 'cigar',
+          clown_triggered: false,
+          infernal_penalty_applied: 0,
+          infernal_rule_broken: true,
+        }),
+      ],
+    });
+
+    render(<GameScreen />);
+    await waitForInitialLoad();
+
+    for (const key of ['C', 'R', 'A', 'N', 'E', 'Enter']) {
+      fireEvent.click(screen.getByRole('button', { name: key }));
+    }
+
+    await waitFor(() => {
+      expect(global.fetch.callsByPath('/api/guess')).toHaveLength(1);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('grid-row-1')).toHaveTextContent('C');
+    });
+
+    for (const key of ['A', 'N', 'Q', 'E', 'Enter']) {
+      fireEvent.click(screen.getByRole('button', { name: key }));
+    }
+
+    await waitFor(() => {
+      expect(global.fetch.callsByPath('/api/guess')).toHaveLength(2);
+    });
+
+    expect(await screen.findByText(/no troops were lost because today's infernal penalty cap has already been reached/i)).toBeInTheDocument();
+    expect(screen.getByText(/use all discovered letters in every guess/i)).toBeInTheDocument();
+  });
+
+  test('shows wandering glyph overlay when sigil illusion is active', async () => {
+    global.fetch = createFetchMock({
+      '/api/campaign/items/active': [
+        makeResponse({
+          effects: [
+            {
+              item_key: 'sigil_of_the_wandering_glyph',
+              details: { sender_name: 'Illusionist' },
+            },
+          ],
+        }),
+      ],
+    });
+
+    render(<GameScreen />);
+    await waitForInitialLoad();
+
+    expect(screen.getByTestId('wandering-glyph')).toBeInTheDocument();
+  });
+
+  test('time stop delays reveal progression before advancing row', async () => {
+    global.fetch = createFetchMock({
+      '/api/campaign/items/active': [
+        makeResponse({
+          effects: [
+            { item_key: 'time_stop', details: { sender_name: 'Chronomancer' } },
+          ],
+        }),
+      ],
+      '/api/guess': [
+        makeResponse({
+          result: ['absent', 'absent', 'absent', 'absent', 'absent'],
+          word: 'crane',
+          clown_triggered: false,
+        }),
+      ],
+    });
+
+    render(<GameScreen />);
+    await waitForInitialLoad();
+
+    jest.useFakeTimers();
+    try {
+      for (const key of ['C', 'R', 'A', 'N', 'E', 'Enter']) {
+        fireEvent.click(screen.getByRole('button', { name: key }));
+      }
+
+      await waitFor(() => {
+        expect(global.fetch.callsByPath('/api/guess')).toHaveLength(1);
+      });
+
+      expect(screen.getByTestId('grid-current-row')).toHaveTextContent('0');
+
+      await act(async () => {
+        jest.advanceTimersByTime(1200);
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('grid-current-row')).toHaveTextContent('1');
+      });
+    } finally {
+      jest.runOnlyPendingTimers();
+      jest.useRealTimers();
+    }
   });
 });

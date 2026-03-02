@@ -4,8 +4,8 @@ def _spider_swarm(conn, user_id: int, campaign_id: int):
 spider_swarm_item = {
     "key": "spider_swarm",
     "name": "Spider Swarm",
-    "description": "A skittering omen crosses the board.",
-    "cost": 5,
+    "description": "Sends spiders scurrying across the game board.",
+    "cost": 1,
     "category": "illusion",
     "handler": _spider_swarm,
     "affects_others": True,

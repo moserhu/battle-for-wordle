@@ -42,21 +42,21 @@ jest.mock('../../components/AccoladesModal', () => () => null);
 
 const blessingItems = {
   oracleWhisper: { key: 'oracle_whisper', name: "Oracle's Whisper", description: 'hint', requires_target: false, payload_type: 'letter' },
-  cartographersInsight: { key: 'cartographers_insight', name: "Cartographer's Insight", description: 'map', requires_target: false },
+  cartographersInsight: { key: 'grace_of_the_guiding_star', name: "Cartographer's Insight", description: 'map', requires_target: false },
   candleOfMercy: { key: 'candle_of_mercy', name: 'Candle of Mercy', description: 'mercy', requires_target: false },
 };
 const illusionItems = {
-  bloodOathInk: { key: 'blood_oath_ink', name: 'Blood Oath Ink', description: 'ink', requires_target: false },
+  bloodOathInk: { key: 'phantoms_mirage', name: 'Blood Oath Ink', description: 'ink', requires_target: false },
   spiderSwarm: { key: 'spider_swarm', name: 'Spider Swarm', description: 'spiders', requires_target: true },
   sendInTheClown: { key: 'send_in_the_clown', name: 'Send in the Clown', description: 'clown', requires_target: true },
-  danceOfTheJester: { key: 'dance_of_the_jester', name: 'Dance of the Jester', description: 'dance', requires_target: true },
+  danceOfTheJester: { key: 'earthquake', name: 'Dance of the Jester', description: 'dance', requires_target: true },
   coneOfCold: { key: 'cone_of_cold', name: 'Cone of Cold', description: 'cold', requires_target: true },
 };
 const curseItems = {
-  sealOfSilence: { key: 'seal_of_silence', name: 'Seal of Silence', description: 'seal', requires_target: true, payload_type: 'letter' },
-  voidbrand: { key: 'voidbrand', name: 'Voidbrand', description: 'void', requires_target: true, payload_type: 'word' },
-  executionersCut: { key: 'executioners_cut', name: "Executioner's Cut", description: 'cut', requires_target: true },
-  edictOfCompulsion: { key: 'edict_of_compulsion', name: 'Edict of Compulsion', description: 'edict', requires_target: true, payload_type: 'word' },
+  executionersCut: { key: 'reapers_scythe', name: "Executioner's Cut", description: 'cut', requires_target: true },
+  edictOfCompulsion: { key: 'hex_of_forced_utterance', name: 'Edict of Compulsion', description: 'edict', requires_target: true, payload_type: 'word' },
+  vowelVoodoo: { key: 'vowel_voodoo', name: 'Vowel Voodoo', description: 'vowels', requires_target: true },
+  veilOfObscuredSight: { key: 'veil_of_obscured_sight', name: 'Veil of Obscured Sight', description: 'veil', requires_target: true },
 };
 
 jest.mock('../../components/items/blessings', () => blessingItems);
@@ -261,11 +261,11 @@ describe('Campaigns, Dashboard, and Items pages', () => {
     global.fetch = createFetchRouter({
       '/api/campaign/shop/state': [
         makeResponse({
-          items: [curseItems.sealOfSilence],
-          inventory: [{ item_key: 'seal_of_silence', quantity: 1 }],
+          items: [curseItems.vowelVoodoo],
+          inventory: [{ item_key: 'vowel_voodoo', quantity: 1 }],
         }),
         makeResponse({
-          items: [curseItems.sealOfSilence],
+          items: [curseItems.vowelVoodoo],
           inventory: [],
         }),
       ],
@@ -280,7 +280,7 @@ describe('Campaigns, Dashboard, and Items pages', () => {
 
     render(<ItemsStorage />);
     expect(await screen.findByText(/my items/i)).toBeInTheDocument();
-    expect(await screen.findByText(/seal of silence/i)).toBeInTheDocument();
+    expect(await screen.findByText(/vowel voodoo/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /^use$/i }));
     expect(await screen.findByText(/select a target to use this item/i)).toBeInTheDocument();
@@ -288,8 +288,10 @@ describe('Campaigns, Dashboard, and Items pages', () => {
     const modalUse = screen.getAllByRole('button', { name: /^use$/i }).slice(-1)[0];
     expect(modalUse).toBeDisabled();
 
-    fireEvent.change(screen.getByLabelText(/choose a letter/i), { target: { value: 'ab' } });
-    expect(screen.getByLabelText(/choose a letter/i)).toHaveValue('a');
+    fireEvent.change(screen.getByLabelText(/choose 2 vowels/i), { target: { value: 'ab' } });
+    expect(screen.getByLabelText(/choose 2 vowels/i)).toHaveValue('a');
+    fireEvent.change(screen.getByLabelText(/choose 2 vowels/i), { target: { value: 'ae' } });
+    expect(screen.getByLabelText(/choose 2 vowels/i)).toHaveValue('ae');
     fireEvent.change(screen.getByRole('combobox'), { target: { value: '2' } });
     fireEvent.click(modalUse);
 
@@ -308,8 +310,8 @@ describe('Campaigns, Dashboard, and Items pages', () => {
     global.fetch = createFetchRouter({
       '/api/campaign/shop/state': [
         makeResponse({
-          items: [curseItems.voidbrand],
-          inventory: [{ item_key: 'voidbrand', quantity: 1 }],
+          items: [curseItems.edictOfCompulsion],
+          inventory: [{ item_key: 'hex_of_forced_utterance', quantity: 1 }],
         }),
       ],
       '/api/campaign/progress': [makeResponse({ is_admin_campaign: false })],
@@ -322,7 +324,7 @@ describe('Campaigns, Dashboard, and Items pages', () => {
     }, ['/api/campaign/progress']);
 
     render(<ItemsStorage />);
-    await screen.findByText(/voidbrand/i);
+    await screen.findByText(/edict of compulsion/i);
 
     fireEvent.click(screen.getByRole('button', { name: /^use$/i }));
     await screen.findByText(/select a target to use this item/i);
@@ -331,5 +333,91 @@ describe('Campaigns, Dashboard, and Items pages', () => {
     fireEvent.click(screen.getAllByRole('button', { name: /^use$/i }).slice(-1)[0]);
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/word must be a valid guess/i);
+  });
+
+  test('ItemsStorage validates and submits vowel voodoo payload', async () => {
+    mockParams = { campaignId: '7' };
+    global.fetch = createFetchRouter({
+      '/api/campaign/shop/state': [
+        makeResponse({
+          items: [curseItems.vowelVoodoo],
+          inventory: [{ item_key: 'vowel_voodoo', quantity: 1 }],
+        }),
+      ],
+      '/api/campaign/progress': [makeResponse({ is_admin_campaign: false })],
+      '/api/campaign/targets/item': [
+        makeResponse([{ user_id: 2, display_name: 'Enemy', blocked: false }]),
+      ],
+      '/api/campaign/items/use': [
+        makeResponse({ ok: true }),
+      ],
+    }, ['/api/campaign/progress']);
+
+    render(<ItemsStorage />);
+    await screen.findByText(/vowel voodoo/i);
+
+    fireEvent.click(screen.getByRole('button', { name: /^use$/i }));
+    await screen.findByLabelText(/choose 2 vowels/i);
+    await screen.findByText(/enemy/i);
+
+    const modalUse = screen.getAllByRole('button', { name: /^use$/i }).slice(-1)[0];
+    expect(modalUse).toBeDisabled();
+
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: '2' } });
+    fireEvent.change(screen.getByLabelText(/choose 2 vowels/i), { target: { value: 'ax' } });
+    expect(screen.getByLabelText(/choose 2 vowels/i)).toHaveValue('a');
+    expect(modalUse).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText(/choose 2 vowels/i), { target: { value: 'ae' } });
+    expect(modalUse).not.toBeDisabled();
+    fireEvent.click(modalUse);
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/campaign/items/use'),
+        expect.objectContaining({ method: 'POST' })
+      );
+    });
+  });
+
+  test('ItemsStorage requires side selection for veil of obscured sight', async () => {
+    mockParams = { campaignId: '8' };
+    global.fetch = createFetchRouter({
+      '/api/campaign/shop/state': [
+        makeResponse({
+          items: [curseItems.veilOfObscuredSight],
+          inventory: [{ item_key: 'veil_of_obscured_sight', quantity: 1 }],
+        }),
+      ],
+      '/api/campaign/progress': [makeResponse({ is_admin_campaign: false })],
+      '/api/campaign/targets/item': [
+        makeResponse([{ user_id: 2, display_name: 'Enemy', blocked: false }]),
+      ],
+      '/api/campaign/items/use': [
+        makeResponse({ ok: true }),
+      ],
+    }, ['/api/campaign/progress']);
+
+    render(<ItemsStorage />);
+    await screen.findByText(/veil of obscured sight/i);
+
+    fireEvent.click(screen.getByRole('button', { name: /^use$/i }));
+    await screen.findByLabelText(/choose side to obscure/i);
+    await screen.findByText(/enemy/i);
+
+    const [sideSelect, targetSelect] = screen.getAllByRole('combobox');
+    const modalUse = screen.getAllByRole('button', { name: /^use$/i }).slice(-1)[0];
+    fireEvent.change(targetSelect, { target: { value: '2' } });
+    expect(modalUse).toBeDisabled();
+
+    fireEvent.change(sideSelect, { target: { value: 'left' } });
+    expect(modalUse).not.toBeDisabled();
+    fireEvent.click(modalUse);
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/campaign/items/use'),
+        expect.objectContaining({ method: 'POST' })
+      );
+    });
   });
 });

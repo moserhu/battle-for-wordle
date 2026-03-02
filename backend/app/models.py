@@ -75,6 +75,8 @@ class UseItemRequest(BaseModel):
     item_key: str
     target_user_id: Optional[int] = None
     effect_payload: Optional[dict] = None
+    accept_blessing_cost: Optional[bool] = False
+    consume_candle_of_mercy: Optional[bool] = False
 
 class ItemTargetRequest(BaseModel):
     campaign_id: int

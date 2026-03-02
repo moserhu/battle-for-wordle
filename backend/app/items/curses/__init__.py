@@ -1,11 +1,16 @@
-from app.items.curses.seal_of_silence import seal_of_silence_item
-from app.items.curses.voidbrand import voidbrand_item
-from app.items.curses.executioners_cut import executioners_cut_item
-from app.items.curses.edict_of_compulsion import edict_of_compulsion_item
+from app.items.curses.reapers_scythe import reapers_scythe_item
+from app.items.curses.hex_of_forced_utterance import hex_of_forced_utterance_item
+from app.items.curses.vowel_voodoo import vowel_voodoo_item
+from app.items.curses.veil_of_obscured_sight import veil_of_obscured_sight_item
+from app.items.curses.consonant_cleaver import consonant_cleaver_item
+from app.items.curses.infernal_mandate import infernal_mandate_item
 
 CURSE_ITEMS = [
-    seal_of_silence_item,
-    voidbrand_item,
-    executioners_cut_item,
-    edict_of_compulsion_item,
+    # Active curse catalog.
+    reapers_scythe_item,
+    hex_of_forced_utterance_item,
+    vowel_voodoo_item,
+    veil_of_obscured_sight_item,
+    consonant_cleaver_item,
+    infernal_mandate_item,
 ]

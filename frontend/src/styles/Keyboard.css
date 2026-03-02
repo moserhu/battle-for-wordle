@@ -64,6 +64,7 @@
     overflow: hidden;
     min-width: 0; /* important for small screens */
     padding: 0;
+    position: relative;
   }
   
   
@@ -125,6 +126,39 @@
 
   .keyboard-key.void-letter::after {
     transform: translateY(-50%) rotate(-35deg);
+  }
+
+  .keyboard-container .keyboard-key.cursed-letter {
+    background: linear-gradient(180deg, #7f1010 0%, #4f0909 100%);
+    color: #ffe5e5;
+    box-shadow: inset 0 0 0 1px rgba(255, 120, 120, 0.35), 0 0 10px rgba(150, 22, 22, 0.45);
+  }
+
+  .keyboard-container .keyboard-key.veil-obscured-key {
+    background: #000;
+    color: transparent;
+    box-shadow: inset 0 0 0 1px #111;
+    text-shadow: none;
+  }
+
+  .keyboard-container .keyboard-key.veil-obscured-key::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: #000;
+    pointer-events: none;
+  }
+
+  .keyboard-key .cursed-rune {
+    position: absolute;
+    inset: 0;
+    background-repeat: no-repeat;
+    background-size: 62%;
+    background-position: center;
+    opacity: 0.28;
+    filter: drop-shadow(0 0 5px rgba(255, 70, 70, 0.7));
+    pointer-events: none;
   }
 
 

@@ -8,18 +8,6 @@
   overflow-x: hidden;
 }
 
-.game-wrapper.admin-theme {
-  background: radial-gradient(circle at top, #5b1111 0%, #2a0707 55%, #160404 100%);
-}
-
-.game-wrapper.admin-theme::before {
-  background: radial-gradient(
-    ellipse at center,
-    rgba(90, 16, 16, 0.6) 25%,
-    rgba(12, 3, 3, 0.95) 100%
-  );
-}
-
 .game-wrapper::before {
   content: "";
   position: fixed;
@@ -300,10 +288,190 @@
   width: min(100%, 100vw);
   max-width: 100%;
   position: relative;
+  z-index: 0;
+  isolation: isolate;
   min-height: 520px;
   display: flex;
   flex-direction: column;
   align-items: center;
+}
+
+.game-play-area.cursed-play-area::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: 14px;
+  box-shadow:
+    inset 0 0 70px rgba(150, 0, 0, 0.42),
+    inset 0 0 140px rgba(40, 0, 0, 0.62);
+  background:
+    radial-gradient(circle at center, rgba(80, 0, 0, 0) 55%, rgba(130, 0, 0, 0.26) 100%),
+    repeating-radial-gradient(circle at 20% 25%, rgba(255, 40, 40, 0.06) 0 5px, rgba(0, 0, 0, 0) 5px 18px);
+  z-index: -1;
+  animation: curse-haze-pulse 2.4s ease-in-out infinite alternate;
+}
+
+.game-play-area.cursed-play-area.cursed-play-area-dispersed::before {
+  box-shadow:
+    inset 0 0 70px rgba(170, 135, 0, 0.42),
+    inset 0 0 140px rgba(56, 44, 0, 0.62);
+  background:
+    radial-gradient(circle at center, rgba(85, 62, 0, 0) 55%, rgba(160, 130, 0, 0.26) 100%),
+    repeating-radial-gradient(circle at 20% 25%, rgba(255, 220, 40, 0.09) 0 5px, rgba(0, 0, 0, 0) 5px 18px);
+}
+
+.curse-hex-button {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 54px;
+  height: 54px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 90, 90, 0.75);
+  background:
+    radial-gradient(circle at center, rgba(35, 0, 0, 0.95) 0%, rgba(12, 0, 0, 0.95) 60%, rgba(0, 0, 0, 0.95) 100%);
+  color: #ff5959;
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 3;
+  box-shadow:
+    0 0 14px rgba(255, 70, 70, 0.6),
+    inset 0 0 20px rgba(255, 40, 40, 0.2);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.curse-hex-button.curse-hex-button-dispersed {
+  border: 1px solid rgba(255, 225, 95, 0.85);
+  background:
+    radial-gradient(circle at center, rgba(50, 38, 0, 0.95) 0%, rgba(22, 16, 0, 0.95) 60%, rgba(0, 0, 0, 0.95) 100%);
+  color: #ffd54a;
+  box-shadow:
+    0 0 14px rgba(255, 210, 70, 0.7),
+    inset 0 0 20px rgba(255, 205, 40, 0.28);
+}
+
+.curse-hex-icon {
+  width: 42px;
+  height: 42px;
+  display: block;
+  object-fit: contain;
+  filter: drop-shadow(0 0 6px rgba(255, 50, 50, 0.65));
+}
+
+.curse-hex-button.curse-hex-button-dispersed .curse-hex-icon {
+  filter: drop-shadow(0 0 6px rgba(255, 218, 85, 0.85));
+}
+
+.curse-hex-button:hover {
+  transform: scale(1.06);
+  box-shadow:
+    0 0 20px rgba(255, 60, 60, 0.8),
+    inset 0 0 24px rgba(255, 40, 40, 0.35);
+}
+
+.curse-hex-button.curse-hex-button-dispersed:hover {
+  box-shadow:
+    0 0 22px rgba(255, 220, 80, 0.9),
+    inset 0 0 24px rgba(255, 215, 60, 0.4);
+}
+
+.curse-hex-button:focus-visible {
+  outline: 2px solid rgba(255, 150, 150, 0.9);
+  outline-offset: 2px;
+}
+
+.wandering-glyph-overlay {
+  --glyph-neon-rgb: 255,43,214;
+  --glyph-hue: 0deg;
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 960;
+  overflow: hidden;
+}
+
+.wandering-glyph-token {
+  --glyph-ratio: 1.875; /* 15:8 */
+  --glyph-w: min(450px, 62vw, calc(42vh * var(--glyph-ratio)));
+  position: absolute;
+  width: var(--glyph-w);
+  height: calc(var(--glyph-w) / var(--glyph-ratio));
+  border-radius: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  will-change: transform, filter;
+  filter: brightness(1.04) saturate(1.5);
+}
+
+.wandering-glyph-token.is-strobing .wandering-glyph-icon {
+  animation: glyph-corner-strobe 220ms steps(2, end) 1;
+}
+
+.wandering-glyph-icon {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  animation: glyph-float 2.8s ease-in-out infinite;
+  filter:
+    sepia(0.26)
+    brightness(1.2)
+    saturate(2.1)
+    hue-rotate(var(--glyph-hue));
+  transition: filter 100ms linear;
+}
+
+@keyframes glyph-float {
+  0% {
+    transform: translateY(0px) scale(1);
+  }
+  50% {
+    transform: translateY(-6px) scale(1.015);
+  }
+  100% {
+    transform: translateY(0px) scale(1);
+  }
+}
+
+@keyframes glyph-corner-strobe {
+  0% {
+    opacity: 1;
+    filter:
+      sepia(0.26)
+      brightness(1.4)
+      saturate(2.4)
+      hue-rotate(var(--glyph-hue));
+  }
+  30% {
+    opacity: 0.58;
+    filter:
+      sepia(0.26)
+      brightness(2.35)
+      saturate(3)
+      hue-rotate(var(--glyph-hue));
+  }
+  60% {
+    opacity: 1;
+    filter:
+      sepia(0.26)
+      brightness(1.35)
+      saturate(2.5)
+      hue-rotate(var(--glyph-hue));
+  }
+  100% {
+    opacity: 1;
+    filter:
+      sepia(0.26)
+      brightness(1.2)
+      saturate(2.1)
+      hue-rotate(var(--glyph-hue));
+  }
 }
 
 
@@ -922,6 +1090,10 @@
   position: relative;
 }
 
+.letter-box.obscured-cell {
+  box-shadow: none;
+}
+
 .day-loading {
   position: fixed;
   inset: 0;
@@ -964,10 +1136,109 @@
   80% { transform: translateX(4px); }
 }
 
+@keyframes curse-haze-pulse {
+  from {
+    opacity: 0.76;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.curse-info-modal {
+  width: min(92vw, 500px);
+  background: linear-gradient(160deg, rgba(20, 4, 4, 0.98), rgba(8, 2, 2, 0.98));
+  border: 1px solid rgba(200, 70, 70, 0.65);
+  box-shadow:
+    0 10px 34px rgba(0, 0, 0, 0.6),
+    inset 0 0 25px rgba(140, 20, 20, 0.25);
+  color: #f6dede;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.curse-info-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.curse-info-header h2 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #ffb5b5;
+  letter-spacing: 0.04em;
+}
+
+.curse-info-body {
+  background: rgba(55, 10, 10, 0.45);
+  border: 1px solid rgba(200, 80, 80, 0.4);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.curse-info-body p {
+  margin: 8px 0;
+  line-height: 1.35;
+}
+
+.curse-info-line {
+  display: block;
+}
+
+.curse-info-label {
+  color: #c59e9e;
+  font-weight: 600;
+}
+
+.curse-info-user {
+  color: #ffd6a6;
+  font-weight: 800;
+  font-size: 1.08rem;
+  letter-spacing: 0.02em;
+  text-shadow: 0 0 8px rgba(255, 190, 120, 0.35);
+}
+
+.curse-info-curse-name {
+  color: #ffc6c6;
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: 0.01em;
+}
+
+.curse-info-effect-emphasis {
+  color: #ff8f8f;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-shadow: 0 0 8px rgba(255, 120, 120, 0.35);
+}
+
+.curse-info-warning {
+  margin: 10px 2px 0;
+  color: #ffb5b5;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.curse-info-dispersed-note {
+  margin: 8px 2px 0;
+  color: #ffd84d;
+  font-size: 0.92rem;
+  font-weight: 800;
+  text-align: center;
+  letter-spacing: 0.01em;
+}
+
+
 /* === RESPONSIVE BREAKPOINTS === */
 
 /* Mobile */
 @media (max-width: 600px) {
+  .curse-hex-button {
+    position: static;
+    margin: 0 auto 10px;
+  }
 
   .troop-btn {
     font-size: 0.9rem;

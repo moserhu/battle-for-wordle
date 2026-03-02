@@ -3,6 +3,38 @@ import './AdminToolsModal.css';
 import WeeklyRewardModal from '../rewards/WeeklyRewardModal';
 
 const API_BASE = process.env.REACT_APP_API_URL || `${window.location.protocol}//${window.location.hostname}`;
+const VOWELS = new Set(['a', 'e', 'i', 'o', 'u']);
+const EFFECT_CATEGORY_LABELS = {
+  curse: 'Curses',
+  illusion: 'Illusions',
+  blessing: 'Blessings',
+};
+const EFFECT_CATEGORY_ORDER = ['curse', 'illusion', 'blessing'];
+
+function isVowelPair(value) {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (normalized.length !== 2) return false;
+  const letters = normalized.split('');
+  return letters.every((letter) => VOWELS.has(letter)) && new Set(letters).size === 2;
+}
+
+function isConsonantSet(value) {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (normalized.length !== 4) return false;
+  const letters = normalized.split('');
+  return (
+    letters.every((letter) => /^[a-z]$/i.test(letter) && !VOWELS.has(letter)) &&
+    new Set(letters).size === 4
+  );
+}
+
+function normalizeEffectCategory(value) {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (normalized === 'curses') return 'curse';
+  if (normalized === 'illusions') return 'illusion';
+  if (normalized === 'blessings') return 'blessing';
+  return normalized;
+}
 
 export default function AdminToolsModal({
   isOpen,
@@ -18,7 +50,9 @@ export default function AdminToolsModal({
   const [adminEffectPayload, setAdminEffectPayload] = useState("");
   const [adminClownRow, setAdminClownRow] = useState("");
   const [adminCoins, setAdminCoins] = useState("");
+  const [adminTroops, setAdminTroops] = useState("");
   const [adminStreak, setAdminStreak] = useState("");
+  const [adminWord, setAdminWord] = useState("");
   const [adminMessage, setAdminMessage] = useState(null);
   const [adminBusy, setAdminBusy] = useState(false);
 
@@ -30,12 +64,39 @@ export default function AdminToolsModal({
   const [weeklyPreviewError, setWeeklyPreviewError] = useState('');
   const [weeklyPreviewBusy, setWeeklyPreviewBusy] = useState(false);
 
-  const sortedAdminEffects = useMemo(() => {
-    return [...adminEffects].sort((a, b) => {
-      const categoryCompare = String(a.category || "").localeCompare(String(b.category || ""));
-      if (categoryCompare !== 0) return categoryCompare;
-      return String(a.name || "").localeCompare(String(b.name || ""));
+  const groupedAdminEffects = useMemo(() => {
+    const groups = {};
+    EFFECT_CATEGORY_ORDER.forEach((category) => {
+      groups[category] = [];
     });
+    const otherGroups = {};
+
+    [...adminEffects].forEach((effect) => {
+      const normalizedCategory = normalizeEffectCategory(effect.category);
+      if (groups[normalizedCategory]) {
+        groups[normalizedCategory].push(effect);
+        return;
+      }
+      if (!otherGroups[normalizedCategory]) {
+        otherGroups[normalizedCategory] = [];
+      }
+      otherGroups[normalizedCategory].push(effect);
+    });
+
+    const toSorted = (items) => [...items].sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+    const ordered = EFFECT_CATEGORY_ORDER
+      .map((category) => ({ category, label: EFFECT_CATEGORY_LABELS[category], items: toSorted(groups[category]) }))
+      .filter((group) => group.items.length > 0);
+
+    const otherOrdered = Object.keys(otherGroups)
+      .sort((a, b) => a.localeCompare(b))
+      .map((category) => ({
+        category,
+        label: category ? `${category[0].toUpperCase()}${category.slice(1)}s` : 'Other',
+        items: toSorted(otherGroups[category]),
+      }));
+
+    return [...ordered, ...otherOrdered];
   }, [adminEffects]);
 
   useEffect(() => {
@@ -114,6 +175,18 @@ export default function AdminToolsModal({
         setAdminMessage("Choose a valid 5-letter word first.");
         return;
       }
+      if (payloadType === "vowels" && !isVowelPair(normalized)) {
+        setAdminMessage("Choose exactly two unique vowels.");
+        return;
+      }
+      if (payloadType === "letters" && normalized && !isConsonantSet(normalized)) {
+        setAdminMessage("Choose exactly four unique consonants.");
+        return;
+      }
+      if (payloadType === "side" && normalized && normalized !== "left" && normalized !== "right") {
+        setAdminMessage("Choose LEFT or RIGHT.");
+        return;
+      }
     }
     let payload = selected?.payload_type
       ? { value: String(adminEffectPayload || "").trim().toLowerCase() }
@@ -164,8 +237,33 @@ export default function AdminToolsModal({
     }
   };
 
+  const handleAdminAddTroops = async () => {
+    const amount = parseInt(adminTroops, 10);
+    if (Number.isNaN(amount)) {
+      setAdminMessage("Enter a valid troop amount.");
+      return;
+    }
+    const result = await runAdminAction("/api/admin/add_troops", { amount });
+    if (result) {
+      setAdminTroops("");
+    }
+  };
+
   const handleAdminResetDoubleDown = async () => {
     await runAdminAction("/api/admin/reset_double_down");
+  };
+
+  const handleAdminSetWord = async () => {
+    const normalized = String(adminWord || '').trim().toLowerCase();
+    if (!/^[a-z]{5}$/i.test(normalized)) {
+      setAdminMessage("Enter a valid 5-letter word.");
+      return;
+    }
+    const result = await runAdminAction("/api/admin/set_word", { word: normalized });
+    if (result) {
+      setAdminWord("");
+      setAdminMessage(`Today's word set to ${result.word || normalized.toUpperCase()}.`);
+    }
   };
 
   const toggleWeeklyPreviewRecipient = (userId) => {
@@ -266,7 +364,7 @@ export default function AdminToolsModal({
           <div className="admin-row">
             <select
               id="admin-effect-select"
-              className="admin-select"
+              className="admin-select admin-select-wide"
               value={adminEffectKey}
               onChange={(event) => {
                 setAdminEffectKey(event.target.value);
@@ -274,10 +372,14 @@ export default function AdminToolsModal({
                 setAdminClownRow("");
               }}
             >
-              {sortedAdminEffects.map((effect) => (
-                <option key={effect.key} value={effect.key}>
-                  {effect.name} · {effect.category}{effect.affects_others ? " (target)" : " (status)"}
-                </option>
+              {groupedAdminEffects.map((group) => (
+                <optgroup key={group.category || group.label} label={group.label}>
+                  {group.items.map((effect) => (
+                    <option key={effect.key} value={effect.key}>
+                      {effect.name}{effect.affects_others ? " (target)" : " (status)"}
+                    </option>
+                  ))}
+                </optgroup>
               ))}
             </select>
             <button
@@ -290,18 +392,45 @@ export default function AdminToolsModal({
           </div>
           {adminEffects.find((effect) => effect.key === adminEffectKey)?.payload_type && (
             <div className="admin-row">
-              <input
-                className="admin-input"
-                type="text"
-                value={adminEffectPayload}
-                maxLength={adminEffects.find((effect) => effect.key === adminEffectKey)?.payload_type === "letter" ? 1 : 5}
-                placeholder={
-                  adminEffects.find((effect) => effect.key === adminEffectKey)?.payload_type === "letter"
-                    ? "Enter a letter"
-                    : "Enter a word"
+              {(() => {
+                const selectedEffect = adminEffects.find((effect) => effect.key === adminEffectKey);
+                const payloadType = selectedEffect?.payload_type;
+                if (payloadType === "side") {
+                  return (
+                    <select
+                      className="admin-select"
+                      value={adminEffectPayload}
+                      onChange={(event) => setAdminEffectPayload(event.target.value)}
+                    >
+                      <option value="">Random side</option>
+                      <option value="left">Left</option>
+                      <option value="right">Right</option>
+                    </select>
+                  );
                 }
-                onChange={(event) => setAdminEffectPayload(event.target.value)}
-              />
+                const maxLength =
+                  payloadType === "letter" ? 1
+                    : payloadType === "word" ? 5
+                      : payloadType === "vowels" ? 2
+                        : payloadType === "letters" ? 4
+                          : 5;
+                const placeholder =
+                  payloadType === "letter" ? "Enter a letter"
+                    : payloadType === "word" ? "Enter a word"
+                      : payloadType === "vowels" ? "ae"
+                        : payloadType === "letters" ? "bcdf (blank = random)"
+                          : "Value";
+                return (
+                  <input
+                    className="admin-input"
+                    type="text"
+                    value={adminEffectPayload}
+                    maxLength={maxLength}
+                    placeholder={placeholder}
+                    onChange={(event) => setAdminEffectPayload(event.target.value)}
+                  />
+                );
+              })()}
             </div>
           )}
           {adminEffectKey === "send_in_the_clown" && (
@@ -335,6 +464,23 @@ export default function AdminToolsModal({
           >
             Reset Today&apos;s Progress
           </button>
+          <div className="admin-row">
+            <input
+              className="admin-input"
+              type="text"
+              maxLength={5}
+              placeholder="Set today's word"
+              value={adminWord}
+              onChange={(event) => setAdminWord(event.target.value)}
+            />
+            <button
+              className="admin-action-btn"
+              onClick={handleAdminSetWord}
+              disabled={adminBusy}
+            >
+              Set Today&apos;s Word
+            </button>
+          </div>
         </div>
 
         <div className="admin-section">
@@ -375,6 +521,27 @@ export default function AdminToolsModal({
               disabled={adminBusy}
             >
               Add Streak
+            </button>
+          </div>
+        </div>
+
+        <div className="admin-section">
+          <label className="admin-label" htmlFor="admin-troops-input">Adjust Troops</label>
+          <div className="admin-row">
+            <input
+              id="admin-troops-input"
+              className="admin-input"
+              type="number"
+              placeholder="e.g. 25"
+              value={adminTroops}
+              onChange={(event) => setAdminTroops(event.target.value)}
+            />
+            <button
+              className="admin-action-btn"
+              onClick={handleAdminAddTroops}
+              disabled={adminBusy}
+            >
+              Add Troops
             </button>
           </div>
         </div>

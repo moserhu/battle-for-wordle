@@ -6,7 +6,7 @@ export const sendInTheClown = {
   key: 'send_in_the_clown',
   name: 'Send in the Clown',
   category: 'illusion',
-  description: 'A lurking jester marks a row; when it arrives, the fear is real.',
+  description: 'Choose a row (except row 1) for a clown jumpscare.',
 };
 
 export const useClownJumpscare = () => {

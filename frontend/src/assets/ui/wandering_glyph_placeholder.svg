@@ -1,0 +1,13 @@
+<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="glyphCore" cx="50%" cy="50%" r="60%">
+      <stop offset="0%" stop-color="#ffe8b8"/>
+      <stop offset="45%" stop-color="#ff8f47"/>
+      <stop offset="100%" stop-color="#2f0d0d"/>
+    </radialGradient>
+  </defs>
+  <circle cx="60" cy="60" r="55" fill="url(#glyphCore)" stroke="#ffca74" stroke-width="3"/>
+  <circle cx="60" cy="60" r="44" fill="none" stroke="#fff2d8" stroke-width="2" opacity="0.8"/>
+  <path d="M60 20 L75 48 L104 54 L83 76 L87 105 L60 90 L33 105 L37 76 L16 54 L45 48 Z" fill="none" stroke="#2a0909" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M60 32 L69 49 L88 53 L74 67 L77 86 L60 76 L43 86 L46 67 L32 53 L51 49 Z" fill="none" stroke="#fff3df" stroke-width="3" stroke-linejoin="round"/>
+</svg>

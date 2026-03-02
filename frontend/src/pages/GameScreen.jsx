@@ -11,13 +11,28 @@ import RulerTitleModal from '../components/RulerTitleModal';
 import DayReplayInfoModal from '../components/DayReplayInfoModal';
 import AdminToolsModal from '../components/admin/AdminToolsModal';
 import WeeklyRewardModal from '../components/rewards/WeeklyRewardModal';
-import { applyAbsentLetters, getCartographersLetters, applyOracleCorrectLetter, getOraclePlacement, hasCandleOfMercy } from '../components/items/blessings/index';
-import { hasBloodOathInk, useClownJumpscare, ClownOverlay, useSpiderSwarm, getSpiderMotionProps, useJesterDance, getConeTurns, decrementConeTurns, shouldShowConeOverlay, getConeOpacity } from '../components/items/illusions/index';
-import { hasExecutionersCut } from '../components/items/curses/executioners_cut';
+import { applyAbsentLetters, getCartographersLetters, applyOracleCorrectLetter, getOraclePlacement } from '../components/items/blessings/index';
+import BlessingUseModals from '../components/items/blessings/BlessingUseModals';
+import { hasBloodOathInk, useClownJumpscare, ClownOverlay, useSpiderSwarm, getSpiderMotionProps, useJesterDance, getConeTurns, decrementConeTurns, shouldShowConeOverlay, getConeOpacity, WanderingGlyphOverlay, hasTimeStop, TIME_STOP_REVEAL_DELAY_MS } from '../components/items/illusions/index';
+import { hasExecutionersCut } from '../components/items/curses/reapers_scythe';
+import hexRuneIcon from '../assets/ui/hex_rune.png';
 
 const API_BASE = process.env.REACT_APP_API_URL || `${window.location.protocol}//${window.location.hostname}`;
 
 const EMPTY_GRID = Array.from({ length: 6 }, () => Array(5).fill(""));
+const FORCED_UTTERANCE_KEYS = new Set(["hex_of_forced_utterance", "edict_of_compulsion"]);
+const toFiveLetterRow = (value) => {
+  const normalized = String(value || "").toUpperCase();
+  return Array.from({ length: 5 }, (_, idx) => normalized[idx] || "");
+};
+const normalizeGuessRow = (row) =>
+  Array.from({ length: 5 }, (_, idx) => (Array.isArray(row) ? String(row[idx] || "").toUpperCase() : ""));
+const getNextEmptyCol = (row) => {
+  for (let idx = 0; idx < 5; idx += 1) {
+    if (!row[idx]) return idx;
+  }
+  return 5;
+};
 
 function getTimeUntilCutoffCT() {
   const now = new Date();
@@ -49,6 +64,109 @@ function isFinalCampaignDay(campaignDay) {
   return campaignDay && campaignDay.day === campaignDay.total;
 }
 
+const CURSE_DETAILS_BY_KEY = {
+  hex_of_forced_utterance: {
+    name: 'Hex of Forced Utterance',
+    describe: (payloadValue) => {
+      if (payloadValue) {
+        return `Your first guess is forced to ${String(payloadValue).toUpperCase()}.`;
+      }
+      return 'Your first guess is forced by the curse.';
+    },
+  },
+  edict_of_compulsion: {
+    name: 'Hex of Forced Utterance',
+    describe: (payloadValue) => {
+      if (payloadValue) {
+        return `Your first guess is forced to ${String(payloadValue).toUpperCase()}.`;
+      }
+      return 'Your first guess is forced by the curse.';
+    },
+  },
+  reapers_scythe: {
+    name: "Reaper's Scythe",
+    describe: () => 'You have one fewer guess available today.',
+  },
+  executioners_cut: {
+    name: "Reaper's Scythe",
+    describe: () => 'You have one fewer guess available today.',
+  },
+  vowel_voodoo: {
+    name: 'Vowel Voodoo',
+    describe: (payloadValue) => {
+      if (payloadValue) {
+        return `Vowels ${String(payloadValue).toUpperCase().split("").join(", ")} are blocked for your first two guesses.`;
+      }
+      return 'Two vowels are blocked for your first two guesses.';
+    },
+  },
+  consonant_cleaver: {
+    name: 'Consonant Cleaver',
+    describe: (payloadValue) => {
+      if (payloadValue) {
+        return `Consonants ${String(payloadValue).toUpperCase().split("").join(", ")} are blocked for your first two guesses.`;
+      }
+      return 'Several consonants are blocked for your first two guesses.';
+    },
+  },
+  veil_of_obscured_sight: {
+    name: 'Veil of Obscured Sight',
+    describe: (payloadValue) => {
+      if (payloadValue) {
+        return `${String(payloadValue).toUpperCase()} columns are obscured for your first two guesses.`;
+      }
+      return 'Part of the board feedback is obscured for your first two guesses.';
+    },
+  },
+  infernal_mandate: {
+    name: 'Infernal Mandate',
+    describe: () => 'You must play all discovered letters and guess playable words or lose 5 troops (max 20).',
+  },
+};
+
+function getCurseEffectParts(itemKey, payloadValue, fallbackText) {
+  if ((itemKey === "hex_of_forced_utterance" || itemKey === "edict_of_compulsion") && payloadValue) {
+    return {
+      prefix: "Your first guess is forced to ",
+      emphasis: String(payloadValue).toUpperCase(),
+      suffix: ".",
+    };
+  }
+  if (itemKey === "vowel_voodoo" && payloadValue) {
+    return {
+      prefix: "Vowels ",
+      emphasis: String(payloadValue).toUpperCase().split("").join(", "),
+      suffix: " are blocked for your first two guesses.",
+    };
+  }
+  if (itemKey === "consonant_cleaver" && payloadValue) {
+    return {
+      prefix: "Consonants ",
+      emphasis: String(payloadValue).toUpperCase().split("").join(", "),
+      suffix: " are blocked for your first two guesses.",
+    };
+  }
+  if (itemKey === "veil_of_obscured_sight" && payloadValue) {
+    return {
+      prefix: "",
+      emphasis: String(payloadValue).toUpperCase(),
+      suffix: " columns are obscured for your first two guesses.",
+    };
+  }
+  if (itemKey === "infernal_mandate") {
+    return {
+      prefix: "You must play all discovered letters and guess playable words or lose ",
+      emphasis: "5 troops",
+      suffix: " (max 20).",
+    };
+  }
+  return {
+    prefix: fallbackText,
+    emphasis: "",
+    suffix: "",
+  };
+}
+
 
 export default function GameScreen() {
   const navigate = useNavigate();
@@ -69,6 +187,7 @@ export default function GameScreen() {
   const [showTroopModal, setShowTroopModal] = useState(false);
   const [troopsEarned, setTroopsEarned] = useState(0);
   const [showDoubleDownModal, setShowDoubleDownModal] = useState(false);
+  const [pendingDoubleDownPrompt, setPendingDoubleDownPrompt] = useState(false);
   const [showFailureModal, setShowFailureModal] = useState(false);
   const [failedWord, setFailedWord] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -77,6 +196,7 @@ export default function GameScreen() {
     activated: false,
     usedThisWeek: false
   });
+  const [hasOfferedDoubleDown, setHasOfferedDoubleDown] = useState(false);
   const [rulerTitle, setRulerTitle] = useState('Current Ruler');
   const [showRulerModal, setShowRulerModal] = useState(false);
   const [loadingDay, setLoadingDay] = useState(false);
@@ -85,9 +205,13 @@ export default function GameScreen() {
   const [hintPulse, setHintPulse] = useState(false);
   const lastHintRef = useRef("");
   const [targetEffects, setTargetEffects] = useState([]);
+  const [curseDispersed, setCurseDispersed] = useState(false);
   const [coneTurnsLeft, setConeTurnsLeft] = useState(0);
+  const [timeStopRevealRow, setTimeStopRevealRow] = useState(null);
+  const [timeStopRevealedCount, setTimeStopRevealedCount] = useState(5);
   const [statusEffects, setStatusEffects] = useState([]);
   const [hintPlaced, setHintPlaced] = useState(false);
+  const [twinFatesPlaced, setTwinFatesPlaced] = useState(false);
   const [showMercyModal, setShowMercyModal] = useState(false);
   const [mercyBonus, setMercyBonus] = useState(0);
   const [mercyBusy, setMercyBusy] = useState(false);
@@ -101,9 +225,18 @@ export default function GameScreen() {
   const [selfItemsLoading, setSelfItemsLoading] = useState(false);
   const [selfItemsError, setSelfItemsError] = useState('');
   const [selfInventory, setSelfInventory] = useState([]);
+  const [mercyInventoryCount, setMercyInventoryCount] = useState(0);
   const [selfItemsCatalog, setSelfItemsCatalog] = useState([]);
   const [selfPayloadValues, setSelfPayloadValues] = useState({});
   const [selfUseBusy, setSelfUseBusy] = useState('');
+  const [showBlessingCostModal, setShowBlessingCostModal] = useState(false);
+  const [showBlessingCandleModal, setShowBlessingCandleModal] = useState(false);
+  const [pendingBlessingItemKey, setPendingBlessingItemKey] = useState('');
+  const [showCurseInfoModal, setShowCurseInfoModal] = useState(false);
+  const [showInfernalModal, setShowInfernalModal] = useState(false);
+  const [infernalPenaltyAmount, setInfernalPenaltyAmount] = useState(0);
+  const [infernalViolationType, setInfernalViolationType] = useState('letters');
+  const doubleDownEligible = !doubleDownStatus.activated && !doubleDownStatus.usedThisWeek;
 
   // Weekly winner reward selection (cycle gate)
   const [weeklyReward, setWeeklyReward] = useState(null);
@@ -112,6 +245,8 @@ export default function GameScreen() {
   const [weeklyRewardBusy, setWeeklyRewardBusy] = useState(false);
   const [weeklyRewardError, setWeeklyRewardError] = useState('');
   const campMenuRef = useRef(null);
+  const playAreaRef = useRef(null);
+  const lastCampaignIdRef = useRef(null);
 
   const triggerShake = useCallback(() => {
   setShake(true);
@@ -144,9 +279,17 @@ export default function GameScreen() {
   const selfUsableInventory = useMemo(() => (
     selfInventory.filter((entry) => {
       const item = selfItemByKey.get(entry.item_key);
-      return item && !item.requires_target && Number(entry.quantity) > 0;
+      return item && item.key !== 'candle_of_mercy' && !item.requires_target && Number(entry.quantity) > 0;
     })
   ), [selfInventory, selfItemByKey]);
+  const hasCandleInventory = useMemo(
+    () => selfInventory.some((entry) => entry.item_key === 'candle_of_mercy' && Number(entry.quantity) > 0),
+    [selfInventory]
+  );
+  const pendingBlessingItem = useMemo(
+    () => (pendingBlessingItemKey ? selfItemByKey.get(pendingBlessingItemKey) : null),
+    [pendingBlessingItemKey, selfItemByKey]
+  );
 
   const loadSelfItems = useCallback(async () => {
     if (!campaignId || !token) return;
@@ -165,10 +308,30 @@ export default function GameScreen() {
       setSelfItemsCatalog(Array.isArray(data?.items) ? data.items : []);
       const inventoryRows = Array.isArray(data?.inventory) ? data.inventory : [];
       setSelfInventory(inventoryRows.filter((entry) => Number(entry.quantity) > 0));
+      const mercyQty = inventoryRows.find((entry) => entry.item_key === 'candle_of_mercy')?.quantity ?? 0;
+      setMercyInventoryCount(Number(mercyQty) || 0);
     } catch (err) {
       setSelfItemsError(err?.message || 'Failed to load items.');
     } finally {
       setSelfItemsLoading(false);
+    }
+  }, [campaignId, token]);
+
+  const refreshMercyInventory = useCallback(async () => {
+    if (!campaignId || !token) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/campaign/shop/state`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ campaign_id: campaignId }),
+      });
+      const data = await res.json();
+      if (!res.ok) return;
+      const inventoryRows = Array.isArray(data?.inventory) ? data.inventory : [];
+      const mercyQty = inventoryRows.find((entry) => entry.item_key === 'candle_of_mercy')?.quantity ?? 0;
+      setMercyInventoryCount(Number(mercyQty) || 0);
+    } catch {
+      // ignore
     }
   }, [campaignId, token]);
 
@@ -205,9 +368,11 @@ export default function GameScreen() {
 
       if (effectsData?.effects) {
         setTargetEffects(effectsData.effects);
+        setCurseDispersed(Boolean(effectsData?.curse_dispersed));
         setConeTurnsLeft(getConeTurns(effectsData.effects));
       } else {
         setTargetEffects([]);
+        setCurseDispersed(false);
         setConeTurnsLeft(0);
       }
 
@@ -216,10 +381,11 @@ export default function GameScreen() {
       } else {
         setStatusEffects([]);
       }
+      await refreshMercyInventory();
     } catch {
       // Silently ignore refresh failures; main gameplay flow still works.
     }
-  }, [campaignId, token]);
+  }, [campaignId, token, refreshMercyInventory]);
 
   useEffect(() => {
     const hintKey = hintScroll ? `${hintScroll.letter}-${hintScroll.position}` : "";
@@ -300,20 +466,28 @@ export default function GameScreen() {
     }
   };
 
-  const handleUseSelfItem = async (itemKey) => {
-    if (selfUseBusy) return;
-    const item = selfItemByKey.get(itemKey);
-    if (item?.payload_type) {
-      const rawValue = String(selfPayloadValues[itemKey] || '').trim().toLowerCase();
-      if (item.payload_type === 'letter' && (!rawValue || rawValue.length !== 1 || !/^[a-z]$/i.test(rawValue))) {
-        setSelfItemsError('Choose a single letter before using this item.');
-        return;
-      }
-      if (item.payload_type === 'word' && (!rawValue || rawValue.length !== 5 || !/^[a-z]{5}$/i.test(rawValue))) {
-        setSelfItemsError('Choose a 5-letter word before using this item.');
-        return;
-      }
+  const buildSelfEffectPayload = useCallback((itemKey, item) => {
+    if (!item?.payload_type) return null;
+    const rawValue = String(selfPayloadValues[itemKey] || '').trim().toLowerCase();
+    if (item.payload_type === 'letter' && (!rawValue || rawValue.length !== 1 || !/^[a-z]$/i.test(rawValue))) {
+      setSelfItemsError('Choose a single letter before using this item.');
+      return null;
     }
+    if (item.payload_type === 'word' && (!rawValue || rawValue.length !== 5 || !/^[a-z]{5}$/i.test(rawValue))) {
+      setSelfItemsError('Choose a 5-letter word before using this item.');
+      return null;
+    }
+    return { value: rawValue };
+  }, [selfPayloadValues]);
+
+  const executeSelfItemUse = useCallback(async (itemKey, { consumeCandle = false } = {}) => {
+    if (selfUseBusy) return false;
+    const item = selfItemByKey.get(itemKey);
+    if (!item) return false;
+    const effectPayload = buildSelfEffectPayload(itemKey, item);
+    if (item?.payload_type && !effectPayload) return false;
+
+    const isBlessing = item?.category === 'blessing';
 
     setSelfUseBusy(itemKey);
     setSelfItemsError('');
@@ -325,9 +499,9 @@ export default function GameScreen() {
           campaign_id: campaignId,
           item_key: itemKey,
           target_user_id: null,
-          effect_payload: item?.payload_type
-            ? { value: String(selfPayloadValues[itemKey] || '').trim().toLowerCase() }
-            : null,
+          effect_payload: effectPayload,
+          accept_blessing_cost: isBlessing,
+          consume_candle_of_mercy: isBlessing && consumeCandle,
         }),
       });
       const data = await res.json();
@@ -336,10 +510,69 @@ export default function GameScreen() {
       }
       await loadSelfItems();
       await refreshSelfEffects();
+      await refreshMercyInventory();
+      return true;
     } catch (err) {
-      setSelfItemsError(err?.message || 'Use failed.');
+      const message = err?.message || 'Use failed.';
+      if (String(message).toLowerCase().includes('final day of the cycle')) {
+        setShowBlessingCandleModal(false);
+        setShowBlessingCostModal(false);
+        setPendingBlessingItemKey('');
+        setShowSelfItemsModal(false);
+        alert("You can't use items on the last day of the cycle.");
+      }
+      setSelfItemsError(message);
+      return false;
     } finally {
       setSelfUseBusy('');
+    }
+  }, [selfUseBusy, selfItemByKey, buildSelfEffectPayload, token, campaignId, loadSelfItems, refreshSelfEffects, refreshMercyInventory]);
+
+  const handleUseSelfItem = async (itemKey) => {
+    const item = selfItemByKey.get(itemKey);
+    if (!item || selfUseBusy) return;
+    if (item.key === 'candle_of_mercy') {
+      setSelfItemsError('Candle of Mercy is only available through retroactive confirmation prompts.');
+      return;
+    }
+    if (item.category === 'blessing') {
+      const effectPayload = buildSelfEffectPayload(itemKey, item);
+      if (item.payload_type && !effectPayload) return;
+      setPendingBlessingItemKey(itemKey);
+      setShowBlessingCandleModal(false);
+      setShowBlessingCostModal(true);
+      return;
+    }
+    await executeSelfItemUse(itemKey, { consumeCandle: false });
+  };
+
+  const handleBlessingSacrifice = async () => {
+    if (!pendingBlessingItemKey) return;
+    const ok = await executeSelfItemUse(pendingBlessingItemKey, { consumeCandle: false });
+    if (ok) {
+      setShowBlessingCostModal(false);
+      setShowBlessingCandleModal(false);
+      setPendingBlessingItemKey('');
+    }
+  };
+
+  const handleBlessingUseCandle = () => {
+    setShowBlessingCostModal(false);
+    setShowBlessingCandleModal(true);
+  };
+
+  const handleBlessingCandleNo = () => {
+    setShowBlessingCandleModal(false);
+    setShowBlessingCostModal(true);
+  };
+
+  const handleBlessingCandleYes = async () => {
+    if (!pendingBlessingItemKey) return;
+    const ok = await executeSelfItemUse(pendingBlessingItemKey, { consumeCandle: true });
+    if (ok) {
+      setShowBlessingCandleModal(false);
+      setShowBlessingCostModal(false);
+      setPendingBlessingItemKey('');
     }
   };
 
@@ -356,6 +589,10 @@ export default function GameScreen() {
     }
 
     const id = parseInt(rawId);
+    if (lastCampaignIdRef.current !== id) {
+      setSelectedDay(null);
+      lastCampaignIdRef.current = id;
+    }
     setCampaignId(id);
 
   }, [loading, location.search, navigate]); // ✅ add navigate
@@ -368,9 +605,13 @@ export default function GameScreen() {
       setLoadingDay(true);
       setHintScroll(null);
       setTargetEffects([]);
+      setCurseDispersed(false);
       setConeTurnsLeft(0);
+      setTimeStopRevealRow(null);
+      setTimeStopRevealedCount(5);
       setStatusEffects([]);
       setHintPlaced(false);
+      setTwinFatesPlaced(false);
       setGuesses(EMPTY_GRID);
     setResults(Array(6).fill(null));
     setCurrentRow(0);
@@ -379,7 +620,10 @@ export default function GameScreen() {
     setLetterStatus({});
     setShowTroopModal(false);
     setTroopsEarned(0);
-    setDailyWord("");
+      setDailyWord("");
+      setHasOfferedDoubleDown(false);
+      setPendingDoubleDownPrompt(false);
+      setShowDoubleDownModal(false);
 
       const dayRes = await fetch(`${API_BASE}/api/campaign/progress`, {
         method: "POST",
@@ -487,31 +731,24 @@ export default function GameScreen() {
       } else {
         setHintScroll(null);
       }
-        const hasEdictEffect = Array.isArray(effectsData?.effects)
-          ? effectsData.effects.some((entry) => entry?.item_key === "edict_of_compulsion")
-          : false;
         if (effectsData?.effects && dayToLoad === campaignDay?.day) {
           setTargetEffects(effectsData.effects);
+          setCurseDispersed(Boolean(effectsData?.curse_dispersed));
           setConeTurnsLeft(getConeTurns(effectsData.effects));
+        } else {
+          setTargetEffects([]);
+          setCurseDispersed(false);
+          setConeTurnsLeft(0);
         }
         if (statusData?.effects) {
           setStatusEffects(statusData.effects);
-        }
-
-        // 🔒 SHOW ONLY if not used this week, not used today, and eligible to activate
-        if (
-          doubleDownData.double_down_activated === 1 &&
-          !doubleDownData.double_down_used_week &&
-          (progress.current_row === 0 || typeof progress.current_row !== "number") &&
-          dayToLoad === campaignDay?.day &&
-          !hasEdictEffect
-        ) {
-          setShowDoubleDownModal(true);
+        } else {
+          setStatusEffects([]);
         }
       await memberRes.json();
 
       const validGuesses = Array.isArray(progress.guesses) && progress.guesses.length === 6
-  ? progress.guesses.map(row => Array.isArray(row) && row.length === 5 ? row : Array(5).fill(""))
+  ? progress.guesses.map((row) => normalizeGuessRow(row))
   : EMPTY_GRID;
 
     setGuesses(validGuesses);
@@ -524,9 +761,8 @@ export default function GameScreen() {
     const newRow = typeof progress.current_row === "number" ? progress.current_row : 0;
     setCurrentRow(newRow);
 
-    const guessRow = validGuesses[newRow] || [];
-    const nextCol = guessRow.findIndex((l) => l === "");
-    setCurrentCol(nextCol === -1 ? 5 : nextCol);
+    const guessRow = normalizeGuessRow(validGuesses[newRow]);
+    setCurrentCol(getNextEmptyCol(guessRow));
 
       setLoadingDay(false);
     };
@@ -553,6 +789,46 @@ export default function GameScreen() {
     () => (isCurrentDay ? getCartographersLetters(statusEffects) : []),
     [statusEffects, isCurrentDay]
   );
+  const twinFatesInfo = useMemo(() => {
+    if (!isCurrentDay) return null;
+    const effect = statusEffects.find((entry) => entry.effect_key === "twin_fates");
+    if (!effect) return null;
+    const letters = Array.isArray(effect?.payload?.letters) ? effect.payload.letters : [];
+    const placements = letters
+      .map((entry) => {
+        const letter = String(entry?.letter || "").toUpperCase();
+        const positions = Array.isArray(entry?.positions)
+          ? entry.positions.filter((pos) => Number.isInteger(pos))
+          : [];
+        if (!letter || positions.length === 0) return [];
+        return positions.map((position) => ({ letter, position }));
+      })
+      .flat()
+      .filter((entry) => Number.isInteger(entry.position) && entry.position >= 1 && entry.position <= 5);
+    const formatted = letters
+      .map((entry) => {
+        const letter = String(entry?.letter || "").toUpperCase();
+        const positions = Array.isArray(entry?.positions)
+          ? entry.positions.filter((pos) => Number.isInteger(pos))
+          : [];
+        if (!letter || positions.length === 0) return null;
+        const label = positions.length === 1 ? "position" : "positions";
+        return `Letter ${letter} in ${label} ${positions.join(", ")}`;
+      })
+      .filter(Boolean);
+    const hasDoubles = formatted.length > 0;
+    return {
+      hasDoubles,
+      detail: hasDoubles ? formatted.join(" & ") : "No double letters found.",
+      placements,
+    };
+  }, [statusEffects, isCurrentDay]);
+  const easyTongueCount = useMemo(() => {
+    if (!isCurrentDay) return null;
+    const effect = statusEffects.find((entry) => entry.effect_key === "god_of_the_easy_tongue");
+    const count = effect?.payload?.vowel_count;
+    return Number.isInteger(count) ? count : null;
+  }, [statusEffects, isCurrentDay]);
 
   useEffect(() => {
     if (!hintScroll?.letter || !isCurrentDay) return;
@@ -576,12 +852,40 @@ export default function GameScreen() {
     (key) => targetEffects.find((entry) => entry.item_key === key)?.details?.payload?.value || null,
     [targetEffects]
   );
-  const edictWord = isCurrentDay ? getTargetPayload("edict_of_compulsion") : null;
-  const sealedLetter = isCurrentDay ? getTargetPayload("seal_of_silence") : null;
-  const voidbrandWord = isCurrentDay ? getTargetPayload("voidbrand") : null;
-  const edictSender = isCurrentDay
-    ? targetEffects.find((entry) => entry.item_key === "edict_of_compulsion")?.details?.sender_name
-    : null;
+  const edictEffectEntry = useMemo(
+    () => (isCurrentDay ? targetEffects.find((entry) => FORCED_UTTERANCE_KEYS.has(entry?.item_key)) : null),
+    [isCurrentDay, targetEffects]
+  );
+  const edictWord = edictEffectEntry?.details?.payload?.value || null;
+  const hasForcedUtteranceActive = Boolean(isCurrentDay && edictWord);
+  const voodooVowels = isCurrentDay ? getTargetPayload("vowel_voodoo") : null;
+  const cleavedConsonants = isCurrentDay ? getTargetPayload("consonant_cleaver") : null;
+  const obscuredSightSide = useMemo(() => {
+    if (!isCurrentDay) return null;
+    const raw = getTargetPayload("veil_of_obscured_sight");
+    if (!raw) return null;
+    const normalized = String(raw).trim().toLowerCase();
+    if (normalized === "left" || normalized === "right") return normalized;
+    return null;
+  }, [isCurrentDay, getTargetPayload]);
+  const activeCurseInfo = useMemo(() => {
+    if (!isCurrentDay || !Array.isArray(targetEffects)) return null;
+    const curseEntry = targetEffects.find((entry) => CURSE_DETAILS_BY_KEY[entry?.item_key]);
+    if (!curseEntry) return null;
+    const payloadValue = curseEntry?.details?.payload?.value ?? null;
+    const curseConfig = CURSE_DETAILS_BY_KEY[curseEntry.item_key];
+    const curseEffectText = curseConfig.describe(payloadValue);
+    const effectParts = getCurseEffectParts(curseEntry.item_key, payloadValue, curseEffectText);
+    return {
+      senderName: curseEntry?.details?.sender_name || 'Unknown attacker',
+      curseName: curseConfig.name,
+      curseEffect: curseEffectText,
+      curseEffectPrefix: effectParts.prefix,
+      curseEffectEmphasis: effectParts.emphasis,
+      curseEffectSuffix: effectParts.suffix,
+    };
+  }, [isCurrentDay, targetEffects]);
+  const isCursed = Boolean(activeCurseInfo);
 
   useEffect(() => {
     if (!isCurrentDay || !edictWord) return;
@@ -591,7 +895,7 @@ export default function GameScreen() {
     if (hasLetters || !hasResults) return;
     setGuesses((prev) => {
       const next = prev.map((row) => [...row]);
-      next[0] = String(edictWord).toUpperCase().split("").slice(0, 5);
+      next[0] = toFiveLetterRow(edictWord);
       return next;
     });
   }, [edictWord, isCurrentDay, guesses, results]);
@@ -609,20 +913,109 @@ export default function GameScreen() {
   const baseMaxRows = 6;
   let maxVisibleRows = baseMaxRows;
   const hasExecutioner = isCurrentDay && hasExecutionersCut(targetEffects);
+  const timeStopActive = isCurrentDay && hasTimeStop(targetEffects) && !gameOver;
   if (hasExecutioner) {
     maxVisibleRows = Math.max(1, maxVisibleRows - 1);
   }
   const executionerRow = hasExecutioner ? Math.max(0, baseMaxRows - 1) : null;
-  const sealActive = Boolean(sealedLetter) && currentRow < 2 && !gameOver;
-  const voidActive = Boolean(voidbrandWord) && currentRow === 0 && !gameOver;
+  const voodooActive = Boolean(voodooVowels) && currentRow < 2 && !gameOver;
+  const cleaverActive = Boolean(cleavedConsonants) && currentRow < 2 && !gameOver;
+  const obscuredSightActive = Boolean(obscuredSightSide) && currentRow < 2 && !gameOver;
   const blockedLetters = useMemo(() => {
     const set = new Set();
-    if (sealActive && sealedLetter) set.add(String(sealedLetter).toLowerCase());
-    if (voidActive && voidbrandWord) {
-      String(voidbrandWord).split("").forEach((letter) => set.add(letter.toLowerCase()));
+    if (voodooActive && voodooVowels) {
+      String(voodooVowels).split("").forEach((letter) => set.add(letter.toLowerCase()));
+    }
+    if (cleaverActive && cleavedConsonants) {
+      String(cleavedConsonants).split("").forEach((letter) => set.add(letter.toLowerCase()));
     }
     return set;
-  }, [sealActive, sealedLetter, voidActive, voidbrandWord]);
+  }, [voodooActive, voodooVowels, cleaverActive, cleavedConsonants]);
+  const infernalActive = isCurrentDay && targetEffects.some((entry) => entry.item_key === "infernal_mandate");
+  const infernalLockedPositions = useMemo(() => {
+    if (!infernalActive || currentRow <= 0) return new Map();
+    const locked = new Map();
+    for (let rowIndex = 0; rowIndex < currentRow; rowIndex += 1) {
+      const priorGuess = guesses[rowIndex];
+      const priorResult = results[rowIndex];
+      if (!Array.isArray(priorGuess) || !Array.isArray(priorResult)) continue;
+      for (let idx = 0; idx < 5; idx += 1) {
+        if (priorResult[idx] !== "correct") continue;
+        const letter = String(priorGuess[idx] || "").toUpperCase();
+        if (letter) locked.set(idx, letter);
+      }
+    }
+    return locked;
+  }, [infernalActive, currentRow, guesses, results]);
+
+  const findPrevEditableCol = useCallback((rowLetters, startIndex) => {
+    for (let idx = startIndex; idx >= 0; idx -= 1) {
+      if (!infernalLockedPositions.has(idx) && rowLetters[idx]) return idx;
+    }
+    return -1;
+  }, [infernalLockedPositions]);
+
+  const findNextEditableCol = useCallback((rowLetters, startIndex) => {
+    for (let idx = startIndex; idx < 5; idx += 1) {
+      if (!infernalLockedPositions.has(idx) && !rowLetters[idx]) return idx;
+    }
+    return 5;
+  }, [infernalLockedPositions]);
+
+  useEffect(() => {
+    if (!isCurrentDay || !twinFatesInfo?.hasDoubles || twinFatesPlaced || gameOver) return;
+    const row = guesses[currentRow];
+    if (!Array.isArray(row) || row.length !== 5) return;
+
+    const nextRow = [...row];
+    let changed = false;
+    twinFatesInfo.placements.forEach(({ letter, position }) => {
+      const colIndex = Number(position) - 1;
+      if (colIndex < 0 || colIndex > 4) return;
+      if (nextRow[colIndex] !== letter) {
+        nextRow[colIndex] = letter;
+        changed = true;
+      }
+    });
+
+    if (!changed) {
+      setTwinFatesPlaced(true);
+      return;
+    }
+
+    setGuesses((prev) => {
+      const next = prev.map((guessRow) => [...guessRow]);
+      next[currentRow] = nextRow;
+      return next;
+    });
+    setCurrentCol(findNextEditableCol(nextRow, 0));
+    setTwinFatesPlaced(true);
+  }, [isCurrentDay, twinFatesInfo, twinFatesPlaced, gameOver, guesses, currentRow, findNextEditableCol]);
+
+  useEffect(() => {
+    if (!infernalActive || currentRow <= 0 || gameOver) return;
+    const activeRow = guesses[currentRow];
+    if (!Array.isArray(activeRow) || activeRow.length !== 5) return;
+    const nextRow = [...activeRow];
+    let changed = false;
+    infernalLockedPositions.forEach((letter, idx) => {
+      if (nextRow[idx] !== letter) {
+        nextRow[idx] = letter;
+        changed = true;
+      }
+    });
+    if (changed) {
+      setGuesses((prev) => {
+        const next = prev.map((row) => [...row]);
+        next[currentRow] = nextRow;
+        return next;
+      });
+    }
+    const nextCol = findNextEditableCol(nextRow, Math.max(0, currentCol));
+    if (nextCol !== currentCol) {
+      setCurrentCol(nextCol);
+    }
+  }, [infernalActive, infernalLockedPositions, currentRow, gameOver, guesses, currentCol, findNextEditableCol]);
 
   const handleEditRulerTitle = () => {
     setShowRulerModal(true);
@@ -662,6 +1055,7 @@ export default function GameScreen() {
       setMercyBonus(Number(data?.bonus ?? 10));
       setStatusEffects((prev) => prev.filter((entry) => entry.effect_key !== "candle_of_mercy"));
       await refreshSelfEffects();
+      await refreshMercyInventory();
       setShowMercyModal(true);
     } catch (err) {
       console.error("Mercy redemption failed:", err);
@@ -687,7 +1081,7 @@ export default function GameScreen() {
     if (data.ended) {
       setCampaignEnded(true);
     }
-  }, [campaignId, token]);
+  }, [campaignId, token, refreshMercyInventory]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -784,7 +1178,8 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
   const maxAttempts = hasExecutioner ? Math.max(1, baseAttempts - 1) : baseAttempts;
   if (isSubmitting || currentRow >= maxAttempts || gameOver) return;
 
-  const guess = (forcedGuess ?? guesses[currentRow].join("")).toLowerCase();
+  const activeRow = normalizeGuessRow(guesses[currentRow]);
+  const guess = (forcedGuess ?? activeRow.join("")).toLowerCase();
   const campaign_id = campaignId;
   const user_id = user?.user_id;
 
@@ -793,7 +1188,7 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
   }
 
   if (forcedGuess) {
-    const forcedLetters = guess.toUpperCase().split("");
+    const forcedLetters = toFiveLetterRow(guess);
     setGuesses((prev) => {
       const next = prev.map((row) => [...row]);
       next[currentRow] = forcedLetters;
@@ -805,7 +1200,7 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
   // 🔒 Client-side duplicate guard (prevents local double-entry)
   const prevWords = guesses
     .slice(0, currentRow)
-    .map(row => row.join("").toLowerCase());
+    .map((row) => normalizeGuessRow(row).join("").toLowerCase());
   if (prevWords.includes(guess)) {
     setErrorMsg("⚠️ You already tried that word.");
     triggerShake();
@@ -842,19 +1237,57 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
     }
 
     if (!res.ok) {
-      if (data?.detail === "Invalid word") {
+      const detail = data?.detail;
+      const detailMessage = typeof detail === "string" ? detail : detail?.message;
+      const infernalPenalty = Number(
+        (detail && typeof detail === "object" ? detail.infernal_penalty_applied : undefined)
+        ?? data?.infernal_penalty_applied
+        ?? 0
+      );
+      const infernalRuleBroken = Boolean(
+        (detail && typeof detail === "object" ? detail.infernal_rule_broken : undefined)
+        ?? data?.infernal_rule_broken
+      );
+      const infernalViolation = String(
+        (detail && typeof detail === "object" ? detail.infernal_violation_type : undefined)
+        ?? data?.infernal_violation_type
+        ?? (detailMessage === "Invalid word" ? "playable_word" : "letters")
+      ).toLowerCase();
+      if (infernalRuleBroken || infernalPenalty > 0) {
+        setInfernalPenaltyAmount(infernalPenalty);
+        setInfernalViolationType(infernalViolation === "playable_word" ? "playable_word" : "letters");
+        setShowInfernalModal(true);
+      }
+      if (detailMessage === "Invalid word") {
         setErrorMsg("❌ Not a valid word");
         triggerShake();
         setTimeout(() => setErrorMsg(null), 3000);
         return;
       }
-      throw new Error(data?.detail || "Unknown error");
+      throw new Error(detailMessage || "Unknown error");
     }
 
-    // --- Existing success flow (unchanged) ---
+    // --- Reveal flow ---
     const newResults = [...results];
-    newResults[currentRow] = data.result;
-    setResults(newResults);
+    const revealMultiplier = timeStopActive ? 10 : 1;
+    const perTileDelayMs = Math.max(1, Math.floor((TIME_STOP_REVEAL_DELAY_MS * revealMultiplier) / 5));
+    const revealedRow = Array(5).fill(null);
+    newResults[currentRow] = revealedRow;
+    setResults([...newResults]);
+    setTimeStopRevealRow(currentRow);
+    setTimeStopRevealedCount(0);
+    for (let idx = 0; idx < 5; idx += 1) {
+      await new Promise((resolve) => setTimeout(resolve, perTileDelayMs));
+      revealedRow[idx] = data.result[idx];
+      setResults((prev) => {
+        const next = [...prev];
+        next[currentRow] = [...revealedRow];
+        return next;
+      });
+      setTimeStopRevealedCount(idx + 1);
+    }
+    setTimeStopRevealRow(null);
+    setTimeStopRevealedCount(5);
 
     const newStatus = { ...letterStatus };
     for (let i = 0; i < guess.length; i++) {
@@ -867,6 +1300,15 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
       else if (!current) newStatus[letter] = "absent";
     }
     setLetterStatus(newStatus);
+
+    const infernalPenalty = Number(data?.infernal_penalty_applied || 0);
+    const infernalRuleBroken = Boolean(data?.infernal_rule_broken);
+    const infernalViolation = String(data?.infernal_violation_type || "letters").toLowerCase();
+    if (infernalRuleBroken || infernalPenalty > 0) {
+      setInfernalPenaltyAmount(infernalPenalty);
+      setInfernalViolationType(infernalViolation === "playable_word" ? "playable_word" : "letters");
+      setShowInfernalModal(true);
+    }
 
     if (data.clown_triggered) {
       triggerClown();
@@ -907,13 +1349,39 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
     }
 
     // Advance to next row
-    setCurrentRow(currentRow + 1);
-    const shouldDelayDoubleDown = edictWord && edictApplied;
-    const doubleDownRow = shouldDelayDoubleDown ? 1 : 0;
-    if (currentRow === doubleDownRow && !doubleDownStatus.activated && !doubleDownStatus.usedThisWeek) {
-      setTimeout(() => setShowDoubleDownModal(true), 400);
+    const nextRowIndex = currentRow + 1;
+    let nextRowTemplate = null;
+    if (infernalActive && nextRowIndex < maxAttempts) {
+      const nextLocked = new Map(infernalLockedPositions);
+      for (let idx = 0; idx < 5; idx += 1) {
+        if (data.result[idx] === "correct") {
+          nextLocked.set(idx, guess[idx].toUpperCase());
+        }
+      }
+      nextRowTemplate = [...(guesses[nextRowIndex] || Array(5).fill(""))];
+      nextLocked.forEach((letter, idx) => {
+        nextRowTemplate[idx] = letter;
+      });
+      setGuesses((prev) => {
+        const next = prev.map((row) => [...row]);
+        next[nextRowIndex] = nextRowTemplate;
+        return next;
+      });
     }
-    setCurrentCol(0);
+    setCurrentRow(nextRowIndex);
+    const doubleDownPromptRow = hasForcedUtteranceActive ? 2 : 1;
+    if (
+      doubleDownEligible &&
+      !hasOfferedDoubleDown &&
+      nextRowIndex === doubleDownPromptRow
+    ) {
+      setPendingDoubleDownPrompt(true);
+    }
+    if (infernalActive && nextRowIndex < maxAttempts) {
+      setCurrentCol(findNextEditableCol(nextRowTemplate || Array(5).fill(""), 0));
+    } else {
+      setCurrentCol(0);
+    }
   } catch (err) {
     console.error("Guess submission failed:", err);
     alert("⚠️ Failed to submit guess. Please try again.");
@@ -922,6 +1390,7 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
   }
 }, [
   doubleDownStatus,
+  doubleDownEligible,
   hasExecutioner,
   isSubmitting,
   currentRow,
@@ -936,11 +1405,38 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
   triggerShake,
   triggerClown,
   coneTurnsLeft,
-  edictWord,
-  edictApplied,
+  infernalActive,
+  infernalLockedPositions,
+  findNextEditableCol,
+  hasForcedUtteranceActive,
+  hasOfferedDoubleDown,
+  timeStopActive,
   campaignDay,
   checkIfCampaignShouldEnd,
 ]);
+
+  useEffect(() => {
+    if (!pendingDoubleDownPrompt) return;
+    if (!isCurrentDay || loadingDay || gameOver || showDoubleDownModal) return;
+    if (!doubleDownEligible || hasOfferedDoubleDown) {
+      setPendingDoubleDownPrompt(false);
+      return;
+    }
+    const timer = setTimeout(() => {
+      setHasOfferedDoubleDown(true);
+      setPendingDoubleDownPrompt(false);
+      setShowDoubleDownModal(true);
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [
+    pendingDoubleDownPrompt,
+    isCurrentDay,
+    loadingDay,
+    gameOver,
+    showDoubleDownModal,
+    doubleDownEligible,
+    hasOfferedDoubleDown,
+  ]);
 
   useEffect(() => {
     if (!edictWord || !isCurrentDay || gameOver || isSubmitting || edictApplied) return;
@@ -966,11 +1462,14 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
     if (errorMsg) setErrorMsg(null);
 
     if (key === '⌫') {
-      if (currentCol > 0) {
+      const rowLetters = normalizeGuessRow(guesses[currentRow]);
+      const prevCol = findPrevEditableCol(rowLetters, currentCol - 1);
+      if (prevCol >= 0) {
+        rowLetters[prevCol] = "";
         const newGuesses = [...guesses];
-        newGuesses[currentRow][currentCol - 1] = "";
+        newGuesses[currentRow] = rowLetters;
         setGuesses(newGuesses);
-        setCurrentCol(currentCol - 1);
+        setCurrentCol(prevCol);
       }
     } else if (key === 'Enter') {
   if (currentCol === 5 && !isSubmitting) {
@@ -979,16 +1478,22 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
     } else {
       const lowerKey = key.toLowerCase();
       if (blockedLetters.has(lowerKey)) {
-        setErrorMsg(voidActive ? "That letter is voidbranded." : "That letter is sealed.");
+        setErrorMsg("That letter is hexed.");
         triggerShake();
         setTimeout(() => setErrorMsg(null), 2000);
         return;
       }
-      if (currentCol < 5) {
+      const rowLetters = normalizeGuessRow(guesses[currentRow]);
+      let targetCol = currentCol;
+      if (infernalActive && currentRow > 0) {
+        targetCol = findNextEditableCol(rowLetters, currentCol);
+      }
+      if (targetCol < 5) {
         const newGuesses = [...guesses];
-        newGuesses[currentRow][currentCol] = key;
+        rowLetters[targetCol] = key;
+        newGuesses[currentRow] = rowLetters;
         setGuesses(newGuesses);
-        setCurrentCol(currentCol + 1);
+        setCurrentCol(findNextEditableCol(rowLetters, targetCol + 1));
       }
     }
   }, [
@@ -1001,8 +1506,10 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
     currentCol,
     currentRow,
     guesses,
+    infernalActive,
+    findNextEditableCol,
+    findPrevEditableCol,
     blockedLetters,
-    voidActive,
     triggerShake,
     submitGuess,
   ]);
@@ -1034,8 +1541,9 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
 
 
   const isAdminCampaign = Boolean(campaignDay?.is_admin_campaign);
+  const canRedeemMercy = mercyInventoryCount > 0 || (isAdmin && isAdminCampaign);
 
-  const rulerBackgroundStyle = !isAdminCampaign && campaignDay?.ruler_background_image_url
+  const rulerBackgroundStyle = campaignDay?.ruler_background_image_url
     ? {
         backgroundImage: `url(${campaignDay.ruler_background_image_url})`,
         backgroundSize: "cover",
@@ -1047,21 +1555,11 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
 
   return (
     <div
-      className={`game-wrapper${isAdminCampaign ? " admin-theme" : ""}`}
+      className="game-wrapper"
       style={rulerBackgroundStyle}
     >
       <div className="game-content">
         <div className="game-inner">
-          {hasCandleOfMercy(statusEffects) && (
-            <div className="game-effect-banner">
-              Candle of Mercy: +10 troops if you fail today.
-            </div>
-          )}
-          {voidActive && (
-            <div className="game-effect-banner voidbrand-banner">
-              Voidbrand: <span className="voidbrand-word">{String(voidbrandWord).toUpperCase()}</span> is forbidden for your first guess.
-            </div>
-          )}
           <div className="game-top-row">
             <div className="camp-menu game-top-half" ref={campMenuRef}>
               <div className="camp-menu-card">
@@ -1161,12 +1659,6 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
           initialTitle={rulerTitle}
           onSave={handleSaveRulerTitle}
           onClose={() => setShowRulerModal(false)}
-          token={token}
-          campaignId={campaignId}
-          rulerBackdropUrl={campaignDay?.ruler_background_image_url || ''}
-          onBackdropSaved={(url) => {
-            setCampaignDay((prev) => (prev ? { ...prev, ruler_background_image_url: url } : prev));
-          }}
         />
           </div>
           <div className="game-day-carousel">
@@ -1202,6 +1694,14 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
               ›
             </button>
           </div>
+          {shouldShowConeOverlay(coneTurnsLeft, gameOver) && (
+            <div
+              className="cone-overlay"
+              style={{ opacity: getConeOpacity(currentRow, maxVisibleRows) }}
+            />
+          )}
+          <WanderingGlyphOverlay targetEffects={targetEffects} containerRef={playAreaRef} />
+          <ClownOverlay show={showClownOverlay} />
           {hintScroll && isCurrentDay && (
             <div className={`game-hint-banner${hintPulse ? " is-fresh" : ""}`}>
               <div className="oracle-hint-title">Oracle's Whisper</div>
@@ -1213,7 +1713,48 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
               </div>
             </div>
           )}
-          <div className="game-play-area">
+          {twinFatesInfo && (
+            <div className={`game-effect-banner game-effect-banner-twin ${twinFatesInfo.hasDoubles ? "is-success" : "is-empty"}`}>
+              <div className="twin-banner-title">
+                <span className="twin-title-x" aria-hidden="true">✕</span>
+                <span>Twin Fates</span>
+                <span className="twin-title-check" aria-hidden="true">✓</span>
+              </div>
+              <div className="twin-banner-detail">
+                <span className={twinFatesInfo.hasDoubles ? "twin-title-check" : "twin-title-x"} aria-hidden="true">
+                  {twinFatesInfo.hasDoubles ? "✓" : "✕"}
+                </span>
+                <span>{twinFatesInfo.detail}</span>
+                <span className={twinFatesInfo.hasDoubles ? "twin-title-check" : "twin-title-x"} aria-hidden="true">
+                  {twinFatesInfo.hasDoubles ? "✓" : "✕"}
+                </span>
+              </div>
+            </div>
+          )}
+          {easyTongueCount !== null && (
+            <div className="game-effect-banner game-effect-banner-divine">
+              <div className="divine-banner-title">
+                <span className="divine-title-star" aria-hidden="true">✦</span>
+                <span>God of the Easy Tongue</span>
+                <span className="divine-title-star" aria-hidden="true">✦</span>
+              </div>
+              <div className="divine-banner-detail">
+                Today&apos;s word has <strong>{easyTongueCount}</strong> vowel{easyTongueCount === 1 ? '' : 's'}.
+              </div>
+            </div>
+          )}
+          <div className={`game-play-area${isCursed ? " cursed-play-area" : ""}${isCursed && curseDispersed ? " cursed-play-area-dispersed" : ""}`} ref={playAreaRef}>
+            {isCursed && (
+              <button
+                className={`curse-hex-button${curseDispersed ? " curse-hex-button-dispersed" : ""}`}
+                type="button"
+                aria-label="Curse details"
+                title="View curse details"
+                onClick={() => setShowCurseInfoModal(true)}
+              >
+                <img src={hexRuneIcon} alt="" className="curse-hex-icon" aria-hidden="true" />
+              </button>
+            )}
             {spiderSwarm.active && (
               <div className="spider-swarm-layer">
                 {spiderSwarm.spiders.map((spider) => (
@@ -1225,13 +1766,6 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
                 ))}
               </div>
             )}
-            {shouldShowConeOverlay(coneTurnsLeft, gameOver) && (
-              <div
-                className="cone-overlay"
-                style={{ opacity: getConeOpacity(currentRow, maxVisibleRows) }}
-              />
-            )}
-            <ClownOverlay show={showClownOverlay} />
             {loadingDay && (
               <div className="day-loading">
                 <div className="day-loading-spinner" />
@@ -1279,7 +1813,11 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
                 getJesterDanceStyle={jesterDance.getStyle}
                 edictRow={edictWord ? 0 : null}
                 executionerRow={executionerRow}
-                edictSender={edictSender}
+                obscuredSightSide={obscuredSightSide}
+                obscuredSightActive={obscuredSightActive}
+                timeStopRevealRow={timeStopRevealRow}
+                timeStopRevealedCount={timeStopRevealedCount}
+                timeStopRevealActive={timeStopRevealRow !== null}
               />
             </div>
             <Keyboard
@@ -1289,9 +1827,12 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
               jesterDance={jesterDance.active}
               jesterSeed={jesterDance.seed}
               getJesterDanceStyle={jesterDance.getStyle}
-              sealedLetter={sealActive ? sealedLetter : null}
-              voidLetters={voidActive && voidbrandWord ? String(voidbrandWord).toUpperCase().split("") : []}
+              sealedLetter={null}
+              voidLetters={[]}
+              cursedLetters={Array.from(blockedLetters)}
               cartographerLetters={cartographerLetters}
+              obscuredSightSide={obscuredSightSide}
+              obscuredSightActive={obscuredSightActive}
             />
           </div>
           <DayReplayInfoModal
@@ -1305,7 +1846,12 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
                   <h2>Inventory</h2>
                   <button
                     className="self-items-close"
-                    onClick={() => setShowSelfItemsModal(false)}
+                    onClick={() => {
+                      setShowSelfItemsModal(false);
+                      setShowBlessingCostModal(false);
+                      setShowBlessingCandleModal(false);
+                      setPendingBlessingItemKey('');
+                    }}
                     type="button"
                     aria-label="Close inventory"
                   >
@@ -1364,6 +1910,20 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
               </div>
             </div>
           )}
+          <BlessingUseModals
+            showCostModal={showBlessingCostModal}
+            showCandleModal={showBlessingCandleModal}
+            pendingItemName={pendingBlessingItem?.name || ''}
+            hasCandleInventory={hasCandleInventory}
+            onCloseCost={() => {
+              setShowBlessingCostModal(false);
+              setPendingBlessingItemKey('');
+            }}
+            onSacrifice={handleBlessingSacrifice}
+            onUseCandle={handleBlessingUseCandle}
+            onCandleYes={handleBlessingCandleYes}
+            onCandleNo={handleBlessingCandleNo}
+          />
 
 
         </div>
@@ -1445,14 +2005,14 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
                 <button className="troop-btn close-btn" onClick={() => setShowFailureModal(false)}>
                    Accept Defeat
                 </button>
-                {hasCandleOfMercy(statusEffects) && (
+                {canRedeemMercy && (
                   <button
                     className="troop-btn"
                     onClick={handleRedeemMercy}
                     disabled={mercyBusy}
                     title="Light the Candle of Mercy"
                   >
-                    🕯️ Light
+                    🕯️ Use Candle of Mercy (+10 troops)
                   </button>
                 )}
                 <button
@@ -1479,6 +2039,94 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
             <div className="modal-buttons">
               <button className="troop-btn close-btn" onClick={() => setShowMercyModal(false)}>
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showCurseInfoModal && activeCurseInfo && (
+        <div className="modal-overlay">
+          <div className="modal curse-info-modal">
+            <div className="curse-info-header">
+              <h2>Hex Mark Detected</h2>
+              <button
+                className="self-items-close"
+                type="button"
+                onClick={() => setShowCurseInfoModal(false)}
+                aria-label="Close curse details"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="curse-info-body">
+              <p className="curse-info-line curse-info-line-user">
+                <span className="curse-info-label">Cursed by:</span>{" "}
+                <span className="curse-info-user">{activeCurseInfo.senderName}</span>
+              </p>
+              <p className="curse-info-line curse-info-line-curse">
+                <span className="curse-info-label">Curse:</span>{" "}
+                <span className="curse-info-curse-name">{activeCurseInfo.curseName}</span>
+              </p>
+              <p className="curse-info-line curse-info-line-effect">
+                <span className="curse-info-label">Effect:</span>{" "}
+                <span>
+                  {activeCurseInfo.curseEffectPrefix}
+                  {activeCurseInfo.curseEffectEmphasis ? (
+                    <span className="curse-info-effect-emphasis">{activeCurseInfo.curseEffectEmphasis}</span>
+                  ) : null}
+                  {activeCurseInfo.curseEffectSuffix}
+                </span>
+              </p>
+            </div>
+            {curseDispersed ? (
+              <p className="curse-info-dispersed-note">You may now use blessings.</p>
+            ) : (
+              <p className="curse-info-warning">While hexed, you may not use blessings.</p>
+            )}
+            <div className="modal-buttons">
+              <button className="troop-btn close-btn" type="button" onClick={() => setShowCurseInfoModal(false)}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showInfernalModal && (
+        <div className="modal-overlay">
+          <div className="modal curse-info-modal">
+            <div className="curse-info-header">
+              <h2>Infernal Mandate</h2>
+              <button
+                className="self-items-close"
+                type="button"
+                onClick={() => setShowInfernalModal(false)}
+                aria-label="Close infernal warning"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="curse-info-body">
+              {infernalPenaltyAmount > 0 ? (
+                <p>
+                  You lost <strong>{infernalPenaltyAmount}</strong> troops.
+                </p>
+              ) : (
+                <p>
+                  No troops were lost because today&apos;s infernal penalty cap has already been reached.
+                </p>
+              )}
+              <p>
+                {infernalViolationType === 'playable_word'
+                  ? <>You must play a playable word or risk losing <span className="curse-info-effect-emphasis">5 more troops</span>.</>
+                  : <>Use all discovered letters in every guess or risk losing <span className="curse-info-effect-emphasis">5 more troops</span>.</>}
+              </p>
+              <p>
+                Infernal penalties cap at <strong>20</strong> troops per day.
+              </p>
+            </div>
+            <div className="modal-buttons">
+              <button className="troop-btn close-btn" type="button" onClick={() => setShowInfernalModal(false)}>
+                Understood
               </button>
             </div>
           </div>

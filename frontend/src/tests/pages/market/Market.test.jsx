@@ -66,7 +66,7 @@ const baseState = {
         affects_others: false,
       },
       {
-        key: 'cartographers_insight',
+        key: 'grace_of_the_guiding_star',
         name: "Cartographer's Insight",
         category: 'blessing',
         cost: 5,
@@ -76,15 +76,15 @@ const baseState = {
     ],
     curse: [
       {
-        key: 'voidbrand',
-        name: 'Voidbrand',
+        key: 'reapers_scythe',
+        name: "Reaper's Scythe",
         category: 'curse',
-        cost: 20,
+        cost: 8,
         description: 'Dark curse.',
         affects_others: true,
       },
       {
-        key: 'edict_of_compulsion',
+        key: 'hex_of_forced_utterance',
         name: 'Edict of Compulsion',
         category: 'curse',
         cost: 15,
@@ -126,7 +126,8 @@ async function renderMarketAndWait() {
   render(<Market />);
   await waitFor(() => {
     expect(global.fetch).toHaveBeenCalled();
-    expect(screen.getByText(/test campaign market/i)).toBeInTheDocument();
+    expect(screen.getByText(/test campaign/i)).toBeInTheDocument();
+    expect(screen.getByText(/^market$/i)).toBeInTheDocument();
   });
 }
 
@@ -163,7 +164,7 @@ describe('Market page', () => {
     await screen.findByText('Curses');
     expect(screen.getByAltText(/curses stall interior/i)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /overview/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^back$/i }));
 
     await waitFor(() => {
       expect(screen.getByText(/select a shop on the map to enter its stall/i)).toBeInTheDocument();
@@ -201,7 +202,7 @@ describe('Market page', () => {
         items_by_category: null,
         items: [
           { key: 'candle_of_mercy', name: 'Candle of Mercy', category: 'blessing', cost: 5, description: 'Mercy', affects_others: false },
-          { key: 'voidbrand', name: 'Voidbrand', category: 'curse', cost: 20, description: 'Void', affects_others: true },
+          { key: 'reapers_scythe', name: "Reaper's Scythe", category: 'curse', cost: 8, description: 'Cut', affects_others: true },
         ],
       },
     });
@@ -288,7 +289,7 @@ describe('Market page', () => {
 
     await renderMarketAndWait();
     fireEvent.click(screen.getByRole('button', { name: /open curses shop/i }));
-    await screen.findByText('Voidbrand');
+    await screen.findByText(/reaper's scythe/i);
 
     fireEvent.click(screen.getAllByRole('button', { name: 'View' })[0]);
     fireEvent.click(await screen.findByRole('button', { name: 'Purchase' }));
@@ -314,7 +315,7 @@ describe('Market page', () => {
 
     await renderMarketAndWait();
     fireEvent.click(screen.getByRole('button', { name: /open curses shop/i }));
-    await screen.findByText('Voidbrand');
+    await screen.findByText(/reaper's scythe/i);
 
     const reshuffleBtn = screen.getByRole('button', { name: /restock/i });
     fireEvent.click(reshuffleBtn);
@@ -359,5 +360,58 @@ describe('Market page', () => {
     await screen.findByText('Candle of Mercy');
 
     expect(screen.getByRole('button', { name: /restock/i })).toBeDisabled();
+  });
+
+  test('restock uses per-category availability even if global can_reshuffle is false', async () => {
+    flushFetchQueue([
+      () => makeJsonResponse({
+        ...baseState,
+        can_reshuffle: false,
+        can_reshuffle_by_category: { illusion: true, blessing: true, curse: true },
+      }, true),
+      () => makeJsonResponse({ name: 'Test Campaign', is_admin_campaign: false }, true),
+      () => makeJsonResponse({
+        coins: 7,
+        items_by_category: baseState.items_by_category,
+      }, true),
+      () => makeJsonResponse({ ...baseState, coins: 7 }, true),
+      () => makeJsonResponse({ name: 'Test Campaign', is_admin_campaign: false }, true),
+    ]);
+
+    await renderMarketAndWait();
+    fireEvent.click(screen.getByRole('button', { name: /open blessings shop/i }));
+    await screen.findByText('Candle of Mercy');
+
+    const reshuffleBtn = screen.getByRole('button', { name: /restock/i });
+    expect(reshuffleBtn).not.toBeDisabled();
+    fireEvent.click(reshuffleBtn);
+
+    await waitFor(() => {
+      const reshuffleCall = global.fetch.mock.calls.find(([url]) =>
+        String(url).includes('/api/campaign/shop/reshuffle')
+      );
+      expect(reshuffleCall).toBeTruthy();
+    });
+  });
+
+  test('restock can be disabled for one stall while enabled in another', async () => {
+    mockFetchOnce({
+      state: {
+        ...baseState,
+        can_reshuffle_by_category: { illusion: true, blessing: false, curse: true },
+        restocks_remaining_by_category: { illusion: 2, blessing: 2, curse: 2 },
+      },
+    });
+
+    await renderMarketAndWait();
+
+    fireEvent.click(screen.getByRole('button', { name: /open blessings shop/i }));
+    await screen.findByText('Blessings');
+    expect(screen.getByRole('button', { name: /restock/i })).toBeDisabled();
+
+    fireEvent.click(screen.getByRole('button', { name: /^back$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /open illusions shop/i }));
+    await screen.findByText('Illusions');
+    expect(screen.getByRole('button', { name: /restock/i })).not.toBeDisabled();
   });
 });

@@ -1,8 +1,8 @@
 export const oracleWhisper = {
   key: 'oracle_whisper',
-  name: "Oracle's Whisper",
+  name: 'Oracle Whisper',
   category: 'blessing',
-  description: 'A whisper of truth slips through, hinting at a single place it belongs.',
+  description: 'Reveal one guaranteed green letter and position.',
 };
 
 export const applyOracleCorrectLetter = (letterStatus, hintLetter) => ({

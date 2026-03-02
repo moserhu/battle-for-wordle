@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 import '../styles/ItemsStorage.css';
+import BlessingUseModals from '../components/items/blessings/BlessingUseModals';
 import oracleWhisperSprite from '../assets/items/blessings/oracles_whisper.png';
 import cartographersInsightSprite from '../assets/items/blessings/cartographers_insight.png';
 import candleOfMercySprite from '../assets/items/blessings/candle_of_mercy.png';
@@ -10,19 +11,29 @@ import bloodOathInkSprite from '../assets/items/illusions/blood_oath_ink.png';
 import spiderSwarmSprite from '../assets/items/illusions/spider_swarm.png';
 import danceOfTheJesterSprite from '../assets/items/illusions/dance_of_the_jester.png';
 import coneOfColdSprite from '../assets/items/illusions/cone_of_cold.png';
-import sealOfSilenceSprite from '../assets/items/curses/seal_of_silence.png';
-import voidbrandSprite from '../assets/items/curses/voidbrand.png';
 import edictOfCompulsionSprite from '../assets/items/curses/edict_of_compulsion.png';
 import executionersCutSprite from '../assets/items/curses/executioners_cut.png';
 import sendInTheClownSprite from '../assets/items/illusions/clown.png';
-import { oracleWhisper, cartographersInsight, candleOfMercy } from '../components/items/blessings/index';
+import wanderingGlyphPlaceholderSprite from '../assets/ui/wandering_glyph_placeholder.svg';
+import { oracleWhisper, cartographersInsight, candleOfMercy, dispelCurse, twinFates, godOfTheEasyTongue } from '../components/items/blessings/index';
 import { bloodOathInk, spiderSwarm, sendInTheClown, danceOfTheJester, coneOfCold } from '../components/items/illusions/index';
-import { sealOfSilence } from '../components/items/curses/seal_of_silence';
-import { voidbrand } from '../components/items/curses/voidbrand';
-import { executionersCut } from '../components/items/curses/executioners_cut';
-import { edictOfCompulsion } from '../components/items/curses/edict_of_compulsion';
+import { executionersCut } from '../components/items/curses/reapers_scythe';
+import { edictOfCompulsion } from '../components/items/curses/hex_of_forced_utterance';
 
 const API_BASE = process.env.REACT_APP_API_URL || `${window.location.protocol}//${window.location.hostname}`;
+const VOWELS = new Set(['a', 'e', 'i', 'o', 'u']);
+
+function isVowelVoodooPayloadValid(payloadValue) {
+  const normalized = String(payloadValue || '').trim().toLowerCase();
+  if (normalized.length !== 2) return false;
+  const letters = normalized.split('');
+  return letters.every((letter) => VOWELS.has(letter)) && new Set(letters).size === 2;
+}
+
+function isVeilPayloadValid(payloadValue) {
+  const normalized = String(payloadValue || '').trim().toLowerCase();
+  return normalized === 'left' || normalized === 'right';
+}
 
 export default function ItemsStorage() {
   const { campaignId } = useParams();
@@ -41,20 +52,30 @@ export default function ItemsStorage() {
   const [targetModalPayload, setTargetModalPayload] = useState('');
   const [targetModalError, setTargetModalError] = useState('');
   const [infoModalItem, setInfoModalItem] = useState(null);
+  const [showBlessingCostModal, setShowBlessingCostModal] = useState(false);
+  const [showBlessingCandleModal, setShowBlessingCandleModal] = useState(false);
+  const [pendingBlessingUse, setPendingBlessingUse] = useState(null);
   const [isAdminCampaign, setIsAdminCampaign] = useState(false);
   const spriteByKey = {
     oracle_whisper: oracleWhisperSprite,
-    cartographers_insight: cartographersInsightSprite,
+    grace_of_the_guiding_star: cartographersInsightSprite,
     candle_of_mercy: candleOfMercySprite,
-    blood_oath_ink: bloodOathInkSprite,
+    phantoms_mirage: bloodOathInkSprite,
     spider_swarm: spiderSwarmSprite,
-    dance_of_the_jester: danceOfTheJesterSprite,
+    earthquake: danceOfTheJesterSprite,
     cone_of_cold: coneOfColdSprite,
-    seal_of_silence: sealOfSilenceSprite,
-    voidbrand: voidbrandSprite,
-    edict_of_compulsion: edictOfCompulsionSprite,
-    executioners_cut: executionersCutSprite,
+    hex_of_forced_utterance: edictOfCompulsionSprite,
+    reapers_scythe: executionersCutSprite,
+    vowel_voodoo: edictOfCompulsionSprite,
+    veil_of_obscured_sight: executionersCutSprite,
+    consonant_cleaver: executionersCutSprite,
+    infernal_mandate: executionersCutSprite,
     send_in_the_clown: sendInTheClownSprite,
+    dispel_curse: candleOfMercySprite,
+    twin_fates: oracleWhisperSprite,
+    god_of_the_easy_tongue: cartographersInsightSprite,
+    sigil_of_the_wandering_glyph: wanderingGlyphPlaceholderSprite,
+    time_stop: coneOfColdSprite,
   };
 
   useEffect(() => {
@@ -70,6 +91,9 @@ export default function ItemsStorage() {
       oracleWhisper,
       cartographersInsight,
       candleOfMercy,
+      dispelCurse,
+      twinFates,
+      godOfTheEasyTongue,
       bloodOathInk,
       spiderSwarm,
       executionersCut,
@@ -77,8 +101,6 @@ export default function ItemsStorage() {
       sendInTheClown,
       danceOfTheJester,
       coneOfCold,
-      sealOfSilence,
-      voidbrand,
     ];
     fallbackItems.forEach((item) => {
       if (item && !map.has(item.key)) {
@@ -87,6 +109,10 @@ export default function ItemsStorage() {
     });
     return map;
   }, [items]);
+  const hasCandleInventory = useMemo(
+    () => inventory.some((entry) => entry.item_key === 'candle_of_mercy' && Number(entry.quantity) > 0),
+    [inventory]
+  );
 
   const loadState = useCallback(async () => {
     if (!campaignId || !token) return;
@@ -137,9 +163,21 @@ export default function ItemsStorage() {
     }
   }, [loading, token, campaignId, loadState]);
 
-  const handleUseItem = async (itemKey, targetUserId, payloadValue) => {
+  const handleUseItem = async (
+    itemKey,
+    targetUserId,
+    payloadValue,
+    { acceptBlessingCost = false, consumeCandle = false } = {}
+  ) => {
     if (useBusy) return;
     const item = itemByKey.get(itemKey);
+    const isBlessing = item?.category === 'blessing';
+    if (itemKey === 'candle_of_mercy') {
+      const candleMsg = 'Candle of Mercy is only available through retroactive confirmation prompts.';
+      setError(candleMsg);
+      setTargetModalError(candleMsg);
+      return false;
+    }
     const requiresTarget = item?.requires_target;
     const selectedTarget = targetUserId;
     if (requiresTarget && !selectedTarget) {
@@ -160,6 +198,31 @@ export default function ItemsStorage() {
         return false;
       }
     }
+    if (itemKey === 'vowel_voodoo') {
+      if (!isVowelVoodooPayloadValid(payloadValue)) {
+        setError('Choose exactly two vowels before using this item.');
+        setTargetModalError('Choose exactly two vowels before using this item.');
+        return false;
+      }
+    }
+    if (itemKey === 'veil_of_obscured_sight') {
+      if (!isVeilPayloadValid(payloadValue)) {
+        setError('Choose LEFT or RIGHT before using this item.');
+        setTargetModalError('Choose LEFT or RIGHT before using this item.');
+        return false;
+      }
+    }
+    if (isBlessing && !acceptBlessingCost) {
+      setPendingBlessingUse({
+        itemKey,
+        targetUserId: requiresTarget ? Number(selectedTarget) : null,
+        payloadValue: String(payloadValue || '').trim().toLowerCase(),
+      });
+      setShowBlessingCandleModal(false);
+      setShowBlessingCostModal(true);
+      setTargetModalItem(null);
+      return false;
+    }
 
     setUseBusy(itemKey);
     setError('');
@@ -172,7 +235,13 @@ export default function ItemsStorage() {
           campaign_id: Number(campaignId),
           item_key: itemKey,
           target_user_id: requiresTarget ? Number(selectedTarget) : null,
-          effect_payload: item?.payload_type ? { value: String(payloadValue || '').trim().toLowerCase() } : null
+          effect_payload: (
+            item?.payload_type || itemKey === 'vowel_voodoo' || itemKey === 'veil_of_obscured_sight'
+          )
+            ? { value: String(payloadValue || '').trim().toLowerCase() }
+            : null,
+          accept_blessing_cost: isBlessing,
+          consume_candle_of_mercy: isBlessing && consumeCandle,
         })
       });
       const data = await res.json();
@@ -190,6 +259,17 @@ export default function ItemsStorage() {
       return true;
     } catch (err) {
       const message = err?.message || 'Use failed.';
+      if (String(message).toLowerCase().includes('final day of the cycle')) {
+        setShowBlessingCandleModal(false);
+        setShowBlessingCostModal(false);
+        setPendingBlessingUse(null);
+        setTargetModalItem(null);
+        setInfoModalItem(null);
+        const finalDayMsg = "You can't use items on the last day of the cycle.";
+        setError(finalDayMsg);
+        setTargetModalError(finalDayMsg);
+        return false;
+      }
       const normalized = message.toLowerCase();
       if (
         normalized.includes('invalid word') ||
@@ -206,6 +286,46 @@ export default function ItemsStorage() {
       return false;
     } finally {
       setUseBusy('');
+    }
+  };
+
+  const handleBlessingSacrifice = async () => {
+    if (!pendingBlessingUse) return;
+    const success = await handleUseItem(
+      pendingBlessingUse.itemKey,
+      pendingBlessingUse.targetUserId,
+      pendingBlessingUse.payloadValue,
+      { acceptBlessingCost: true, consumeCandle: false }
+    );
+    if (success) {
+      setShowBlessingCostModal(false);
+      setShowBlessingCandleModal(false);
+      setPendingBlessingUse(null);
+    }
+  };
+
+  const handleBlessingUseCandle = () => {
+    setShowBlessingCostModal(false);
+    setShowBlessingCandleModal(true);
+  };
+
+  const handleBlessingCandleNo = () => {
+    setShowBlessingCandleModal(false);
+    setShowBlessingCostModal(true);
+  };
+
+  const handleBlessingCandleYes = async () => {
+    if (!pendingBlessingUse) return;
+    const success = await handleUseItem(
+      pendingBlessingUse.itemKey,
+      pendingBlessingUse.targetUserId,
+      pendingBlessingUse.payloadValue,
+      { acceptBlessingCost: true, consumeCandle: true }
+    );
+    if (success) {
+      setShowBlessingCandleModal(false);
+      setShowBlessingCostModal(false);
+      setPendingBlessingUse(null);
     }
   };
 
@@ -405,6 +525,45 @@ export default function ItemsStorage() {
                 />
               </div>
             )}
+            {targetModalItem.key === 'vowel_voodoo' && (
+              <div className="items-modal-field">
+                <label className="items-modal-label" htmlFor="items-vowel-voodoo-input">
+                  Choose 2 vowels
+                </label>
+                <input
+                  id="items-vowel-voodoo-input"
+                  className="items-modal-input"
+                  type="text"
+                  value={targetModalPayload}
+                  maxLength={2}
+                  placeholder="ae"
+                  onChange={(event) => {
+                    const nextValue = event.target.value
+                      .replace(/[^aeiou]/gi, '')
+                      .slice(0, 2)
+                      .toLowerCase();
+                    setTargetModalPayload(nextValue);
+                  }}
+                />
+              </div>
+            )}
+            {targetModalItem.key === 'veil_of_obscured_sight' && (
+              <div className="items-modal-field">
+                <label className="items-modal-label" htmlFor="items-veil-side-input">
+                  Choose side to obscure
+                </label>
+                <select
+                  id="items-veil-side-input"
+                  className="items-target-select"
+                  value={targetModalPayload}
+                  onChange={(event) => setTargetModalPayload(event.target.value)}
+                >
+                  <option value="">Select side</option>
+                  <option value="left">LEFT</option>
+                  <option value="right">RIGHT</option>
+                </select>
+              </div>
+            )}
             {targetModalItem.requires_target && (
               <>
                 <p className="items-modal-description">Select a target to use this item.</p>
@@ -447,7 +606,15 @@ export default function ItemsStorage() {
                 }}
                 disabled={
                   (targetModalItem.requires_target && !targetModalSelection) ||
-                  (targetModalItem.payload_type && !targetModalPayload) ||
+                  (
+                    targetModalItem.payload_type
+                      ? !targetModalPayload
+                      : targetModalItem.key === 'vowel_voodoo'
+                        ? !isVowelVoodooPayloadValid(targetModalPayload)
+                        : targetModalItem.key === 'veil_of_obscured_sight'
+                          ? !isVeilPayloadValid(targetModalPayload)
+                          : false
+                  ) ||
                   targetModalTargets.some((target) => String(target.user_id) === String(targetModalSelection) && target.blocked) ||
                   useBusy === targetModalItem.key
                 }
@@ -458,6 +625,20 @@ export default function ItemsStorage() {
           </div>
         </div>
       )}
+      <BlessingUseModals
+        showCostModal={showBlessingCostModal}
+        showCandleModal={showBlessingCandleModal}
+        pendingItemName={pendingBlessingUse?.itemKey ? (itemByKey.get(pendingBlessingUse.itemKey)?.name || pendingBlessingUse.itemKey) : ''}
+        hasCandleInventory={hasCandleInventory}
+        onCloseCost={() => {
+          setShowBlessingCostModal(false);
+          setPendingBlessingUse(null);
+        }}
+        onSacrifice={handleBlessingSacrifice}
+        onUseCandle={handleBlessingUseCandle}
+        onCandleYes={handleBlessingCandleYes}
+        onCandleNo={handleBlessingCandleNo}
+      />
     </div>
   );
 }

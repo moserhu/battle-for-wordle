@@ -78,9 +78,9 @@ def _oracle_whisper(conn, user_id: int, campaign_id: int):
 
 oracle_whisper_item = {
     "key": "oracle_whisper",
-    "name": "Oracle's Whisper",
-    "description": "A whisper of truth slips through, hinting at a single place it belongs.",
-    "cost": 5,
+    "name": "Oracle Whisper",
+    "description": "Reveal one guaranteed green letter and its exact position.",
+    "cost": 12,
     "category": "blessing",
     "handler": _oracle_whisper
 }

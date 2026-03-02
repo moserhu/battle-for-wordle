@@ -1,0 +1,11 @@
+hex_of_forced_utterance_item = {
+    "key": "hex_of_forced_utterance",
+    "name": "Hex of Forced Utterance",
+    "description": "Choose a 5-letter first guess with at least 4 unique letters for your target.",
+    "cost": 16,
+    "category": "curse",
+    "affects_others": True,
+    "requires_target": True,
+    "payload_type": "word",
+    "exclusive_all": True
+}

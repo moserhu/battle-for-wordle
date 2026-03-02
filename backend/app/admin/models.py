@@ -9,3 +9,8 @@ class AdminEffectRequest(BaseModel):
 class AdminAmountRequest(BaseModel):
     campaign_id: int
     amount: int
+
+
+class AdminWordRequest(BaseModel):
+    campaign_id: int
+    word: str
