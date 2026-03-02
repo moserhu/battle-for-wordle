@@ -7,15 +7,18 @@ import { faCoins, faCampground, faDoorOpen } from '@fortawesome/free-solid-svg-i
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrthographicCamera, useCursor, useTexture } from '@react-three/drei';
 import * as THREE from 'three';
-import oracleWhisperSprite from '../../assets/items/blessings/oracles_whisper.png';
-import cartographersInsightSprite from '../../assets/items/blessings/cartographers_insight.png';
+import oracleWhisperSprite from '../../assets/items/blessings/oracle_whisper.png';
+import cartographersInsightSprite from '../../assets/items/blessings/grace_of_the_guiding_star.png';
 import candleOfMercySprite from '../../assets/items/blessings/candle_of_mercy.png';
-import bloodOathInkSprite from '../../assets/items/illusions/blood_oath_ink.png';
+import bloodOathInkSprite from '../../assets/items/illusions/phantoms_mirage.png';
 import spiderSwarmSprite from '../../assets/items/illusions/spider_swarm.png';
-import danceOfTheJesterSprite from '../../assets/items/illusions/dance_of_the_jester.png';
+import danceOfTheJesterSprite from '../../assets/items/illusions/earthquake.png';
 import coneOfColdSprite from '../../assets/items/illusions/cone_of_cold.png';
-import edictOfCompulsionSprite from '../../assets/items/curses/edict_of_compulsion.png';
-import executionersCutSprite from '../../assets/items/curses/executioners_cut.png';
+import timeStopSprite from '../../assets/items/illusions/time_stop.png';
+import edictOfCompulsionSprite from '../../assets/items/curses/hex_of_forced_utterance.png';
+import executionersCutSprite from '../../assets/items/curses/reapers_scythe.png';
+import vowelVoodooSprite from '../../assets/items/curses/vowel_voodoo.png';
+import veilOfObscuredSightSprite from '../../assets/items/curses/veil_of_obscured_sight.png';
 import sendInTheClownSprite from '../../assets/items/illusions/clown.png';
 import wanderingGlyphPlaceholderSprite from '../../assets/ui/wandering_glyph_placeholder.svg';
 import marketHubMapDesktop from '../../assets/market/market_hub_map_desktop.png';
@@ -507,8 +510,8 @@ export default function Market() {
     cone_of_cold: coneOfColdSprite,
     hex_of_forced_utterance: edictOfCompulsionSprite,
     reapers_scythe: executionersCutSprite,
-    vowel_voodoo: edictOfCompulsionSprite,
-    veil_of_obscured_sight: executionersCutSprite,
+    vowel_voodoo: vowelVoodooSprite,
+    veil_of_obscured_sight: veilOfObscuredSightSprite,
     consonant_cleaver: executionersCutSprite,
     infernal_mandate: executionersCutSprite,
     send_in_the_clown: sendInTheClownSprite,
@@ -516,7 +519,7 @@ export default function Market() {
     twin_fates: oracleWhisperSprite,
     god_of_the_easy_tongue: cartographersInsightSprite,
     sigil_of_the_wandering_glyph: wanderingGlyphPlaceholderSprite,
-    time_stop: coneOfColdSprite,
+    time_stop: timeStopSprite,
   };
 
   useEffect(() => {

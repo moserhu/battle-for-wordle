@@ -182,15 +182,21 @@ WHERE item_key IN (
   'blood_oath_ink'
 );
 
--- 6) Remove voidbrand everywhere
+-- 6) Remove retired keys everywhere
 DELETE FROM campaign_user_items          WHERE item_key = 'voidbrand';
 DELETE FROM campaign_item_events         WHERE item_key = 'voidbrand';
 DELETE FROM campaign_shop_log            WHERE item_key = 'voidbrand';
 DELETE FROM store_purchases              WHERE item_key = 'voidbrand';
 DELETE FROM global_item_stats            WHERE item_key = 'voidbrand';
 DELETE FROM campaign_user_status_effects WHERE effect_key = 'voidbrand';
+DELETE FROM campaign_user_items          WHERE item_key = 'seal_of_silence';
+DELETE FROM campaign_item_events         WHERE item_key = 'seal_of_silence';
+DELETE FROM campaign_shop_log            WHERE item_key = 'seal_of_silence';
+DELETE FROM store_purchases              WHERE item_key = 'seal_of_silence';
+DELETE FROM global_item_stats            WHERE item_key = 'seal_of_silence';
+DELETE FROM campaign_user_status_effects WHERE effect_key = 'seal_of_silence';
 
--- 7) Normalize campaign_shop_rotation JSONB items (legacy keys + voidbrand)
+-- 7) Normalize campaign_shop_rotation JSONB items (legacy keys + retired keys)
 WITH remapped AS (
   SELECT
     csr.user_id,
@@ -214,6 +220,7 @@ WITH remapped AS (
                 WHEN 'dance_of_the_jester' THEN 'earthquake'
                 WHEN 'blood_oath_ink' THEN 'phantoms_mirage'
                 WHEN 'voidbrand' THEN NULL
+                WHEN 'seal_of_silence' THEN NULL
                 ELSE v.value
               END AS mapped_key,
               v.ord
