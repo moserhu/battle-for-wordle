@@ -1,7 +1,7 @@
 consonant_cleaver_item = {
     "key": "consonant_cleaver",
     "name": "Consonant Cleaver",
-    "description": "Randomly blocks four consonants for the target's first two guesses.",
+    "description": "Choose four consonants to block for two guesses.",
     "cost": 12,
     "category": "curse",
     "affects_others": True,

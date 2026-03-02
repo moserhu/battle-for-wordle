@@ -33,13 +33,16 @@ class _FakeCursor:
 
 
 class _FakeConn:
-  def __init__(self, cursed_row=None, curse_event=False, qty=0):
+  def __init__(self, cursed_row=None, curse_event=False, qty=0, score=10):
     self.cursed_row = cursed_row
     self.curse_event = curse_event
     self.qty = qty
+    self.score = score
 
   def execute(self, query, params=None):
     normalized = " ".join(query.split())
+    if "SELECT score" in normalized and "FROM campaign_members" in normalized:
+      return _FakeCursor((self.score,))
     if "FROM campaign_user_status_effects" in normalized and "effect_key = %s" in normalized and "cursed" in str(params):
       return _FakeCursor(self.cursed_row)
     if "FROM campaign_item_events" in normalized and "item_key = ANY(%s)" in normalized:
@@ -148,12 +151,51 @@ class ItemEffectGuardTests(unittest.TestCase):
       patch.object(crud, "_is_curse_lock_dispersed_for_day", return_value=True),
     ):
       with self.assertRaises(HTTPException) as ctx:
-        crud.use_item(user_id=10, campaign_id=20, item_key="oracle_whisper", target_user_id=None, effect_payload=None)
+        crud.use_item(
+          user_id=10,
+          campaign_id=20,
+          item_key="oracle_whisper",
+          target_user_id=None,
+          effect_payload=None,
+          accept_blessing_cost=True,
+        )
 
     self.assertEqual(ctx.exception.status_code, 400)
     self.assertIn("item not available", ctx.exception.detail.lower())
 
-  def test_get_active_target_effects_hides_curses_after_dispel(self):
+  def test_use_item_blocks_blessing_when_troops_below_sacrifice_cost(self):
+    blessing = {
+      "key": "oracle_whisper",
+      "name": "Oracle Whisper",
+      "category": "blessing",
+      "affects_others": False,
+      "requires_target": False,
+    }
+    conn = _FakeConn(qty=1, score=0)
+    with (
+      patch.object(crud, "get_item", return_value=blessing),
+      patch.object(crud, "get_db", return_value=_FakeDbCtx(conn)),
+      patch.object(crud, "resolve_campaign_day", return_value=(None, 7, 2, 2, date(2026, 3, 1))),
+      patch.object(crud, "is_admin_campaign", return_value=False),
+      patch.object(crud, "_has_active_curse_effect_today", return_value=False),
+      patch.object(crud, "_is_curse_lock_dispersed_for_day", return_value=False),
+    ):
+      with self.assertRaises(HTTPException) as ctx:
+        crud.use_item(
+          user_id=10,
+          campaign_id=20,
+          item_key="oracle_whisper",
+          target_user_id=None,
+          effect_payload=None,
+          accept_blessing_cost=True,
+          consume_candle_of_mercy=False,
+        )
+
+    self.assertEqual(ctx.exception.status_code, 400)
+    self.assertIn("not enough troops", ctx.exception.detail.lower())
+    self.assertEqual(conn.qty, 1)
+
+  def test_get_active_target_effects_returns_curse_dispersed_flag(self):
     effect_rows = [
       ("vowel_voodoo", json.dumps({"payload": {"type": "vowels", "value": "ae"}})),
       ("oracle_whisper", json.dumps({"hint": {"letter": "a"}})),
@@ -167,8 +209,9 @@ class ItemEffectGuardTests(unittest.TestCase):
       payload = crud.get_active_target_effects(user_id=10, campaign_id=20)
 
     keys = [entry["item_key"] for entry in payload["effects"]]
-    self.assertNotIn("vowel_voodoo", keys)
+    self.assertIn("vowel_voodoo", keys)
     self.assertIn("oracle_whisper", keys)
+    self.assertTrue(payload["curse_dispersed"])
 
   def test_get_current_status_effects_filters_old_day_twin_and_easy_tongue(self):
     rows = [

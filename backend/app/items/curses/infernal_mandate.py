@@ -1,7 +1,7 @@
 infernal_mandate_item = {
     "key": "infernal_mandate",
     "name": "Infernal Mandate",
-    "description": "Hard-mode curse with troop penalties for invalid or rule-breaking guesses.",
+    "description": "Force the player to use discovered letters and valid words or lose up to 20 troops.",
     "cost": 12,
     "category": "curse",
     "affects_others": True,

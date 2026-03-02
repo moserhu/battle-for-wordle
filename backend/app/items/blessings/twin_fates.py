@@ -35,7 +35,7 @@ def _twin_fates(conn, user_id: int, campaign_id: int):
 twin_fates_item = {
     "key": "twin_fates",
     "name": "Twin Fates",
-    "description": "Reveal placements for doubled letters when they exist.",
+    "description": "If a word has double letters, the positions are revealed.",
     "cost": 8,
     "category": "blessing",
     "handler": _twin_fates

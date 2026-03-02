@@ -10,17 +10,22 @@ import * as THREE from 'three';
 import oracleWhisperSprite from '../../assets/items/blessings/oracle_whisper.png';
 import cartographersInsightSprite from '../../assets/items/blessings/grace_of_the_guiding_star.png';
 import candleOfMercySprite from '../../assets/items/blessings/candle_of_mercy.png';
+import dispelCurseSprite from '../../assets/items/blessings/dispel_curse.png';
+import twinFatesSprite from '../../assets/items/blessings/twin_fates.png';
+import godOfTheEasyTongueSprite from '../../assets/items/blessings/god_of_the_easy_tongue.png';
 import bloodOathInkSprite from '../../assets/items/illusions/phantoms_mirage.png';
 import spiderSwarmSprite from '../../assets/items/illusions/spider_swarm.png';
 import danceOfTheJesterSprite from '../../assets/items/illusions/earthquake.png';
 import coneOfColdSprite from '../../assets/items/illusions/cone_of_cold.png';
 import timeStopSprite from '../../assets/items/illusions/time_stop.png';
+import sigilOfTheWanderingGlyphSprite from '../../assets/items/illusions/sigil_of_the_wandering_glyph.png';
 import edictOfCompulsionSprite from '../../assets/items/curses/hex_of_forced_utterance.png';
 import executionersCutSprite from '../../assets/items/curses/reapers_scythe.png';
 import vowelVoodooSprite from '../../assets/items/curses/vowel_voodoo.png';
 import veilOfObscuredSightSprite from '../../assets/items/curses/veil_of_obscured_sight.png';
+import consonantCleaverSprite from '../../assets/items/curses/consonant_cleaver.png';
+import infernalMandateSprite from '../../assets/items/curses/infernal_mandate.png';
 import sendInTheClownSprite from '../../assets/items/illusions/clown.png';
-import wanderingGlyphPlaceholderSprite from '../../assets/ui/wandering_glyph_placeholder.svg';
 import marketHubMapDesktop from '../../assets/market/market_hub_map_desktop.png';
 import marketHubMapMobile from '../../assets/market/market_hub_map_mobile.png';
 import subshopIllusionDesktop from '../../assets/market/subshop_illusion_desktop.png';
@@ -512,13 +517,13 @@ export default function Market() {
     reapers_scythe: executionersCutSprite,
     vowel_voodoo: vowelVoodooSprite,
     veil_of_obscured_sight: veilOfObscuredSightSprite,
-    consonant_cleaver: executionersCutSprite,
-    infernal_mandate: executionersCutSprite,
+    consonant_cleaver: consonantCleaverSprite,
+    infernal_mandate: infernalMandateSprite,
     send_in_the_clown: sendInTheClownSprite,
-    dispel_curse: candleOfMercySprite,
-    twin_fates: oracleWhisperSprite,
-    god_of_the_easy_tongue: cartographersInsightSprite,
-    sigil_of_the_wandering_glyph: wanderingGlyphPlaceholderSprite,
+    dispel_curse: dispelCurseSprite,
+    twin_fates: twinFatesSprite,
+    god_of_the_easy_tongue: godOfTheEasyTongueSprite,
+    sigil_of_the_wandering_glyph: sigilOfTheWanderingGlyphSprite,
     time_stop: timeStopSprite,
   };
 

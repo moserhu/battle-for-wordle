@@ -1,7 +1,7 @@
 vowel_voodoo_item = {
     "key": "vowel_voodoo",
     "name": "Vowel Voodoo",
-    "description": "Blocks two vowels for two guesses.",
+    "description": "Choose 2 vowels to block for 2 guesses.",
     "cost": 12,
     "category": "curse",
     "affects_others": True,

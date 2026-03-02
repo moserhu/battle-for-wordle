@@ -7,17 +7,22 @@ import BlessingUseModals from '../components/items/blessings/BlessingUseModals';
 import oracleWhisperSprite from '../assets/items/blessings/oracle_whisper.png';
 import cartographersInsightSprite from '../assets/items/blessings/grace_of_the_guiding_star.png';
 import candleOfMercySprite from '../assets/items/blessings/candle_of_mercy.png';
+import dispelCurseSprite from '../assets/items/blessings/dispel_curse.png';
+import twinFatesSprite from '../assets/items/blessings/twin_fates.png';
+import godOfTheEasyTongueSprite from '../assets/items/blessings/god_of_the_easy_tongue.png';
 import bloodOathInkSprite from '../assets/items/illusions/phantoms_mirage.png';
 import spiderSwarmSprite from '../assets/items/illusions/spider_swarm.png';
 import danceOfTheJesterSprite from '../assets/items/illusions/earthquake.png';
 import coneOfColdSprite from '../assets/items/illusions/cone_of_cold.png';
 import timeStopSprite from '../assets/items/illusions/time_stop.png';
+import sigilOfTheWanderingGlyphSprite from '../assets/items/illusions/sigil_of_the_wandering_glyph.png';
 import edictOfCompulsionSprite from '../assets/items/curses/hex_of_forced_utterance.png';
 import executionersCutSprite from '../assets/items/curses/reapers_scythe.png';
 import vowelVoodooSprite from '../assets/items/curses/vowel_voodoo.png';
 import veilOfObscuredSightSprite from '../assets/items/curses/veil_of_obscured_sight.png';
+import consonantCleaverSprite from '../assets/items/curses/consonant_cleaver.png';
+import infernalMandateSprite from '../assets/items/curses/infernal_mandate.png';
 import sendInTheClownSprite from '../assets/items/illusions/clown.png';
-import wanderingGlyphPlaceholderSprite from '../assets/ui/wandering_glyph_placeholder.svg';
 import { oracleWhisper, cartographersInsight, candleOfMercy, dispelCurse, twinFates, godOfTheEasyTongue } from '../components/items/blessings/index';
 import { bloodOathInk, spiderSwarm, sendInTheClown, danceOfTheJester, coneOfCold } from '../components/items/illusions/index';
 import { executionersCut } from '../components/items/curses/reapers_scythe';
@@ -25,6 +30,7 @@ import { edictOfCompulsion } from '../components/items/curses/hex_of_forced_utte
 
 const API_BASE = process.env.REACT_APP_API_URL || `${window.location.protocol}//${window.location.hostname}`;
 const VOWELS = new Set(['a', 'e', 'i', 'o', 'u']);
+const CONSONANTS = new Set('bcdfghjklmnpqrstvwxyz'.split(''));
 
 function isVowelVoodooPayloadValid(payloadValue) {
   const normalized = String(payloadValue || '').trim().toLowerCase();
@@ -36,6 +42,13 @@ function isVowelVoodooPayloadValid(payloadValue) {
 function isVeilPayloadValid(payloadValue) {
   const normalized = String(payloadValue || '').trim().toLowerCase();
   return normalized === 'left' || normalized === 'right';
+}
+
+function isConsonantCleaverPayloadValid(payloadValue) {
+  const normalized = String(payloadValue || '').trim().toLowerCase();
+  if (normalized.length !== 4) return false;
+  const letters = normalized.split('');
+  return letters.every((letter) => CONSONANTS.has(letter)) && new Set(letters).size === 4;
 }
 
 export default function ItemsStorage() {
@@ -71,13 +84,13 @@ export default function ItemsStorage() {
     reapers_scythe: executionersCutSprite,
     vowel_voodoo: vowelVoodooSprite,
     veil_of_obscured_sight: veilOfObscuredSightSprite,
-    consonant_cleaver: executionersCutSprite,
-    infernal_mandate: executionersCutSprite,
+    consonant_cleaver: consonantCleaverSprite,
+    infernal_mandate: infernalMandateSprite,
     send_in_the_clown: sendInTheClownSprite,
-    dispel_curse: candleOfMercySprite,
-    twin_fates: oracleWhisperSprite,
-    god_of_the_easy_tongue: cartographersInsightSprite,
-    sigil_of_the_wandering_glyph: wanderingGlyphPlaceholderSprite,
+    dispel_curse: dispelCurseSprite,
+    twin_fates: twinFatesSprite,
+    god_of_the_easy_tongue: godOfTheEasyTongueSprite,
+    sigil_of_the_wandering_glyph: sigilOfTheWanderingGlyphSprite,
     time_stop: timeStopSprite,
   };
 
@@ -215,6 +228,13 @@ export default function ItemsStorage() {
         return false;
       }
     }
+    if (itemKey === 'consonant_cleaver') {
+      if (!isConsonantCleaverPayloadValid(payloadValue)) {
+        setError('Choose exactly four unique consonants before using this item.');
+        setTargetModalError('Choose exactly four unique consonants before using this item.');
+        return false;
+      }
+    }
     if (isBlessing && !acceptBlessingCost) {
       setPendingBlessingUse({
         itemKey,
@@ -239,7 +259,7 @@ export default function ItemsStorage() {
           item_key: itemKey,
           target_user_id: requiresTarget ? Number(selectedTarget) : null,
           effect_payload: (
-            item?.payload_type || itemKey === 'vowel_voodoo' || itemKey === 'veil_of_obscured_sight'
+            item?.payload_type || itemKey === 'vowel_voodoo' || itemKey === 'veil_of_obscured_sight' || itemKey === 'consonant_cleaver'
           )
             ? { value: String(payloadValue || '').trim().toLowerCase() }
             : null,
@@ -567,6 +587,31 @@ export default function ItemsStorage() {
                 </select>
               </div>
             )}
+            {targetModalItem.key === 'consonant_cleaver' && (
+              <div className="items-modal-field">
+                <label className="items-modal-label" htmlFor="items-consonant-cleaver-input">
+                  Choose 4 consonants
+                </label>
+                <input
+                  id="items-consonant-cleaver-input"
+                  className="items-modal-input"
+                  type="text"
+                  value={targetModalPayload}
+                  maxLength={4}
+                  placeholder="bcdf"
+                  onChange={(event) => {
+                    const nextValue = event.target.value
+                      .replace(/[^a-z]/gi, '')
+                      .toLowerCase()
+                      .split('')
+                      .filter((letter) => CONSONANTS.has(letter))
+                      .join('')
+                      .slice(0, 4);
+                    setTargetModalPayload(nextValue);
+                  }}
+                />
+              </div>
+            )}
             {targetModalItem.requires_target && (
               <>
                 <p className="items-modal-description">Select a target to use this item.</p>
@@ -616,6 +661,8 @@ export default function ItemsStorage() {
                         ? !isVowelVoodooPayloadValid(targetModalPayload)
                         : targetModalItem.key === 'veil_of_obscured_sight'
                           ? !isVeilPayloadValid(targetModalPayload)
+                          : targetModalItem.key === 'consonant_cleaver'
+                            ? !isConsonantCleaverPayloadValid(targetModalPayload)
                           : false
                   ) ||
                   targetModalTargets.some((target) => String(target.user_id) === String(targetModalSelection) && target.blocked) ||

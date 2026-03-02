@@ -56,6 +56,28 @@ def is_admin_campaign(conn, campaign_id: int) -> bool:
     return bool(row[0]) if row else False
 
 
+def _is_admin_inventory_override(conn, user_id: int, campaign_id: int) -> bool:
+    return is_admin_campaign(conn, campaign_id) and is_admin_user(conn, user_id)
+
+
+def _ensure_admin_inventory_floor(conn, user_id: int, campaign_id: int, minimum_quantity: int = 1) -> bool:
+    if minimum_quantity <= 0:
+        return False
+    if not _is_admin_inventory_override(conn, user_id, campaign_id):
+        return False
+    for item in ITEM_CATALOG:
+        conn.execute(
+            """
+            INSERT INTO campaign_user_items (user_id, campaign_id, item_key, quantity)
+            VALUES (%s, %s, %s, %s)
+            ON CONFLICT (user_id, campaign_id, item_key)
+            DO UPDATE SET quantity = GREATEST(campaign_user_items.quantity, EXCLUDED.quantity)
+            """,
+            (user_id, campaign_id, item["key"], minimum_quantity),
+        )
+    return True
+
+
 
 def register_user(first_name, last_name, email, phone, password):
     hashed_pw = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
@@ -2347,6 +2369,7 @@ def _get_or_create_shop_rotation(conn, user_id: int, campaign_id: int, date_str:
 def get_shop_state(user_id: int, campaign_id: int):
     with get_db() as conn:
         is_admin_flag = is_admin_campaign(conn, campaign_id)
+        _ensure_admin_inventory_floor(conn, user_id, campaign_id, minimum_quantity=1)
         coins_row = conn.execute("""
             SELECT coins
             FROM campaign_coins
@@ -2709,6 +2732,7 @@ def use_item(
     with get_db() as conn:
         _, cycle_length, current_day, target_day, target_date = resolve_campaign_day(conn, campaign_id, None)
         is_admin_flag = is_admin_campaign(conn, campaign_id)
+        admin_testing_override = _ensure_admin_inventory_floor(conn, user_id, campaign_id, minimum_quantity=1)
         target_date_str = target_date.strftime("%Y-%m-%d")
         affects_others = bool(item.get("affects_others"))
         requires_target = bool(item.get("requires_target"))
@@ -2746,6 +2770,20 @@ def use_item(
                 status_code=400,
                 detail="Candle of Mercy cannot pay blessing sacrifice on the final day of the cycle.",
             )
+        if is_blessing and not consume_candle_of_mercy and not admin_testing_override:
+            troops_row = conn.execute("""
+                SELECT score
+                FROM campaign_members
+                WHERE user_id = %s AND campaign_id = %s
+            """, (user_id, campaign_id)).fetchone()
+            if not troops_row:
+                raise HTTPException(status_code=404, detail="Campaign membership not found")
+            troops = int(troops_row[0] or 0)
+            if troops < 5:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Not enough troops to sacrifice for this blessing. Use Candle of Mercy or earn more troops.",
+                )
 
         if affects_others and requires_target and not target_user_id:
             raise HTTPException(status_code=400, detail="Target required for this item")
@@ -2765,7 +2803,7 @@ def use_item(
             WHERE user_id = %s AND campaign_id = %s AND item_key = %s
         """, (user_id, campaign_id, item_key)).fetchone()
         qty = qty_row[0] if qty_row else 0
-        if qty <= 0:
+        if qty <= 0 and not admin_testing_override:
             raise HTTPException(status_code=400, detail="Item not available")
 
         if is_blessing:
@@ -2776,13 +2814,14 @@ def use_item(
                     WHERE user_id = %s AND campaign_id = %s AND item_key = %s
                 """, (user_id, campaign_id, "candle_of_mercy")).fetchone()
                 candle_qty = candle_row[0] if candle_row else 0
-                if candle_qty <= 0:
+                if candle_qty <= 0 and not admin_testing_override:
                     raise HTTPException(status_code=400, detail="No Candle of Mercy available.")
-                conn.execute("""
-                    UPDATE campaign_user_items
-                    SET quantity = quantity - 1
-                    WHERE user_id = %s AND campaign_id = %s AND item_key = %s
-                """, (user_id, campaign_id, "candle_of_mercy"))
+                if not admin_testing_override:
+                    conn.execute("""
+                        UPDATE campaign_user_items
+                        SET quantity = quantity - 1
+                        WHERE user_id = %s AND campaign_id = %s AND item_key = %s
+                    """, (user_id, campaign_id, "candle_of_mercy"))
                 candle_consumed = True
             else:
                 blessing_cost_applied = 5
@@ -2821,7 +2860,14 @@ def use_item(
                 payload_value = "".join(random.sample(sorted(VOWELS), 2))
             payload_type = "vowels"
         elif item_key == "consonant_cleaver":
-            payload_value = "".join(random.sample(CONSONANTS, 4))
+            raw_value = (effect_payload or {}).get("value")
+            if not raw_value:
+                raise HTTPException(status_code=400, detail="Choose exactly four consonants.")
+            payload_value = str(raw_value).strip().lower()
+            if len(payload_value) != 4 or any(letter in VOWELS or not letter.isalpha() for letter in payload_value):
+                raise HTTPException(status_code=400, detail="Choose exactly four consonants.")
+            if len(set(payload_value)) != 4:
+                raise HTTPException(status_code=400, detail="Consonants must be unique.")
             payload_type = "letters"
         elif item_key == "veil_of_obscured_sight":
             raw_value = str((effect_payload or {}).get("value") or "").strip().lower()
@@ -2895,11 +2941,12 @@ def use_item(
                 WHERE user_id = %s AND campaign_id = %s AND event_type = 'use'
             """, (user_id, campaign_id)).fetchone()[0]
 
-        conn.execute("""
-            UPDATE campaign_user_items
-            SET quantity = quantity - 1
-            WHERE user_id = %s AND campaign_id = %s AND item_key = %s
-        """, (user_id, campaign_id, item_key))
+        if not admin_testing_override:
+            conn.execute("""
+                UPDATE campaign_user_items
+                SET quantity = quantity - 1
+                WHERE user_id = %s AND campaign_id = %s AND item_key = %s
+            """, (user_id, campaign_id, item_key))
 
         handler = item.get("handler")
         if handler:
@@ -2936,6 +2983,8 @@ def use_item(
             WHERE user_id = %s AND campaign_id = %s AND item_key = %s
         """, (user_id, campaign_id, item_key)).fetchone()
         remaining = remaining_row[0] if remaining_row else 0
+        if admin_testing_override:
+            remaining = max(remaining, 1)
 
     return {
         "item_key": item_key,

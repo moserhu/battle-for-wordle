@@ -160,10 +160,8 @@ class CurseMechanicsTests(unittest.TestCase):
       patch.object(crud, "get_db", return_value=_FakeDbCtx(conn)),
       patch.object(crud, "resolve_campaign_day", return_value=(None, 7, 2, 2, date(2026, 3, 1))),
       patch.object(crud, "is_admin_campaign", return_value=True),
-      patch.object(crud, "random", wraps=crud.random) as mock_random,
     ):
-      mock_random.sample.return_value = ["b", "c", "d", "f"]
-      crud.use_item(1, 99, "consonant_cleaver", 2, None)
+      crud.use_item(1, 99, "consonant_cleaver", 2, {"value": "bcdf"})
 
     payload = json.loads(conn.last_event_details)
     self.assertEqual(payload["payload"]["type"], "letters")
@@ -209,7 +207,7 @@ class CurseMechanicsTests(unittest.TestCase):
     self.assertEqual(ctx.exception.status_code, 400)
     self.assertIn("hexed vowel", ctx.exception.detail.lower())
 
-  def test_validate_guess_allows_blocked_vowel_when_dispel_marker_active(self):
+  def test_validate_guess_still_blocks_blocked_vowel_when_dispel_marker_active(self):
     effect_rows = [
       ("vowel_voodoo", json.dumps({"payload": {"type": "vowels", "value": "ae"}, "effective_on": "2026-03-01"})),
     ]
@@ -220,10 +218,11 @@ class CurseMechanicsTests(unittest.TestCase):
       patch.object(crud, "resolve_campaign_day", return_value=(None, 7, 2, 2, date(2026, 3, 1))),
       patch.object(crud, "is_admin_campaign", return_value=False),
     ):
-      with self.assertRaises(RuntimeError) as ctx:
+      with self.assertRaises(HTTPException) as ctx:
         crud.validate_guess("caper", user_id=1, campaign_id=2)
 
-    self.assertIn("stop-after-hardmode-check", str(ctx.exception))
+    self.assertEqual(ctx.exception.status_code, 400)
+    self.assertIn("hexed vowel", ctx.exception.detail.lower())
 
   def test_validate_guess_blocks_consonant_cleaver_letters(self):
     effect_rows = [
