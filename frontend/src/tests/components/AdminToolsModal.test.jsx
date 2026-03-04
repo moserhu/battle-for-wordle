@@ -140,7 +140,7 @@ describe('AdminToolsModal', () => {
     global.fetch = createFetchRouter({
       'GET /api/admin/effects': [
         makeResponse([
-          { key: 'veil_of_obscured_sight', name: 'Veil of Obscured Sight', category: 'curse', affects_others: true, payload_type: 'side' },
+          { key: 'blinding_brew', name: 'Veil of Obscured Sight', category: 'curse', affects_others: true, payload_type: 'side' },
         ]),
       ],
       'POST /api/admin/effects/add': [makeResponse({ status: 'applied' })],

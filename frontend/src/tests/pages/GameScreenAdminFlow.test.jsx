@@ -134,9 +134,9 @@ function createFetchMock(overrides = {}) {
       makeResponse([
         { key: 'vowel_voodoo', name: 'Vowel Voodoo', category: 'curse', affects_others: true, payload_type: 'vowels' },
         { key: 'consonant_cleaver', name: 'Consonant Cleaver', category: 'curse', affects_others: true, payload_type: 'letters' },
-        { key: 'veil_of_obscured_sight', name: 'Veil of Obscured Sight', category: 'curse', affects_others: true, payload_type: 'side' },
+        { key: 'blinding_brew', name: 'Veil of Obscured Sight', category: 'curse', affects_others: true, payload_type: 'side' },
         { key: 'twin_fates', name: 'Twin Fates', category: 'blessing', affects_others: false, payload_type: null },
-        { key: 'god_of_the_easy_tongue', name: 'God of the Easy Tongue', category: 'blessing', affects_others: false, payload_type: null },
+        { key: 'vowel_vision', name: 'God of the Easy Tongue', category: 'blessing', affects_others: false, payload_type: null },
         { key: 'dispel_curse', name: 'Dispel Curse', category: 'blessing', affects_others: false, payload_type: null },
       ]),
     ],
@@ -251,13 +251,13 @@ describe('GameScreen admin effect flow', () => {
       fireEvent.change(screen.getByPlaceholderText(/bcdf/i), { target: { value: 'bcdf' } });
     });
 
-    await selectAndApplyEffect(effectSelect, 'veil_of_obscured_sight', async () => {
+    await selectAndApplyEffect(effectSelect, 'blinding_brew', async () => {
       await waitFor(() => expect(screen.getAllByRole('combobox').length).toBeGreaterThan(1));
       fireEvent.change(screen.getAllByRole('combobox')[1], { target: { value: 'left' } });
     });
 
     await selectAndApplyEffect(effectSelect, 'twin_fates');
-    await selectAndApplyEffect(effectSelect, 'god_of_the_easy_tongue');
+    await selectAndApplyEffect(effectSelect, 'vowel_vision');
     await selectAndApplyEffect(effectSelect, 'dispel_curse');
 
     await waitFor(() => {
@@ -267,9 +267,9 @@ describe('GameScreen admin effect flow', () => {
     const bodies = getAdminAddBodies(global.fetch);
     expect(bodies[0]).toMatchObject({ effect_key: 'vowel_voodoo', effect_payload: { value: 'ae' } });
     expect(bodies[1]).toMatchObject({ effect_key: 'consonant_cleaver', effect_payload: { value: 'bcdf' } });
-    expect(bodies[2]).toMatchObject({ effect_key: 'veil_of_obscured_sight', effect_payload: { value: 'left' } });
+    expect(bodies[2]).toMatchObject({ effect_key: 'blinding_brew', effect_payload: { value: 'left' } });
     expect(bodies[3]).toMatchObject({ effect_key: 'twin_fates' });
-    expect(bodies[4]).toMatchObject({ effect_key: 'god_of_the_easy_tongue' });
+    expect(bodies[4]).toMatchObject({ effect_key: 'vowel_vision' });
     expect(bodies[5]).toMatchObject({ effect_key: 'dispel_curse' });
 
     // After admin refresh, vowel voodoo should block A on early rows.

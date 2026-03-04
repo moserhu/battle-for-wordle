@@ -42,7 +42,7 @@ jest.mock('../../components/AccoladesModal', () => () => null);
 
 const blessingItems = {
   oracleWhisper: { key: 'oracle_whisper', name: "Oracle's Whisper", description: 'hint', requires_target: false, payload_type: 'letter' },
-  cartographersInsight: { key: 'grace_of_the_guiding_star', name: "Cartographer's Insight", description: 'map', requires_target: false },
+  cartographersInsight: { key: 'guiding_light', name: "Cartographer's Insight", description: 'map', requires_target: false },
   candleOfMercy: { key: 'candle_of_mercy', name: 'Candle of Mercy', description: 'mercy', requires_target: false },
 };
 const illusionItems = {
@@ -54,9 +54,9 @@ const illusionItems = {
 };
 const curseItems = {
   executionersCut: { key: 'reapers_scythe', name: "Executioner's Cut", description: 'cut', requires_target: true },
-  edictOfCompulsion: { key: 'hex_of_forced_utterance', name: 'Edict of Compulsion', description: 'edict', requires_target: true, payload_type: 'word' },
+  edictOfCompulsion: { key: 'hex_of_compulsion', name: 'Edict of Compulsion', description: 'edict', requires_target: true, payload_type: 'word' },
   vowelVoodoo: { key: 'vowel_voodoo', name: 'Vowel Voodoo', description: 'vowels', requires_target: true },
-  veilOfObscuredSight: { key: 'veil_of_obscured_sight', name: 'Veil of Obscured Sight', description: 'veil', requires_target: true },
+  veilOfObscuredSight: { key: 'blinding_brew', name: 'Veil of Obscured Sight', description: 'veil', requires_target: true },
 };
 
 jest.mock('../../components/items/blessings', () => blessingItems);
@@ -311,7 +311,7 @@ describe('Campaigns, Dashboard, and Items pages', () => {
       '/api/campaign/shop/state': [
         makeResponse({
           items: [curseItems.edictOfCompulsion],
-          inventory: [{ item_key: 'hex_of_forced_utterance', quantity: 1 }],
+          inventory: [{ item_key: 'hex_of_compulsion', quantity: 1 }],
         }),
       ],
       '/api/campaign/progress': [makeResponse({ is_admin_campaign: false })],
@@ -386,7 +386,7 @@ describe('Campaigns, Dashboard, and Items pages', () => {
       '/api/campaign/shop/state': [
         makeResponse({
           items: [curseItems.veilOfObscuredSight],
-          inventory: [{ item_key: 'veil_of_obscured_sight', quantity: 1 }],
+          inventory: [{ item_key: 'blinding_brew', quantity: 1 }],
         }),
       ],
       '/api/campaign/progress': [makeResponse({ is_admin_campaign: false })],

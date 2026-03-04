@@ -5,28 +5,28 @@ import { useAuth } from '../auth/AuthProvider';
 import '../styles/ItemsStorage.css';
 import BlessingUseModals from '../components/items/blessings/BlessingUseModals';
 import oracleWhisperSprite from '../assets/items/blessings/oracle_whisper.png';
-import cartographersInsightSprite from '../assets/items/blessings/grace_of_the_guiding_star.png';
+import cartographersInsightSprite from '../assets/items/blessings/guiding_light.png';
 import candleOfMercySprite from '../assets/items/blessings/candle_of_mercy.png';
 import dispelCurseSprite from '../assets/items/blessings/dispel_curse.png';
 import twinFatesSprite from '../assets/items/blessings/twin_fates.png';
-import godOfTheEasyTongueSprite from '../assets/items/blessings/god_of_the_easy_tongue.png';
+import godOfTheEasyTongueSprite from '../assets/items/blessings/vowel_vision.png';
 import bloodOathInkSprite from '../assets/items/illusions/phantoms_mirage.png';
 import spiderSwarmSprite from '../assets/items/illusions/spider_swarm.png';
 import danceOfTheJesterSprite from '../assets/items/illusions/earthquake.png';
 import coneOfColdSprite from '../assets/items/illusions/cone_of_cold.png';
 import timeStopSprite from '../assets/items/illusions/time_stop.png';
 import sigilOfTheWanderingGlyphSprite from '../assets/items/illusions/sigil_of_the_wandering_glyph.png';
-import edictOfCompulsionSprite from '../assets/items/curses/hex_of_forced_utterance.png';
+import edictOfCompulsionSprite from '../assets/items/curses/hex_of_compulsion.png';
 import executionersCutSprite from '../assets/items/curses/reapers_scythe.png';
 import vowelVoodooSprite from '../assets/items/curses/vowel_voodoo.png';
-import veilOfObscuredSightSprite from '../assets/items/curses/veil_of_obscured_sight.png';
+import veilOfObscuredSightSprite from '../assets/items/curses/blinding_brew.png';
 import consonantCleaverSprite from '../assets/items/curses/consonant_cleaver.png';
 import infernalMandateSprite from '../assets/items/curses/infernal_mandate.png';
 import sendInTheClownSprite from '../assets/items/illusions/clown.png';
 import { oracleWhisper, cartographersInsight, candleOfMercy, dispelCurse, twinFates, godOfTheEasyTongue } from '../components/items/blessings/index';
 import { bloodOathInk, spiderSwarm, sendInTheClown, danceOfTheJester, coneOfCold } from '../components/items/illusions/index';
 import { executionersCut } from '../components/items/curses/reapers_scythe';
-import { edictOfCompulsion } from '../components/items/curses/hex_of_forced_utterance';
+import { edictOfCompulsion } from '../components/items/curses/hex_of_compulsion';
 
 const API_BASE = process.env.REACT_APP_API_URL || `${window.location.protocol}//${window.location.hostname}`;
 const VOWELS = new Set(['a', 'e', 'i', 'o', 'u']);
@@ -74,22 +74,22 @@ export default function ItemsStorage() {
   const [isAdminCampaign, setIsAdminCampaign] = useState(false);
   const spriteByKey = {
     oracle_whisper: oracleWhisperSprite,
-    grace_of_the_guiding_star: cartographersInsightSprite,
+    guiding_light: cartographersInsightSprite,
     candle_of_mercy: candleOfMercySprite,
     phantoms_mirage: bloodOathInkSprite,
     spider_swarm: spiderSwarmSprite,
     earthquake: danceOfTheJesterSprite,
     cone_of_cold: coneOfColdSprite,
-    hex_of_forced_utterance: edictOfCompulsionSprite,
+    hex_of_compulsion: edictOfCompulsionSprite,
     reapers_scythe: executionersCutSprite,
     vowel_voodoo: vowelVoodooSprite,
-    veil_of_obscured_sight: veilOfObscuredSightSprite,
+    blinding_brew: veilOfObscuredSightSprite,
     consonant_cleaver: consonantCleaverSprite,
     infernal_mandate: infernalMandateSprite,
     send_in_the_clown: sendInTheClownSprite,
     dispel_curse: dispelCurseSprite,
     twin_fates: twinFatesSprite,
-    god_of_the_easy_tongue: godOfTheEasyTongueSprite,
+    vowel_vision: godOfTheEasyTongueSprite,
     sigil_of_the_wandering_glyph: sigilOfTheWanderingGlyphSprite,
     time_stop: timeStopSprite,
   };
@@ -221,7 +221,7 @@ export default function ItemsStorage() {
         return false;
       }
     }
-    if (itemKey === 'veil_of_obscured_sight') {
+    if (itemKey === 'blinding_brew') {
       if (!isVeilPayloadValid(payloadValue)) {
         setError('Choose LEFT or RIGHT before using this item.');
         setTargetModalError('Choose LEFT or RIGHT before using this item.');
@@ -259,7 +259,7 @@ export default function ItemsStorage() {
           item_key: itemKey,
           target_user_id: requiresTarget ? Number(selectedTarget) : null,
           effect_payload: (
-            item?.payload_type || itemKey === 'vowel_voodoo' || itemKey === 'veil_of_obscured_sight' || itemKey === 'consonant_cleaver'
+            item?.payload_type || itemKey === 'vowel_voodoo' || itemKey === 'blinding_brew' || itemKey === 'consonant_cleaver'
           )
             ? { value: String(payloadValue || '').trim().toLowerCase() }
             : null,
@@ -570,7 +570,7 @@ export default function ItemsStorage() {
                 />
               </div>
             )}
-            {targetModalItem.key === 'veil_of_obscured_sight' && (
+            {targetModalItem.key === 'blinding_brew' && (
               <div className="items-modal-field">
                 <label className="items-modal-label" htmlFor="items-veil-side-input">
                   Choose side to obscure
@@ -659,7 +659,7 @@ export default function ItemsStorage() {
                       ? !targetModalPayload
                       : targetModalItem.key === 'vowel_voodoo'
                         ? !isVowelVoodooPayloadValid(targetModalPayload)
-                        : targetModalItem.key === 'veil_of_obscured_sight'
+                        : targetModalItem.key === 'blinding_brew'
                           ? !isVeilPayloadValid(targetModalPayload)
                           : targetModalItem.key === 'consonant_cleaver'
                             ? !isConsonantCleaverPayloadValid(targetModalPayload)

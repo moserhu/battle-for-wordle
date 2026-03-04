@@ -386,12 +386,12 @@ describe('GameScreen page', () => {
         makeResponse({
           items: [
             { key: 'oracle_whisper', name: "Oracle's Whisper", requires_target: false, payload_type: 'letter', description: 'Hint' },
-            { key: 'hex_of_forced_utterance', name: 'Hex of Forced Utterance', requires_target: true, description: 'Targeted' },
+            { key: 'hex_of_compulsion', name: 'Hex of Forced Utterance', requires_target: true, description: 'Targeted' },
             { key: 'candle_of_mercy', name: 'Candle of Mercy', requires_target: false, description: 'Mercy' },
           ],
           inventory: [
             { item_key: 'oracle_whisper', quantity: 2 },
-            { item_key: 'hex_of_forced_utterance', quantity: 1 },
+            { item_key: 'hex_of_compulsion', quantity: 1 },
             { item_key: 'candle_of_mercy', quantity: 0 },
           ],
         }),
@@ -706,7 +706,7 @@ describe('GameScreen page', () => {
         makeResponse({
           effects: [
             {
-              item_key: 'hex_of_forced_utterance',
+              item_key: 'hex_of_compulsion',
               details: { payload: { value: 'crane' }, sender_name: 'Hex Caster' },
             },
           ],
@@ -756,7 +756,7 @@ describe('GameScreen page', () => {
         makeResponse({
           effects: [
             {
-              item_key: 'hex_of_forced_utterance',
+              item_key: 'hex_of_compulsion',
               details: { payload: { value: 'crane' }, sender_name: 'Hex Caster' },
             },
           ],
@@ -870,7 +870,7 @@ describe('GameScreen page', () => {
         makeResponse({
           effects: [
             {
-              item_key: 'veil_of_obscured_sight',
+              item_key: 'blinding_brew',
               details: {
                 sender_name: 'FogCaller',
                 payload: { value: 'left' },
@@ -898,7 +898,7 @@ describe('GameScreen page', () => {
         makeResponse({
           effects: [
             {
-              item_key: 'veil_of_obscured_sight',
+              item_key: 'blinding_brew',
               details: {
                 sender_name: 'FogCaller',
                 payload: { value: 'right' },
@@ -932,7 +932,7 @@ describe('GameScreen page', () => {
         makeResponse({
           effects: [
             {
-              item_key: 'veil_of_obscured_sight',
+              item_key: 'blinding_brew',
               details: {
                 sender_name: 'FogCaller',
                 payload: { value: 'left' },
@@ -956,7 +956,7 @@ describe('GameScreen page', () => {
         makeResponse({
           effects: [
             {
-              item_key: 'veil_of_obscured_sight',
+              item_key: 'blinding_brew',
               details: {
                 sender_name: 'FogCaller',
                 payload: { value: 'left' },
@@ -986,7 +986,7 @@ describe('GameScreen page', () => {
         makeResponse({
           effects: [
             {
-              item_key: 'veil_of_obscured_sight',
+              item_key: 'blinding_brew',
               details: {
                 sender_name: 'FogCaller',
                 payload: { value: 'right' },
@@ -1015,7 +1015,7 @@ describe('GameScreen page', () => {
       '/api/campaign/items/status': [
         makeResponse({
           effects: [
-            { effect_key: 'god_of_the_easy_tongue', payload: { day: 2, vowel_count: 3 } },
+            { effect_key: 'vowel_vision', payload: { day: 2, vowel_count: 3 } },
             {
               effect_key: 'twin_fates',
               payload: {
