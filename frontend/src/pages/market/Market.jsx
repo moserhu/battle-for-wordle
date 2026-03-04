@@ -816,7 +816,20 @@ export default function Market() {
                   activeItems.map((item) => {
                     const purchased = purchasedItemKeys.includes(item.key);
                     return (
-                      <div className={`market-item-card${purchased ? " purchased" : ""}`} key={item.key}>
+                      <div
+                        className={`market-item-card${purchased ? " purchased" : ""}`}
+                        key={item.key}
+                        role="button"
+                        tabIndex={0}
+                        aria-label={`View ${item.name}`}
+                        onClick={() => setSelectedItem(item)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            setSelectedItem(item);
+                          }
+                        }}
+                      >
                         <div className="market-item-body">
                           <div className="market-item-title">{item.name}</div>
                           <div className={`market-item-sprite${spriteByKey[item.key] ? " has-image" : ""}`}>
@@ -841,7 +854,10 @@ export default function Market() {
                         </div>
                         <button
                           className="btn"
-                          onClick={() => setSelectedItem(item)}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setSelectedItem(item);
+                          }}
                         >
                           View
                         </button>

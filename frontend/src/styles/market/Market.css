@@ -6,6 +6,8 @@
   --market-panel-pill-border: rgba(120, 150, 200, 0.25);
   --market-item-card-bg: rgba(12, 18, 26, 0.7);
   --market-item-card-border: rgba(120, 150, 200, 0.2);
+  --market-item-body-bg: rgba(0, 0, 0, 0.28);
+  --market-item-body-border: rgba(120, 170, 230, 0.18);
   --market-item-sprite-bg: rgba(8, 12, 18, 0.5);
   --market-item-sprite-border: rgba(120, 150, 200, 0.18);
   --market-action-btn-bg: rgba(38, 74, 122, 0.78);
@@ -52,8 +54,10 @@
   --market-panel-pill-border: rgba(116, 184, 255, 0.34);
   --market-item-card-bg: rgba(9, 20, 38, 0.76);
   --market-item-card-border: rgba(88, 162, 255, 0.24);
-  --market-item-sprite-bg: rgba(7, 15, 29, 0.62);
-  --market-item-sprite-border: rgba(104, 176, 255, 0.22);
+  --market-item-body-bg: rgba(2, 8, 20, 0.68);
+  --market-item-body-border: rgba(118, 188, 255, 0.34);
+  --market-item-sprite-bg: rgba(4, 18, 42, 0.9);
+  --market-item-sprite-border: rgba(124, 204, 255, 0.62);
   --market-action-btn-bg: rgba(36, 86, 156, 0.82);
   --market-action-btn-border: rgba(118, 188, 255, 0.36);
   --market-action-btn-text: #edf7ff;
@@ -106,8 +110,10 @@
   --market-panel-pill-border: rgba(241, 112, 112, 0.36);
   --market-item-card-bg: rgba(36, 9, 13, 0.75);
   --market-item-card-border: rgba(230, 90, 90, 0.25);
-  --market-item-sprite-bg: rgba(28, 8, 10, 0.62);
-  --market-item-sprite-border: rgba(235, 108, 108, 0.23);
+  --market-item-body-bg: rgba(18, 3, 5, 0.7);
+  --market-item-body-border: rgba(242, 122, 122, 0.32);
+  --market-item-sprite-bg: rgba(44, 4, 8, 0.9);
+  --market-item-sprite-border: rgba(255, 138, 138, 0.64);
   --market-action-btn-bg: rgba(145, 34, 42, 0.84);
   --market-action-btn-border: rgba(242, 122, 122, 0.38);
   --market-action-btn-text: #fff0f0;
@@ -1180,6 +1186,12 @@
   flex-direction: column;
   gap: 4px;
   min-height: 150px;
+  cursor: pointer;
+}
+
+.market-item-card:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--market-item-title-text) 70%, white 30%);
+  outline-offset: 2px;
 }
 
 .market-item-card.purchased {
@@ -1192,8 +1204,8 @@
   flex-direction: column;
   gap: 10px;
   flex: 1;
-  background: rgba(0, 0, 0, 0.28);
-  border: 1px solid color-mix(in srgb, var(--market-item-title-border) 75%, transparent);
+  background: var(--market-item-body-bg);
+  border: 1px solid var(--market-item-body-border);
   border-radius: 6px;
   padding: 6px;
   box-sizing: border-box;
@@ -1233,8 +1245,16 @@
 }
 
 .market-item-sprite.has-image {
-  background: rgba(10, 18, 28, 0.55);
-  border-color: rgba(30, 45, 68, 0.5);
+  background: var(--market-item-sprite-bg);
+  border-color: var(--market-item-sprite-border);
+}
+
+.market-wrapper.market-theme-illusion .market-item-sprite.has-image {
+  box-shadow: inset 0 0 0 1px rgba(172, 224, 255, 0.2), 0 6px 14px rgba(5, 35, 70, 0.28);
+}
+
+.market-wrapper.market-theme-curse .market-item-sprite.has-image {
+  box-shadow: inset 0 0 0 1px rgba(255, 186, 186, 0.18), 0 6px 14px rgba(58, 8, 12, 0.32);
 }
 
 .market-item-sprite-img {
@@ -2217,8 +2237,8 @@
 
 /* Final override: preserve grouped title + sprite wrapper in subshop item cards across breakpoint overrides. */
 .market-surface.is-subshop .market-item-body {
-  background: rgba(0, 0, 0, 0.56);
-  border: 2px solid color-mix(in srgb, var(--market-item-title-border) 92%, transparent);
+  background: color-mix(in srgb, var(--market-item-body-bg) 92%, black 8%);
+  border: 2px solid color-mix(in srgb, var(--market-item-body-border) 88%, transparent);
   border-radius: 8px;
   padding: 8px;
   box-sizing: border-box;
@@ -2234,7 +2254,7 @@
 }
 
 .market-surface.is-subshop .market-item-sprite {
-  background: rgba(0, 0, 0, 0.22);
+  background: color-mix(in srgb, var(--market-item-sprite-bg) 85%, black 15%);
   border-width: 1px;
 }
 
