@@ -58,8 +58,8 @@ class ItemKeyAliasTests(unittest.TestCase):
 
   def test_get_item_resolves_legacy_keys(self):
     self.assertEqual(get_item("executioners_cut")["key"], "reapers_scythe")
-    self.assertEqual(get_item("edict_of_compulsion")["key"], "hex_of_forced_utterance")
-    self.assertEqual(get_item("cartographers_insight")["key"], "grace_of_the_guiding_star")
+    self.assertEqual(get_item("edict_of_compulsion")["key"], "hex_of_compulsion")
+    self.assertEqual(get_item("cartographers_insight")["key"], "guiding_light")
     self.assertEqual(get_item("dance_of_the_jester")["key"], "earthquake")
     self.assertEqual(get_item("blood_oath_ink")["key"], "phantoms_mirage")
 
@@ -77,7 +77,7 @@ class ItemKeyAliasTests(unittest.TestCase):
 
     self.assertEqual(result["day"], 2)
     self.assertEqual(result["effects"][0]["item_key"], "reapers_scythe")
-    self.assertEqual(result["effects"][1]["item_key"], "hex_of_forced_utterance")
+    self.assertEqual(result["effects"][1]["item_key"], "hex_of_compulsion")
     self.assertEqual(result["effects"][1]["details"], {"raw": "{bad-json"})
 
   def test_get_active_target_effects_empty_rows_returns_empty_effects(self):

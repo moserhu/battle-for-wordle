@@ -1,12 +1,12 @@
-export const cartographersInsight = {
-  key: 'grace_of_the_guiding_star',
-  name: 'Grace of the Guiding Star',
+export const guidingLight = {
+  key: 'guiding_light',
+  name: 'Guiding Light',
   category: 'blessing',
   description: 'Reveal four letters that are not in today\'s answer.',
 };
 
-export const getCartographersLetters = (statusEffects) => {
-  const effect = statusEffects.find((entry) => entry.effect_key === "grace_of_the_guiding_star");
+export const getGuidingLightLetters = (statusEffects) => {
+  const effect = statusEffects.find((entry) => entry.effect_key === "guiding_light");
   const letters = effect?.payload?.unused_letters;
   return Array.isArray(letters) ? letters : [];
 };
@@ -22,3 +22,7 @@ export const applyAbsentLetters = (letterStatus, letters) => {
   });
   return next;
 };
+
+// Backward-compatible aliases for existing imports.
+export const cartographersInsight = guidingLight;
+export const getCartographersLetters = getGuidingLightLetters;

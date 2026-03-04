@@ -123,9 +123,9 @@ def init_db():
             SET category = CASE
                 WHEN item_key IN ('cone_of_cold', 'earthquake', 'dance_of_the_jester', 'spider_swarm', 'send_in_the_clown', 'phantoms_mirage', 'blood_oath_ink', 'sigil_of_the_wandering_glyph', 'time_stop')
                     THEN 'illusion'
-                WHEN item_key IN ('grace_of_the_guiding_star', 'cartographers_insight', 'oracle_whisper', 'candle_of_mercy', 'dispel_curse', 'twin_fates', 'god_of_the_easy_tongue')
+                WHEN item_key IN ('guiding_light', 'cartographers_insight', 'oracle_whisper', 'candle_of_mercy', 'dispel_curse', 'twin_fates', 'vowel_vision')
                     THEN 'blessing'
-                WHEN item_key IN ('seal_of_silence', 'reapers_scythe', 'executioners_cut', 'hex_of_forced_utterance', 'edict_of_compulsion', 'vowel_voodoo', 'veil_of_obscured_sight', 'consonant_cleaver', 'infernal_mandate')
+                WHEN item_key IN ('seal_of_silence', 'reapers_scythe', 'executioners_cut', 'hex_of_compulsion', 'edict_of_compulsion', 'vowel_voodoo', 'blinding_brew', 'consonant_cleaver', 'infernal_mandate')
                     THEN 'curse'
                 ELSE category
             END

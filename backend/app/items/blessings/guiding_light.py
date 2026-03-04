@@ -4,7 +4,7 @@ from datetime import timedelta
 from fastapi import HTTPException
 from app.utils.campaigns import resolve_campaign_day
 
-def _grace_of_the_guiding_star(conn, user_id: int, campaign_id: int):
+def _guiding_light(conn, user_id: int, campaign_id: int):
     _, _, _, target_day, target_date = resolve_campaign_day(conn, campaign_id, None)
     word_row = conn.execute(
         "SELECT word FROM campaign_words WHERE campaign_id = %s AND day = %s",
@@ -46,15 +46,15 @@ def _grace_of_the_guiding_star(conn, user_id: int, campaign_id: int):
                       applied_at = EXCLUDED.applied_at,
                       expires_at = EXCLUDED.expires_at,
                       active = TRUE
-    """, (user_id, campaign_id, "grace_of_the_guiding_star", json.dumps(payload), expires_at))
+    """, (user_id, campaign_id, "guiding_light", json.dumps(payload), expires_at))
 
     return {"cartography": payload}
 
-grace_of_the_guiding_star_item = {
-    "key": "grace_of_the_guiding_star",
-    "name": "Grace of the Guiding Star",
+guiding_light_item = {
+    "key": "guiding_light",
+    "name": "Guiding Light",
     "description": "Reveal four letters that are not in today's answer.",
     "cost": 8,
     "category": "blessing",
-    "handler": _grace_of_the_guiding_star
+    "handler": _guiding_light
 }

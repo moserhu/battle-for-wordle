@@ -875,7 +875,7 @@ def validate_guess(word: str, user_id: int, campaign_id: int, day_override: int 
                 WHERE user_id = %s AND campaign_id = %s AND effect_key = %s
             """, (json.dumps(clown_payload), user_id, campaign_id, "send_in_the_clown"))
 
-        edict_payload = active_effects.get("hex_of_forced_utterance", {}).get("value")
+        edict_payload = active_effects.get("hex_of_compulsion", {}).get("value")
         if edict_payload and current_row == 0 and guess != edict_payload:
             raise HTTPException(status_code=400, detail="Your first guess must follow the edict.")
 
@@ -2070,7 +2070,7 @@ def get_current_status_effects(user_id: int, campaign_id: int):
             except json.JSONDecodeError:
                 payload = {"raw": effect_value}
 
-        if effect_key in ("oracle_whisper", "grace_of_the_guiding_star", "twin_fates", "god_of_the_easy_tongue"):
+        if effect_key in ("oracle_whisper", "guiding_light", "twin_fates", "vowel_vision"):
             if not payload or payload.get("day") != target_day:
                 continue
 
@@ -2748,11 +2748,47 @@ def use_item(
 
         if item.get("category") == "blessing" and item_key != "dispel_curse":
             if has_curse and not lock_dispersed:
-                raise HTTPException(status_code=400, detail="While hexed, you may not use blessings.")
+                raise HTTPException(status_code=400, detail="While cursed, you may not use blessings.")
 
         blessing_cost_applied = 0
         candle_consumed = False
         is_blessing = item.get("category") == "blessing"
+        if is_blessing:
+            prior_blessing_row = conn.execute(
+                """
+                SELECT 1
+                FROM campaign_item_events
+                WHERE user_id = %s
+                  AND campaign_id = %s
+                  AND event_type = %s
+                  AND DATE(created_at AT TIME ZONE 'America/Chicago') = %s
+                  AND COALESCE(details, '{}')::jsonb->>'category' = %s
+                  AND item_key <> %s
+                LIMIT 1
+                """,
+                (user_id, campaign_id, "use", target_date_str, "blessing", "candle_of_mercy"),
+            ).fetchone()
+            if prior_blessing_row:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Only one blessing can be used per day.",
+                )
+            day_progress_row = conn.execute(
+                """
+                SELECT game_over, current_row
+                FROM campaign_guess_states
+                WHERE user_id = %s AND campaign_id = %s AND date = %s
+                """,
+                (user_id, campaign_id, target_date_str),
+            ).fetchone()
+            if day_progress_row:
+                day_game_over = bool(day_progress_row[0])
+                day_current_row = int(day_progress_row[1] or 0)
+                if day_game_over or day_current_row >= 6:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Blessings can only be used before you have played the current day.",
+                    )
         if is_blessing and item_key == "candle_of_mercy":
             raise HTTPException(
                 status_code=400,
@@ -2842,7 +2878,7 @@ def use_item(
             elif payload_type == "word":
                 if len(payload_value) != 5 or not payload_value.isalpha():
                     raise HTTPException(status_code=400, detail="Choose a valid 5-letter word.")
-                if item_key == "hex_of_forced_utterance" and len(set(payload_value)) < 4:
+                if item_key == "hex_of_compulsion" and len(set(payload_value)) < 4:
                     raise HTTPException(status_code=400, detail="Word must include at least 4 unique letters.")
                 if payload_value not in VALID_WORDS:
                     raise HTTPException(status_code=400, detail="Word must be a valid guess.")
@@ -2869,7 +2905,7 @@ def use_item(
             if len(set(payload_value)) != 4:
                 raise HTTPException(status_code=400, detail="Consonants must be unique.")
             payload_type = "letters"
-        elif item_key == "veil_of_obscured_sight":
+        elif item_key == "blinding_brew":
             raw_value = str((effect_payload or {}).get("value") or "").strip().lower()
             if raw_value and raw_value not in {"left", "right"}:
                 raise HTTPException(status_code=400, detail="Choose LEFT or RIGHT.")

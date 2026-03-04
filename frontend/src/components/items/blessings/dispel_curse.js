@@ -1,7 +1,7 @@
 export const dispelCurse = {
   key: 'dispel_curse',
   name: 'Dispel Curse',
-  description: 'Remove your active cursed state so blessings can be used again.',
+  description: "Removes the Cursed lock so you can use blessings again, but doesn't remove today's curse effect.",
   cost: 8,
   category: 'blessing',
   requires_target: false,

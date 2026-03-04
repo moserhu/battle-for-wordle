@@ -66,8 +66,8 @@ const baseState = {
         affects_others: false,
       },
       {
-        key: 'grace_of_the_guiding_star',
-        name: "Cartographer's Insight",
+        key: 'guiding_light',
+        name: "Guiding Light",
         category: 'blessing',
         cost: 5,
         description: 'Map insight.',
@@ -84,8 +84,8 @@ const baseState = {
         affects_others: true,
       },
       {
-        key: 'hex_of_forced_utterance',
-        name: 'Edict of Compulsion',
+        key: 'hex_of_compulsion',
+        name: 'Hex of Compulsion',
         category: 'curse',
         cost: 15,
         description: 'Forced action.',

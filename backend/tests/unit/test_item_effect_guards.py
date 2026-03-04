@@ -33,16 +33,22 @@ class _FakeCursor:
 
 
 class _FakeConn:
-  def __init__(self, cursed_row=None, curse_event=False, qty=0, score=10):
+  def __init__(self, cursed_row=None, curse_event=False, qty=0, score=10, guess_state_row=None, blessing_today=False):
     self.cursed_row = cursed_row
     self.curse_event = curse_event
     self.qty = qty
     self.score = score
+    self.guess_state_row = guess_state_row
+    self.blessing_today = blessing_today
 
   def execute(self, query, params=None):
     normalized = " ".join(query.split())
     if "SELECT score" in normalized and "FROM campaign_members" in normalized:
       return _FakeCursor((self.score,))
+    if "FROM campaign_item_events" in normalized and "details, '{}')::jsonb->>'category' = %s" in normalized:
+      return _FakeCursor((1,) if self.blessing_today else None)
+    if "FROM campaign_guess_states" in normalized and "SELECT game_over, current_row" in normalized:
+      return _FakeCursor(self.guess_state_row)
     if "FROM campaign_user_status_effects" in normalized and "effect_key = %s" in normalized and "cursed" in str(params):
       return _FakeCursor(self.cursed_row)
     if "FROM campaign_item_events" in normalized and "item_key = ANY(%s)" in normalized:
@@ -195,6 +201,66 @@ class ItemEffectGuardTests(unittest.TestCase):
     self.assertIn("not enough troops", ctx.exception.detail.lower())
     self.assertEqual(conn.qty, 1)
 
+  def test_use_item_blocks_blessing_after_current_day_played(self):
+    blessing = {
+      "key": "oracle_whisper",
+      "name": "Oracle Whisper",
+      "category": "blessing",
+      "affects_others": False,
+      "requires_target": False,
+    }
+    conn = _FakeConn(qty=1, score=20, guess_state_row=(True, 2))
+    with (
+      patch.object(crud, "get_item", return_value=blessing),
+      patch.object(crud, "get_db", return_value=_FakeDbCtx(conn)),
+      patch.object(crud, "resolve_campaign_day", return_value=(None, 7, 2, 2, date(2026, 3, 1))),
+      patch.object(crud, "is_admin_campaign", return_value=False),
+      patch.object(crud, "_has_active_curse_effect_today", return_value=False),
+      patch.object(crud, "_is_curse_lock_dispersed_for_day", return_value=False),
+    ):
+      with self.assertRaises(HTTPException) as ctx:
+        crud.use_item(
+          user_id=10,
+          campaign_id=20,
+          item_key="oracle_whisper",
+          target_user_id=None,
+          effect_payload=None,
+          accept_blessing_cost=True,
+        )
+
+    self.assertEqual(ctx.exception.status_code, 400)
+    self.assertIn("before you have played the current day", ctx.exception.detail.lower())
+
+  def test_use_item_blocks_second_blessing_same_day(self):
+    blessing = {
+      "key": "oracle_whisper",
+      "name": "Oracle Whisper",
+      "category": "blessing",
+      "affects_others": False,
+      "requires_target": False,
+    }
+    conn = _FakeConn(qty=1, score=20, blessing_today=True)
+    with (
+      patch.object(crud, "get_item", return_value=blessing),
+      patch.object(crud, "get_db", return_value=_FakeDbCtx(conn)),
+      patch.object(crud, "resolve_campaign_day", return_value=(None, 7, 2, 2, date(2026, 3, 1))),
+      patch.object(crud, "is_admin_campaign", return_value=False),
+      patch.object(crud, "_has_active_curse_effect_today", return_value=False),
+      patch.object(crud, "_is_curse_lock_dispersed_for_day", return_value=False),
+    ):
+      with self.assertRaises(HTTPException) as ctx:
+        crud.use_item(
+          user_id=10,
+          campaign_id=20,
+          item_key="oracle_whisper",
+          target_user_id=None,
+          effect_payload=None,
+          accept_blessing_cost=True,
+        )
+
+    self.assertEqual(ctx.exception.status_code, 400)
+    self.assertIn("only one blessing", ctx.exception.detail.lower())
+
   def test_get_active_target_effects_returns_curse_dispersed_flag(self):
     effect_rows = [
       ("vowel_voodoo", json.dumps({"payload": {"type": "vowels", "value": "ae"}})),
@@ -216,9 +282,9 @@ class ItemEffectGuardTests(unittest.TestCase):
   def test_get_current_status_effects_filters_old_day_twin_and_easy_tongue(self):
     rows = [
       ("twin_fates", json.dumps({"day": 1, "letters": [{"letter": "A", "positions": [1, 3]}]}), None),
-      ("god_of_the_easy_tongue", json.dumps({"day": 1, "vowel_count": 2}), None),
+      ("vowel_vision", json.dumps({"day": 1, "vowel_count": 2}), None),
       ("twin_fates", json.dumps({"day": 2, "letters": [{"letter": "E", "positions": [2, 5]}]}), None),
-      ("god_of_the_easy_tongue", json.dumps({"day": 2, "vowel_count": 3}), None),
+      ("vowel_vision", json.dumps({"day": 2, "vowel_count": 3}), None),
     ]
     conn = _StatusConn(rows)
     with (
@@ -229,9 +295,9 @@ class ItemEffectGuardTests(unittest.TestCase):
 
     keys = [entry["effect_key"] for entry in payload["effects"]]
     self.assertEqual(keys.count("twin_fates"), 1)
-    self.assertEqual(keys.count("god_of_the_easy_tongue"), 1)
+    self.assertEqual(keys.count("vowel_vision"), 1)
     twin = next(entry for entry in payload["effects"] if entry["effect_key"] == "twin_fates")
-    easy = next(entry for entry in payload["effects"] if entry["effect_key"] == "god_of_the_easy_tongue")
+    easy = next(entry for entry in payload["effects"] if entry["effect_key"] == "vowel_vision")
     self.assertEqual(twin["payload"]["day"], 2)
     self.assertEqual(easy["payload"]["day"], 2)
 

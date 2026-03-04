@@ -386,8 +386,12 @@
 }
 
 .wandering-glyph-overlay {
-  --glyph-neon-rgb: 255,43,214;
+  --glyph-neon-rgb: 255,0,168;
   --glyph-hue: 0deg;
+  --glyph-hitbox-left: 0;
+  --glyph-hitbox-top: 0;
+  --glyph-hitbox-right: 1;
+  --glyph-hitbox-bottom: 1;
   position: fixed;
   inset: 0;
   pointer-events: none;
@@ -406,11 +410,40 @@
   border: 0;
   box-shadow: none;
   will-change: transform, filter;
-  filter: brightness(1.04) saturate(1.5);
+  filter:
+    brightness(1.18)
+    saturate(2.35)
+    drop-shadow(0 0 12px rgba(var(--glyph-neon-rgb), 0.86))
+    drop-shadow(0 0 28px rgba(var(--glyph-neon-rgb), 0.64));
+}
+
+.wandering-glyph-token::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 50% 45%, rgba(var(--glyph-neon-rgb), 0.34), rgba(var(--glyph-neon-rgb), 0) 62%),
+    linear-gradient(135deg, rgba(var(--glyph-neon-rgb), 0.22), rgba(var(--glyph-neon-rgb), 0.06));
+  mix-blend-mode: color-dodge;
+  opacity: 0.92;
+  -webkit-mask-image: url('../assets/items/illusions/bounce_logo.png');
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  -webkit-mask-size: contain;
+  mask-image: url('../assets/items/illusions/bounce_logo.png');
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
 }
 
 .wandering-glyph-token.is-strobing .wandering-glyph-icon {
   animation: glyph-corner-strobe 220ms steps(2, end) 1;
+}
+
+.wandering-glyph-token.is-strobing::after {
+  opacity: 1;
+  filter: brightness(1.35) saturate(1.2);
 }
 
 .wandering-glyph-icon {
@@ -420,9 +453,9 @@
   object-fit: contain;
   animation: glyph-float 2.8s ease-in-out infinite;
   filter:
-    sepia(0.26)
-    brightness(1.2)
-    saturate(2.1)
+    brightness(1.32)
+    contrast(1.18)
+    saturate(3.2)
     hue-rotate(var(--glyph-hue));
   transition: filter 100ms linear;
 }
@@ -443,33 +476,33 @@
   0% {
     opacity: 1;
     filter:
-      sepia(0.26)
-      brightness(1.4)
-      saturate(2.4)
+      brightness(1.55)
+      contrast(1.22)
+      saturate(3.4)
       hue-rotate(var(--glyph-hue));
   }
   30% {
-    opacity: 0.58;
+    opacity: 0.42;
     filter:
-      sepia(0.26)
-      brightness(2.35)
-      saturate(3)
+      brightness(2.95)
+      contrast(1.38)
+      saturate(4)
       hue-rotate(var(--glyph-hue));
   }
   60% {
     opacity: 1;
     filter:
-      sepia(0.26)
-      brightness(1.35)
-      saturate(2.5)
+      brightness(1.74)
+      contrast(1.26)
+      saturate(3.6)
       hue-rotate(var(--glyph-hue));
   }
   100% {
     opacity: 1;
     filter:
-      sepia(0.26)
-      brightness(1.2)
-      saturate(2.1)
+      brightness(1.32)
+      contrast(1.18)
+      saturate(3.2)
       hue-rotate(var(--glyph-hue));
   }
 }
@@ -1103,8 +1136,7 @@
   justify-content: center;
   gap: 10px;
   background: rgba(8, 6, 4, 0.6);
-  border-radius: 12px;
-  z-index: 2;
+  z-index: 990;
 }
 
 .day-loading-spinner {
@@ -1235,6 +1267,10 @@
 
 /* Mobile */
 @media (max-width: 600px) {
+  .wandering-glyph-token {
+    --glyph-w: min(640px, 92vw, calc(62vh * var(--glyph-ratio)));
+  }
+
   .curse-hex-button {
     position: static;
     margin: 0 auto 10px;

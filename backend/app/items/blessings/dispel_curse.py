@@ -21,7 +21,7 @@ def _dispel_curse(conn, user_id: int, campaign_id: int):
 dispel_curse_item = {
     "key": "dispel_curse",
     "name": "Dispel Curse",
-    "description": "Remove your active Cursed status.",
+    "description": "Removes the Cursed lock so you can use blessings again, but does not remove today's curse effect.",
     "cost": 8,
     "category": "blessing",
     "handler": _dispel_curse

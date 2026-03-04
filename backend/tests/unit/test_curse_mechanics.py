@@ -167,10 +167,10 @@ class CurseMechanicsTests(unittest.TestCase):
     self.assertEqual(payload["payload"]["type"], "letters")
     self.assertEqual(payload["payload"]["value"], "bcdf")
 
-  def test_use_item_veil_of_obscured_sight_randomizes_side_payload(self):
+  def test_use_item_blinding_brew_randomizes_side_payload(self):
     item = {
-      "key": "veil_of_obscured_sight",
-      "name": "Veil of Obscured Sight",
+      "key": "blinding_brew",
+      "name": "Blinding Brew",
       "category": "curse",
       "affects_others": True,
       "requires_target": True,
@@ -185,7 +185,7 @@ class CurseMechanicsTests(unittest.TestCase):
       patch.object(crud, "random", wraps=crud.random) as mock_random,
     ):
       mock_random.choice.return_value = "left"
-      crud.use_item(1, 99, "veil_of_obscured_sight", 2, None)
+      crud.use_item(1, 99, "blinding_brew", 2, None)
 
     payload = json.loads(conn.last_event_details)
     self.assertEqual(payload["payload"]["type"], "side")

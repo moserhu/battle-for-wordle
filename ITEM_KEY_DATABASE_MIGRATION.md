@@ -3,21 +3,29 @@
 ```sql
 BEGIN;
 
--- 1) Canonical key mapping
--- edict_of_compulsion -> hex_of_forced_utterance
--- executioners_cut    -> reapers_scythe
--- cartographers_insight -> grace_of_the_guiding_star
--- dance_of_the_jester -> earthquake
--- blood_oath_ink      -> phantoms_mirage
+-- Canonical key mapping (legacy + renamed canonical keys)
+-- edict_of_compulsion      -> hex_of_compulsion
+-- hex_of_forced_utterance  -> hex_of_compulsion
+-- executioners_cut         -> reapers_scythe
+-- cartographers_insight    -> guiding_light
+-- grace_of_the_guiding_star-> guiding_light
+-- god_of_the_easy_tongue   -> vowel_vision
+-- dance_of_the_jester      -> earthquake
+-- blood_oath_ink           -> phantoms_mirage
+-- veil_of_obscured_sight   -> blinding_brew
 
--- 2) Merge inventory rows that would collide on PK after rename
+-- 1) Merge inventory rows that would collide on PK after rename
 WITH key_map(old_key, new_key) AS (
   VALUES
-    ('edict_of_compulsion', 'hex_of_forced_utterance'),
+    ('edict_of_compulsion', 'hex_of_compulsion'),
+    ('hex_of_forced_utterance', 'hex_of_compulsion'),
     ('executioners_cut', 'reapers_scythe'),
-    ('cartographers_insight', 'grace_of_the_guiding_star'),
+    ('cartographers_insight', 'guiding_light'),
+    ('grace_of_the_guiding_star', 'guiding_light'),
+    ('god_of_the_easy_tongue', 'vowel_vision'),
     ('dance_of_the_jester', 'earthquake'),
-    ('blood_oath_ink', 'phantoms_mirage')
+    ('blood_oath_ink', 'phantoms_mirage'),
+    ('veil_of_obscured_sight', 'blinding_brew')
 )
 INSERT INTO campaign_user_items (user_id, campaign_id, item_key, quantity, acquired_at)
 SELECT
@@ -38,21 +46,29 @@ DELETE FROM campaign_user_items cui
 USING (
   VALUES
     ('edict_of_compulsion'),
+    ('hex_of_forced_utterance'),
     ('executioners_cut'),
     ('cartographers_insight'),
+    ('grace_of_the_guiding_star'),
+    ('god_of_the_easy_tongue'),
     ('dance_of_the_jester'),
-    ('blood_oath_ink')
+    ('blood_oath_ink'),
+    ('veil_of_obscured_sight')
 ) AS old_keys(old_key)
 WHERE cui.item_key = old_keys.old_key;
 
--- 3) Merge status effects that would collide on PK after rename
+-- 2) Merge status effects that would collide on PK after rename
 WITH key_map(old_key, new_key) AS (
   VALUES
-    ('edict_of_compulsion', 'hex_of_forced_utterance'),
+    ('edict_of_compulsion', 'hex_of_compulsion'),
+    ('hex_of_forced_utterance', 'hex_of_compulsion'),
     ('executioners_cut', 'reapers_scythe'),
-    ('cartographers_insight', 'grace_of_the_guiding_star'),
+    ('cartographers_insight', 'guiding_light'),
+    ('grace_of_the_guiding_star', 'guiding_light'),
+    ('god_of_the_easy_tongue', 'vowel_vision'),
     ('dance_of_the_jester', 'earthquake'),
-    ('blood_oath_ink', 'phantoms_mirage')
+    ('blood_oath_ink', 'phantoms_mirage'),
+    ('veil_of_obscured_sight', 'blinding_brew')
 )
 INSERT INTO campaign_user_status_effects (
   user_id, campaign_id, effect_key, effect_value, applied_at, expires_at, active
@@ -86,21 +102,29 @@ DELETE FROM campaign_user_status_effects s
 USING (
   VALUES
     ('edict_of_compulsion'),
+    ('hex_of_forced_utterance'),
     ('executioners_cut'),
     ('cartographers_insight'),
+    ('grace_of_the_guiding_star'),
+    ('god_of_the_easy_tongue'),
     ('dance_of_the_jester'),
-    ('blood_oath_ink')
+    ('blood_oath_ink'),
+    ('veil_of_obscured_sight')
 ) AS old_keys(old_key)
 WHERE s.effect_key = old_keys.old_key;
 
--- 4) Merge global stats keys
+-- 3) Merge global stats keys
 WITH key_map(old_key, new_key) AS (
   VALUES
-    ('edict_of_compulsion', 'hex_of_forced_utterance'),
+    ('edict_of_compulsion', 'hex_of_compulsion'),
+    ('hex_of_forced_utterance', 'hex_of_compulsion'),
     ('executioners_cut', 'reapers_scythe'),
-    ('cartographers_insight', 'grace_of_the_guiding_star'),
+    ('cartographers_insight', 'guiding_light'),
+    ('grace_of_the_guiding_star', 'guiding_light'),
+    ('god_of_the_easy_tongue', 'vowel_vision'),
     ('dance_of_the_jester', 'earthquake'),
-    ('blood_oath_ink', 'phantoms_mirage')
+    ('blood_oath_ink', 'phantoms_mirage'),
+    ('veil_of_obscured_sight', 'blinding_brew')
 )
 INSERT INTO global_item_stats (item_key, uses, targets, last_used_at)
 SELECT
@@ -124,65 +148,93 @@ DO UPDATE SET
 DELETE FROM global_item_stats
 WHERE item_key IN (
   'edict_of_compulsion',
+  'hex_of_forced_utterance',
   'executioners_cut',
   'cartographers_insight',
+  'grace_of_the_guiding_star',
+  'god_of_the_easy_tongue',
   'dance_of_the_jester',
-  'blood_oath_ink'
+  'blood_oath_ink',
+  'veil_of_obscured_sight'
 );
 
--- 5) Rename keys in event/log/purchase tables
+-- 4) Rename keys in event/log/purchase tables
 UPDATE campaign_item_events
 SET item_key = CASE item_key
-  WHEN 'edict_of_compulsion' THEN 'hex_of_forced_utterance'
+  WHEN 'edict_of_compulsion' THEN 'hex_of_compulsion'
+  WHEN 'hex_of_forced_utterance' THEN 'hex_of_compulsion'
   WHEN 'executioners_cut' THEN 'reapers_scythe'
-  WHEN 'cartographers_insight' THEN 'grace_of_the_guiding_star'
+  WHEN 'cartographers_insight' THEN 'guiding_light'
+  WHEN 'grace_of_the_guiding_star' THEN 'guiding_light'
+  WHEN 'god_of_the_easy_tongue' THEN 'vowel_vision'
   WHEN 'dance_of_the_jester' THEN 'earthquake'
   WHEN 'blood_oath_ink' THEN 'phantoms_mirage'
+  WHEN 'veil_of_obscured_sight' THEN 'blinding_brew'
   ELSE item_key
 END
 WHERE item_key IN (
   'edict_of_compulsion',
+  'hex_of_forced_utterance',
   'executioners_cut',
   'cartographers_insight',
+  'grace_of_the_guiding_star',
+  'god_of_the_easy_tongue',
   'dance_of_the_jester',
-  'blood_oath_ink'
+  'blood_oath_ink',
+  'veil_of_obscured_sight'
 );
 
 UPDATE campaign_shop_log
 SET item_key = CASE item_key
-  WHEN 'edict_of_compulsion' THEN 'hex_of_forced_utterance'
+  WHEN 'edict_of_compulsion' THEN 'hex_of_compulsion'
+  WHEN 'hex_of_forced_utterance' THEN 'hex_of_compulsion'
   WHEN 'executioners_cut' THEN 'reapers_scythe'
-  WHEN 'cartographers_insight' THEN 'grace_of_the_guiding_star'
+  WHEN 'cartographers_insight' THEN 'guiding_light'
+  WHEN 'grace_of_the_guiding_star' THEN 'guiding_light'
+  WHEN 'god_of_the_easy_tongue' THEN 'vowel_vision'
   WHEN 'dance_of_the_jester' THEN 'earthquake'
   WHEN 'blood_oath_ink' THEN 'phantoms_mirage'
+  WHEN 'veil_of_obscured_sight' THEN 'blinding_brew'
   ELSE item_key
 END
 WHERE item_key IN (
   'edict_of_compulsion',
+  'hex_of_forced_utterance',
   'executioners_cut',
   'cartographers_insight',
+  'grace_of_the_guiding_star',
+  'god_of_the_easy_tongue',
   'dance_of_the_jester',
-  'blood_oath_ink'
+  'blood_oath_ink',
+  'veil_of_obscured_sight'
 );
 
 UPDATE store_purchases
 SET item_key = CASE item_key
-  WHEN 'edict_of_compulsion' THEN 'hex_of_forced_utterance'
+  WHEN 'edict_of_compulsion' THEN 'hex_of_compulsion'
+  WHEN 'hex_of_forced_utterance' THEN 'hex_of_compulsion'
   WHEN 'executioners_cut' THEN 'reapers_scythe'
-  WHEN 'cartographers_insight' THEN 'grace_of_the_guiding_star'
+  WHEN 'cartographers_insight' THEN 'guiding_light'
+  WHEN 'grace_of_the_guiding_star' THEN 'guiding_light'
+  WHEN 'god_of_the_easy_tongue' THEN 'vowel_vision'
   WHEN 'dance_of_the_jester' THEN 'earthquake'
   WHEN 'blood_oath_ink' THEN 'phantoms_mirage'
+  WHEN 'veil_of_obscured_sight' THEN 'blinding_brew'
   ELSE item_key
 END
 WHERE item_key IN (
   'edict_of_compulsion',
+  'hex_of_forced_utterance',
   'executioners_cut',
   'cartographers_insight',
+  'grace_of_the_guiding_star',
+  'god_of_the_easy_tongue',
   'dance_of_the_jester',
-  'blood_oath_ink'
+  'blood_oath_ink',
+  'veil_of_obscured_sight'
 );
 
--- 6) Remove retired keys everywhere
+-- 5) Remove retired keys everywhere
 DELETE FROM campaign_user_items          WHERE item_key = 'voidbrand';
 DELETE FROM campaign_item_events         WHERE item_key = 'voidbrand';
 DELETE FROM campaign_shop_log            WHERE item_key = 'voidbrand';
@@ -196,7 +248,7 @@ DELETE FROM store_purchases              WHERE item_key = 'seal_of_silence';
 DELETE FROM global_item_stats            WHERE item_key = 'seal_of_silence';
 DELETE FROM campaign_user_status_effects WHERE effect_key = 'seal_of_silence';
 
--- 7) Normalize campaign_shop_rotation JSONB items (legacy keys + retired keys)
+-- 6) Normalize campaign_shop_rotation JSONB items
 WITH remapped AS (
   SELECT
     csr.user_id,
@@ -214,11 +266,15 @@ WITH remapped AS (
           FROM (
             SELECT
               CASE v.value
-                WHEN 'edict_of_compulsion' THEN 'hex_of_forced_utterance'
+                WHEN 'edict_of_compulsion' THEN 'hex_of_compulsion'
+                WHEN 'hex_of_forced_utterance' THEN 'hex_of_compulsion'
                 WHEN 'executioners_cut' THEN 'reapers_scythe'
-                WHEN 'cartographers_insight' THEN 'grace_of_the_guiding_star'
+                WHEN 'cartographers_insight' THEN 'guiding_light'
+                WHEN 'grace_of_the_guiding_star' THEN 'guiding_light'
+                WHEN 'god_of_the_easy_tongue' THEN 'vowel_vision'
                 WHEN 'dance_of_the_jester' THEN 'earthquake'
                 WHEN 'blood_oath_ink' THEN 'phantoms_mirage'
+                WHEN 'veil_of_obscured_sight' THEN 'blinding_brew'
                 WHEN 'voidbrand' THEN NULL
                 WHEN 'seal_of_silence' THEN NULL
                 ELSE v.value

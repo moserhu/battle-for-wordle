@@ -13,17 +13,21 @@ This sheet reflects what the code currently does for items in `backend/app/items
 - `exclusive_all` effects: only one such queued targeted effect per target per day.
 - `exclusive_with` effects: additional pairwise conflict checks (e.g., `cone_of_cold` vs `spider_swarm`).
 - Legacy keys are aliased:
-  - `edict_of_compulsion` -> `hex_of_forced_utterance`
+  - `edict_of_compulsion` -> `hex_of_compulsion`
+  - `hex_of_forced_utterance` -> `hex_of_compulsion`
   - `executioners_cut` -> `reapers_scythe`
-  - `cartographers_insight` -> `grace_of_the_guiding_star`
+  - `cartographers_insight` -> `guiding_light`
+  - `grace_of_the_guiding_star` -> `guiding_light`
+  - `god_of_the_easy_tongue` -> `vowel_vision`
   - `dance_of_the_jester` -> `earthquake`
   - `blood_oath_ink` -> `phantoms_mirage`
+  - `veil_of_obscured_sight` -> `blinding_brew`
 
 ## Payload Rules (Currently Enforced)
 
 - `payload_type: letter` -> exactly 1 alpha letter.
 - `payload_type: word` -> exactly 5 alpha letters.
-- `hex_of_forced_utterance`: word must contain at least 4 unique letters.
+- `hex_of_compulsion`: word must contain at least 4 unique letters.
 - `payload_type: word` items: value must be in valid-guess dictionary.
 
 ## Runtime Effect Application Path
@@ -45,7 +49,7 @@ This sheet reflects what the code currently does for items in `backend/app/items
   - On failure modal, player can redeem once/day for +10 troops.
 - Frontend support: yes (banner + redeem flow in game screen).
 
-### `grace_of_the_guiding_star`
+### `guiding_light`
 - Category: blessing
 - Cost: 8
 - Handler: implemented
@@ -86,7 +90,7 @@ This sheet reflects what the code currently does for items in `backend/app/items
     `{ day, letters: [{ letter, positions[] }] }`
 - Frontend support: yes (status banner with duplicated letters and positions).
 
-### `god_of_the_easy_tongue`
+### `vowel_vision`
 - Category: blessing
 - Cost: 4
 - Handler: implemented
@@ -99,7 +103,7 @@ This sheet reflects what the code currently does for items in `backend/app/items
 
 ## Curses
 
-### `hex_of_forced_utterance`
+### `hex_of_compulsion`
 - Category: curse
 - Cost: 16
 - Targeted: yes
@@ -139,7 +143,7 @@ This sheet reflects what the code currently does for items in `backend/app/items
   - Those vowels are blocked on first two guesses.
 - Frontend support: yes (inventory modal payload picker + blocked key handling).
 
-### `veil_of_obscured_sight`
+### `blinding_brew`
 - Category: curse
 - Cost: 12
 - Targeted: yes
@@ -248,4 +252,4 @@ This sheet reflects what the code currently does for items in `backend/app/items
 - Completed backend pass; payload-specific item controls now in place for active curse set.
 
 3. Unrendered blessings/illusions:
-- `twin_fates`, `god_of_the_easy_tongue`, `sigil_of_the_wandering_glyph`, `time_stop`.
+- `twin_fates`, `vowel_vision`, `sigil_of_the_wandering_glyph`, `time_stop`.

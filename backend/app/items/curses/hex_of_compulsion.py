@@ -1,6 +1,6 @@
-hex_of_forced_utterance_item = {
-    "key": "hex_of_forced_utterance",
-    "name": "Hex of Forced Utterance",
+hex_of_compulsion_item = {
+    "key": "hex_of_compulsion",
+    "name": "Hex of Compulsion",
     "description": "Choose a 5-letter first guess with at least 4 unique letters for your target.",
     "cost": 16,
     "category": "curse",

@@ -95,7 +95,7 @@ class AdminEffectsTests(unittest.TestCase):
     by_key = {entry["key"]: entry for entry in effects}
     self.assertEqual(by_key["vowel_voodoo"]["payload_type"], "vowels")
     self.assertEqual(by_key["consonant_cleaver"]["payload_type"], "letters")
-    self.assertEqual(by_key["veil_of_obscured_sight"]["payload_type"], "side")
+    self.assertEqual(by_key["blinding_brew"]["payload_type"], "side")
 
   def test_admin_add_effect_supports_manual_consonant_payload(self):
     conn = _FakeConn()

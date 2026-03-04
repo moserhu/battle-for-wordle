@@ -5,32 +5,47 @@ import { useAuth } from '../auth/AuthProvider';
 import '../styles/ItemsStorage.css';
 import BlessingUseModals from '../components/items/blessings/BlessingUseModals';
 import oracleWhisperSprite from '../assets/items/blessings/oracle_whisper.png';
-import cartographersInsightSprite from '../assets/items/blessings/grace_of_the_guiding_star.png';
+import guidingLightSprite from '../assets/items/blessings/guiding_light.png';
 import candleOfMercySprite from '../assets/items/blessings/candle_of_mercy.png';
 import dispelCurseSprite from '../assets/items/blessings/dispel_curse.png';
 import twinFatesSprite from '../assets/items/blessings/twin_fates.png';
-import godOfTheEasyTongueSprite from '../assets/items/blessings/god_of_the_easy_tongue.png';
+import vowelVisionSprite from '../assets/items/blessings/vowel_vision.png';
 import bloodOathInkSprite from '../assets/items/illusions/phantoms_mirage.png';
 import spiderSwarmSprite from '../assets/items/illusions/spider_swarm.png';
 import danceOfTheJesterSprite from '../assets/items/illusions/earthquake.png';
 import coneOfColdSprite from '../assets/items/illusions/cone_of_cold.png';
 import timeStopSprite from '../assets/items/illusions/time_stop.png';
 import sigilOfTheWanderingGlyphSprite from '../assets/items/illusions/sigil_of_the_wandering_glyph.png';
-import edictOfCompulsionSprite from '../assets/items/curses/hex_of_forced_utterance.png';
+import hexOfCompulsionSprite from '../assets/items/curses/hex_of_compulsion.png';
 import executionersCutSprite from '../assets/items/curses/reapers_scythe.png';
 import vowelVoodooSprite from '../assets/items/curses/vowel_voodoo.png';
-import veilOfObscuredSightSprite from '../assets/items/curses/veil_of_obscured_sight.png';
+import blindingBrewSprite from '../assets/items/curses/blinding_brew.png';
 import consonantCleaverSprite from '../assets/items/curses/consonant_cleaver.png';
 import infernalMandateSprite from '../assets/items/curses/infernal_mandate.png';
 import sendInTheClownSprite from '../assets/items/illusions/clown.png';
-import { oracleWhisper, cartographersInsight, candleOfMercy, dispelCurse, twinFates, godOfTheEasyTongue } from '../components/items/blessings/index';
+import { oracleWhisper, guidingLight, candleOfMercy, dispelCurse, twinFates, vowelVision } from '../components/items/blessings/index';
 import { bloodOathInk, spiderSwarm, sendInTheClown, danceOfTheJester, coneOfCold } from '../components/items/illusions/index';
 import { executionersCut } from '../components/items/curses/reapers_scythe';
-import { edictOfCompulsion } from '../components/items/curses/hex_of_forced_utterance';
+import { hexOfCompulsion } from '../components/items/curses/hex_of_compulsion';
 
 const API_BASE = process.env.REACT_APP_API_URL || `${window.location.protocol}//${window.location.hostname}`;
 const VOWELS = new Set(['a', 'e', 'i', 'o', 'u']);
 const CONSONANTS = new Set('bcdfghjklmnpqrstvwxyz'.split(''));
+const CURSE_ITEM_KEYS = new Set([
+  'hex_of_compulsion',
+  'reapers_scythe',
+  'vowel_voodoo',
+  'blinding_brew',
+  'consonant_cleaver',
+  'infernal_mandate',
+  'edict_of_compulsion',
+  'executioners_cut',
+]);
+const scrollInventoryPageToTop = () => {
+  if (typeof window !== 'undefined' && typeof window.scrollTo === 'function') {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+};
 
 function isVowelVoodooPayloadValid(payloadValue) {
   const normalized = String(payloadValue || '').trim().toLowerCase();
@@ -71,25 +86,27 @@ export default function ItemsStorage() {
   const [showBlessingCostModal, setShowBlessingCostModal] = useState(false);
   const [showBlessingCandleModal, setShowBlessingCandleModal] = useState(false);
   const [pendingBlessingUse, setPendingBlessingUse] = useState(null);
+  const [showCursedBlessingModal, setShowCursedBlessingModal] = useState(false);
+  const [blessingsBlockedByCurse, setBlessingsBlockedByCurse] = useState(false);
   const [isAdminCampaign, setIsAdminCampaign] = useState(false);
   const spriteByKey = {
     oracle_whisper: oracleWhisperSprite,
-    grace_of_the_guiding_star: cartographersInsightSprite,
+    guiding_light: guidingLightSprite,
     candle_of_mercy: candleOfMercySprite,
     phantoms_mirage: bloodOathInkSprite,
     spider_swarm: spiderSwarmSprite,
     earthquake: danceOfTheJesterSprite,
     cone_of_cold: coneOfColdSprite,
-    hex_of_forced_utterance: edictOfCompulsionSprite,
+    hex_of_compulsion: hexOfCompulsionSprite,
     reapers_scythe: executionersCutSprite,
     vowel_voodoo: vowelVoodooSprite,
-    veil_of_obscured_sight: veilOfObscuredSightSprite,
+    blinding_brew: blindingBrewSprite,
     consonant_cleaver: consonantCleaverSprite,
     infernal_mandate: infernalMandateSprite,
     send_in_the_clown: sendInTheClownSprite,
     dispel_curse: dispelCurseSprite,
     twin_fates: twinFatesSprite,
-    god_of_the_easy_tongue: godOfTheEasyTongueSprite,
+    vowel_vision: vowelVisionSprite,
     sigil_of_the_wandering_glyph: sigilOfTheWanderingGlyphSprite,
     time_stop: timeStopSprite,
   };
@@ -105,15 +122,15 @@ export default function ItemsStorage() {
     items.forEach((item) => map.set(item.key, item));
     const fallbackItems = [
       oracleWhisper,
-      cartographersInsight,
+      guidingLight,
       candleOfMercy,
       dispelCurse,
       twinFates,
-      godOfTheEasyTongue,
+      vowelVision,
       bloodOathInk,
       spiderSwarm,
       executionersCut,
-      edictOfCompulsion,
+      hexOfCompulsion,
       sendInTheClown,
       danceOfTheJester,
       coneOfCold,
@@ -136,13 +153,18 @@ export default function ItemsStorage() {
     setError('');
 
     try {
-      const [stateRes, progressRes] = await Promise.all([
+      const [stateRes, progressRes, activeRes] = await Promise.all([
         fetch(`${API_BASE}/api/campaign/shop/state`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify({ campaign_id: Number(campaignId) })
         }),
         fetch(`${API_BASE}/api/campaign/progress`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ campaign_id: Number(campaignId) })
+        }),
+        fetch(`${API_BASE}/api/campaign/items/active`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify({ campaign_id: Number(campaignId) })
@@ -165,6 +187,15 @@ export default function ItemsStorage() {
       setInventory(Array.isArray(state?.inventory) ? state.inventory : []);
       const inventoryRows = Array.isArray(state?.inventory) ? state.inventory : [];
       setInventory(inventoryRows.filter((entry) => Number(entry.quantity) > 0));
+      if (activeRes.ok) {
+        const activeData = await activeRes.json();
+        const effects = Array.isArray(activeData?.effects) ? activeData.effects : [];
+        const hasCurseEffect = effects.some((entry) => CURSE_ITEM_KEYS.has(String(entry?.item_key || '')));
+        const curseDispersed = Boolean(activeData?.curse_dispersed);
+        setBlessingsBlockedByCurse(hasCurseEffect && !curseDispersed);
+      } else {
+        setBlessingsBlockedByCurse(false);
+      }
 
     } catch (err) {
       setError(err?.message || 'Failed to load items.');
@@ -221,7 +252,7 @@ export default function ItemsStorage() {
         return false;
       }
     }
-    if (itemKey === 'veil_of_obscured_sight') {
+    if (itemKey === 'blinding_brew') {
       if (!isVeilPayloadValid(payloadValue)) {
         setError('Choose LEFT or RIGHT before using this item.');
         setTargetModalError('Choose LEFT or RIGHT before using this item.');
@@ -236,6 +267,15 @@ export default function ItemsStorage() {
       }
     }
     if (isBlessing && !acceptBlessingCost) {
+      if (itemKey !== 'dispel_curse' && blessingsBlockedByCurse) {
+        setShowBlessingCandleModal(false);
+        setShowBlessingCostModal(false);
+        setPendingBlessingUse(null);
+        setTargetModalItem(null);
+        setShowCursedBlessingModal(true);
+        setTimeout(scrollInventoryPageToTop, 0);
+        return false;
+      }
       setPendingBlessingUse({
         itemKey,
         targetUserId: requiresTarget ? Number(selectedTarget) : null,
@@ -259,7 +299,7 @@ export default function ItemsStorage() {
           item_key: itemKey,
           target_user_id: requiresTarget ? Number(selectedTarget) : null,
           effect_payload: (
-            item?.payload_type || itemKey === 'vowel_voodoo' || itemKey === 'veil_of_obscured_sight' || itemKey === 'consonant_cleaver'
+            item?.payload_type || itemKey === 'vowel_voodoo' || itemKey === 'blinding_brew' || itemKey === 'consonant_cleaver'
           )
             ? { value: String(payloadValue || '').trim().toLowerCase() }
             : null,
@@ -269,7 +309,10 @@ export default function ItemsStorage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data?.detail || 'Use failed');
+        const detailMessage = typeof data?.detail === 'string'
+          ? data.detail
+          : (data?.detail ? JSON.stringify(data.detail) : '');
+        throw new Error(detailMessage || 'Use failed');
       }
       await loadState();
       if (!requiresTarget) {
@@ -294,6 +337,29 @@ export default function ItemsStorage() {
         return false;
       }
       const normalized = message.toLowerCase();
+      if (
+        normalized.includes('not enough troops')
+        || normalized.includes('sacrifice for this blessing')
+        || normalized.includes('earn more troops')
+      ) {
+        setShowBlessingCandleModal(false);
+        setShowBlessingCostModal(false);
+        setPendingBlessingUse(null);
+        setTargetModalItem(null);
+        setTimeout(scrollInventoryPageToTop, 0);
+      }
+      if (
+        normalized.includes('while cursed')
+        || normalized.includes('may not use blessings')
+        || normalized.includes('while hexed')
+      ) {
+        setShowBlessingCandleModal(false);
+        setShowBlessingCostModal(false);
+        setPendingBlessingUse(null);
+        setTargetModalItem(null);
+        setShowCursedBlessingModal(true);
+        setTimeout(scrollInventoryPageToTop, 0);
+      }
       if (
         normalized.includes('invalid word') ||
         normalized.includes('playable word') ||
@@ -424,7 +490,21 @@ export default function ItemsStorage() {
                       <div key={inv.item_key} className="items-card">
                         <div className="items-card-body">
                           <div className="items-card-title">{item?.name || inv.item_key}</div>
-                          <div className={`items-card-sprite${spriteByKey[inv.item_key] ? " has-image" : ""}`}>
+                          <div
+                            className={`items-card-sprite${spriteByKey[inv.item_key] ? " has-image" : ""}`}
+                            role={spriteByKey[inv.item_key] ? 'button' : undefined}
+                            tabIndex={spriteByKey[inv.item_key] ? 0 : undefined}
+                            aria-label={spriteByKey[inv.item_key] ? `View ${item?.name || inv.item_key}` : undefined}
+                            onClick={spriteByKey[inv.item_key] ? () => setInfoModalItem(item) : undefined}
+                            onKeyDown={spriteByKey[inv.item_key]
+                              ? (event) => {
+                                  if (event.key === 'Enter' || event.key === ' ') {
+                                    event.preventDefault();
+                                    setInfoModalItem(item);
+                                  }
+                                }
+                              : undefined}
+                          >
                             {spriteByKey[inv.item_key] ? (
                               <img
                                 src={spriteByKey[inv.item_key]}
@@ -570,7 +650,7 @@ export default function ItemsStorage() {
                 />
               </div>
             )}
-            {targetModalItem.key === 'veil_of_obscured_sight' && (
+            {targetModalItem.key === 'blinding_brew' && (
               <div className="items-modal-field">
                 <label className="items-modal-label" htmlFor="items-veil-side-input">
                   Choose side to obscure
@@ -659,7 +739,7 @@ export default function ItemsStorage() {
                       ? !targetModalPayload
                       : targetModalItem.key === 'vowel_voodoo'
                         ? !isVowelVoodooPayloadValid(targetModalPayload)
-                        : targetModalItem.key === 'veil_of_obscured_sight'
+                        : targetModalItem.key === 'blinding_brew'
                           ? !isVeilPayloadValid(targetModalPayload)
                           : targetModalItem.key === 'consonant_cleaver'
                             ? !isConsonantCleaverPayloadValid(targetModalPayload)
@@ -689,6 +769,25 @@ export default function ItemsStorage() {
         onCandleYes={handleBlessingCandleYes}
         onCandleNo={handleBlessingCandleNo}
       />
+      {showCursedBlessingModal && (
+        <div className="items-modal-overlay" onClick={() => setShowCursedBlessingModal(false)}>
+          <div className="items-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="items-modal-header">
+              <h3>Cursed</h3>
+              <button className="items-modal-close" onClick={() => setShowCursedBlessingModal(false)} type="button">
+                ×
+              </button>
+            </div>
+            <p className="items-modal-description">You are cursed and can&apos;t use blessings.</p>
+            <p className="items-modal-description">Purchase Dispel Curse or try another day.</p>
+            <div className="modal-buttons">
+              <button className="troop-btn close-btn" type="button" onClick={() => setShowCursedBlessingModal(false)}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -11,16 +11,17 @@ import RulerTitleModal from '../components/RulerTitleModal';
 import DayReplayInfoModal from '../components/DayReplayInfoModal';
 import AdminToolsModal from '../components/admin/AdminToolsModal';
 import WeeklyRewardModal from '../components/rewards/WeeklyRewardModal';
-import { applyAbsentLetters, getCartographersLetters, applyOracleCorrectLetter, getOraclePlacement } from '../components/items/blessings/index';
+import { applyAbsentLetters, getGuidingLightLetters, applyOracleCorrectLetter, getOraclePlacement } from '../components/items/blessings/index';
 import BlessingUseModals from '../components/items/blessings/BlessingUseModals';
 import { hasBloodOathInk, useClownJumpscare, ClownOverlay, useSpiderSwarm, getSpiderMotionProps, useJesterDance, getConeTurns, decrementConeTurns, shouldShowConeOverlay, getConeOpacity, WanderingGlyphOverlay, hasTimeStop, TIME_STOP_REVEAL_DELAY_MS } from '../components/items/illusions/index';
 import { hasExecutionersCut } from '../components/items/curses/reapers_scythe';
 import hexRuneIcon from '../assets/ui/hex_rune.png';
 
 const API_BASE = process.env.REACT_APP_API_URL || `${window.location.protocol}//${window.location.hostname}`;
+const POST_REVEAL_MODAL_DELAY_MS = 900;
 
 const EMPTY_GRID = Array.from({ length: 6 }, () => Array(5).fill(""));
-const FORCED_UTTERANCE_KEYS = new Set(["hex_of_forced_utterance", "edict_of_compulsion"]);
+const FORCED_UTTERANCE_KEYS = new Set(["hex_of_compulsion", "edict_of_compulsion"]);
 const toFiveLetterRow = (value) => {
   const normalized = String(value || "").toUpperCase();
   return Array.from({ length: 5 }, (_, idx) => normalized[idx] || "");
@@ -65,8 +66,8 @@ function isFinalCampaignDay(campaignDay) {
 }
 
 const CURSE_DETAILS_BY_KEY = {
-  hex_of_forced_utterance: {
-    name: 'Hex of Forced Utterance',
+  hex_of_compulsion: {
+    name: 'Hex of Compulsion',
     describe: (payloadValue) => {
       if (payloadValue) {
         return `Your first guess is forced to ${String(payloadValue).toUpperCase()}.`;
@@ -75,7 +76,7 @@ const CURSE_DETAILS_BY_KEY = {
     },
   },
   edict_of_compulsion: {
-    name: 'Hex of Forced Utterance',
+    name: 'Hex of Compulsion',
     describe: (payloadValue) => {
       if (payloadValue) {
         return `Your first guess is forced to ${String(payloadValue).toUpperCase()}.`;
@@ -109,8 +110,8 @@ const CURSE_DETAILS_BY_KEY = {
       return 'Several consonants are blocked for your first two guesses.';
     },
   },
-  veil_of_obscured_sight: {
-    name: 'Veil of Obscured Sight',
+  blinding_brew: {
+    name: 'Blinding Brew',
     describe: (payloadValue) => {
       if (payloadValue) {
         return `${String(payloadValue).toUpperCase()} columns are obscured for your first two guesses.`;
@@ -125,7 +126,7 @@ const CURSE_DETAILS_BY_KEY = {
 };
 
 function getCurseEffectParts(itemKey, payloadValue, fallbackText) {
-  if ((itemKey === "hex_of_forced_utterance" || itemKey === "edict_of_compulsion") && payloadValue) {
+  if ((itemKey === "hex_of_compulsion" || itemKey === "edict_of_compulsion") && payloadValue) {
     return {
       prefix: "Your first guess is forced to ",
       emphasis: String(payloadValue).toUpperCase(),
@@ -146,7 +147,7 @@ function getCurseEffectParts(itemKey, payloadValue, fallbackText) {
       suffix: " are blocked for your first two guesses.",
     };
   }
-  if (itemKey === "veil_of_obscured_sight" && payloadValue) {
+  if (itemKey === "blinding_brew" && payloadValue) {
     return {
       prefix: "",
       emphasis: String(payloadValue).toUpperCase(),
@@ -236,6 +237,7 @@ export default function GameScreen() {
   const [showInfernalModal, setShowInfernalModal] = useState(false);
   const [infernalPenaltyAmount, setInfernalPenaltyAmount] = useState(0);
   const [infernalViolationType, setInfernalViolationType] = useState('letters');
+  const [showCursedBlessingModal, setShowCursedBlessingModal] = useState(false);
   const doubleDownEligible = !doubleDownStatus.activated && !doubleDownStatus.usedThisWeek;
 
   // Weekly winner reward selection (cycle gate)
@@ -247,10 +249,20 @@ export default function GameScreen() {
   const campMenuRef = useRef(null);
   const playAreaRef = useRef(null);
   const lastCampaignIdRef = useRef(null);
+  const selfItemsListRef = useRef(null);
 
   const triggerShake = useCallback(() => {
   setShake(true);
   setTimeout(() => setShake(false), 400);
+  }, []);
+
+  const scrollInventoryToTop = useCallback(() => {
+    if (selfItemsListRef.current && typeof selfItemsListRef.current.scrollTo === 'function') {
+      selfItemsListRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    if (typeof window !== 'undefined' && typeof window.scrollTo === 'function') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   }, []);
 
   useEffect(() => {
@@ -305,7 +317,7 @@ export default function GameScreen() {
       if (!res.ok) {
         throw new Error(data?.detail || 'Failed to load items.');
       }
-      setSelfItemsCatalog(Array.isArray(data?.items) ? data.items : []);
+      setSelfItemsCatalog(Array.isArray(data?.catalog) ? data.catalog : (Array.isArray(data?.items) ? data.items : []));
       const inventoryRows = Array.isArray(data?.inventory) ? data.inventory : [];
       setSelfInventory(inventoryRows.filter((entry) => Number(entry.quantity) > 0));
       const mercyQty = inventoryRows.find((entry) => entry.item_key === 'candle_of_mercy')?.quantity ?? 0;
@@ -506,7 +518,10 @@ export default function GameScreen() {
       });
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data?.detail || 'Use failed.');
+        const detailMessage = typeof data?.detail === 'string'
+          ? data.detail
+          : (data?.detail ? JSON.stringify(data.detail) : '');
+        throw new Error(detailMessage || 'Use failed.');
       }
       await loadSelfItems();
       await refreshSelfEffects();
@@ -514,19 +529,40 @@ export default function GameScreen() {
       return true;
     } catch (err) {
       const message = err?.message || 'Use failed.';
-      if (String(message).toLowerCase().includes('final day of the cycle')) {
+      const normalizedMessage = String(message).toLowerCase();
+      if (normalizedMessage.includes('final day of the cycle')) {
         setShowBlessingCandleModal(false);
         setShowBlessingCostModal(false);
         setPendingBlessingItemKey('');
         setShowSelfItemsModal(false);
         alert("You can't use items on the last day of the cycle.");
       }
+      if (
+        normalizedMessage.includes('while cursed')
+        || normalizedMessage.includes('may not use blessings')
+        || normalizedMessage.includes('while hexed')
+      ) {
+        setShowBlessingCandleModal(false);
+        setShowBlessingCostModal(false);
+        setPendingBlessingItemKey('');
+        setShowCursedBlessingModal(true);
+      }
+      if (
+        normalizedMessage.includes('not enough troops')
+        || normalizedMessage.includes('sacrifice for this blessing')
+        || normalizedMessage.includes('earn more troops')
+      ) {
+        setShowBlessingCandleModal(false);
+        setShowBlessingCostModal(false);
+        setPendingBlessingItemKey('');
+        setTimeout(scrollInventoryToTop, 0);
+      }
       setSelfItemsError(message);
       return false;
     } finally {
       setSelfUseBusy('');
     }
-  }, [selfUseBusy, selfItemByKey, buildSelfEffectPayload, token, campaignId, loadSelfItems, refreshSelfEffects, refreshMercyInventory]);
+  }, [selfUseBusy, selfItemByKey, buildSelfEffectPayload, token, campaignId, loadSelfItems, refreshSelfEffects, refreshMercyInventory, scrollInventoryToTop]);
 
   const handleUseSelfItem = async (itemKey) => {
     const item = selfItemByKey.get(itemKey);
@@ -536,6 +572,24 @@ export default function GameScreen() {
       return;
     }
     if (item.category === 'blessing') {
+      if (item.key !== 'dispel_curse' && isCursed && !curseDispersed) {
+        setShowBlessingCandleModal(false);
+        setShowBlessingCostModal(false);
+        setPendingBlessingItemKey('');
+        setShowCursedBlessingModal(true);
+        return;
+      }
+      if (!isCurrentDay) {
+        setSelfItemsError('Blessings can only be used on the current day.');
+        return;
+      }
+      if (gameOver) {
+        setSelfItemsError('You already played today. Blessings can only be used before today is played.');
+        setShowBlessingCandleModal(false);
+        setShowBlessingCostModal(false);
+        setPendingBlessingItemKey('');
+        return;
+      }
       const effectPayload = buildSelfEffectPayload(itemKey, item);
       if (item.payload_type && !effectPayload) return;
       setPendingBlessingItemKey(itemKey);
@@ -779,14 +833,14 @@ export default function GameScreen() {
   const isCurrentDay = selectedDay === campaignDay?.day;
   useEffect(() => {
     if (!isCurrentDay) return;
-    const letters = getCartographersLetters(statusEffects);
+    const letters = getGuidingLightLetters(statusEffects);
     if (letters.length === 0) return;
 
     setLetterStatus((prev) => applyAbsentLetters(prev, letters));
   }, [statusEffects, isCurrentDay]);
 
   const cartographerLetters = useMemo(
-    () => (isCurrentDay ? getCartographersLetters(statusEffects) : []),
+    () => (isCurrentDay ? getGuidingLightLetters(statusEffects) : []),
     [statusEffects, isCurrentDay]
   );
   const twinFatesInfo = useMemo(() => {
@@ -825,7 +879,7 @@ export default function GameScreen() {
   }, [statusEffects, isCurrentDay]);
   const easyTongueCount = useMemo(() => {
     if (!isCurrentDay) return null;
-    const effect = statusEffects.find((entry) => entry.effect_key === "god_of_the_easy_tongue");
+    const effect = statusEffects.find((entry) => entry.effect_key === "vowel_vision");
     const count = effect?.payload?.vowel_count;
     return Number.isInteger(count) ? count : null;
   }, [statusEffects, isCurrentDay]);
@@ -862,7 +916,7 @@ export default function GameScreen() {
   const cleavedConsonants = isCurrentDay ? getTargetPayload("consonant_cleaver") : null;
   const obscuredSightSide = useMemo(() => {
     if (!isCurrentDay) return null;
-    const raw = getTargetPayload("veil_of_obscured_sight");
+    const raw = getTargetPayload("blinding_brew");
     if (!raw) return null;
     const normalized = String(raw).trim().toLowerCase();
     if (normalized === "left" || normalized === "right") return normalized;
@@ -1328,7 +1382,7 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
       }
 
       setTroopsEarned(awardedTroops);
-      setShowTroopModal(true);
+      setTimeout(() => setShowTroopModal(true), POST_REVEAL_MODAL_DELAY_MS);
 
       if (isFinalCampaignDay(campaignDay) && selectedDay === campaignDay?.day) {
         await checkIfCampaignShouldEnd();
@@ -1418,6 +1472,7 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
   useEffect(() => {
     if (!pendingDoubleDownPrompt) return;
     if (!isCurrentDay || loadingDay || gameOver || showDoubleDownModal) return;
+    if (timeStopRevealRow !== null || timeStopRevealedCount < 5) return;
     if (!doubleDownEligible || hasOfferedDoubleDown) {
       setPendingDoubleDownPrompt(false);
       return;
@@ -1426,13 +1481,15 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
       setHasOfferedDoubleDown(true);
       setPendingDoubleDownPrompt(false);
       setShowDoubleDownModal(true);
-    }, 250);
+    }, POST_REVEAL_MODAL_DELAY_MS);
     return () => clearTimeout(timer);
   }, [
     pendingDoubleDownPrompt,
     isCurrentDay,
     loadingDay,
     gameOver,
+    timeStopRevealRow,
+    timeStopRevealedCount,
     showDoubleDownModal,
     doubleDownEligible,
     hasOfferedDoubleDown,
@@ -1478,7 +1535,7 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
     } else {
       const lowerKey = key.toLowerCase();
       if (blockedLetters.has(lowerKey)) {
-        setErrorMsg("That letter is hexed.");
+        setErrorMsg("That letter is cursed.");
         triggerShake();
         setTimeout(() => setErrorMsg(null), 2000);
         return;
@@ -1543,20 +1600,9 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
   const isAdminCampaign = Boolean(campaignDay?.is_admin_campaign);
   const canRedeemMercy = mercyInventoryCount > 0 || (isAdmin && isAdminCampaign);
 
-  const rulerBackgroundStyle = campaignDay?.ruler_background_image_url
-    ? {
-        backgroundImage: `url(${campaignDay.ruler_background_image_url})`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        backgroundRepeat: "no-repeat",
-        backgroundAttachment: "fixed",
-      }
-    : undefined;
-
   return (
     <div
       className="game-wrapper"
-      style={rulerBackgroundStyle}
     >
       <div className="game-content">
         <div className="game-inner">
@@ -1735,7 +1781,7 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
             <div className="game-effect-banner game-effect-banner-divine">
               <div className="divine-banner-title">
                 <span className="divine-title-star" aria-hidden="true">✦</span>
-                <span>God of the Easy Tongue</span>
+                <span>Vowel Vision</span>
                 <span className="divine-title-star" aria-hidden="true">✦</span>
               </div>
               <div className="divine-banner-detail">
@@ -1764,12 +1810,6 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
                     {...getSpiderMotionProps(spider)}
                   />
                 ))}
-              </div>
-            )}
-            {loadingDay && (
-              <div className="day-loading">
-                <div className="day-loading-spinner" />
-                <div className="day-loading-text">Loading day…</div>
               </div>
             )}
             {gameOver && !showTroopModal && dailyWord && (
@@ -1863,7 +1903,7 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
                 {selfItemsLoading ? (
                   <div className="self-items-loading">Loading items...</div>
                 ) : (
-                  <div className="self-items-list">
+                  <div className="self-items-list" ref={selfItemsListRef}>
                     {selfUsableInventory.length === 0 ? (
                       <div className="self-items-empty">No self-use items available.</div>
                     ) : (
@@ -2048,7 +2088,7 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
         <div className="modal-overlay">
           <div className="modal curse-info-modal">
             <div className="curse-info-header">
-              <h2>Hex Mark Detected</h2>
+              <h2>Curse Mark Detected</h2>
               <button
                 className="self-items-close"
                 type="button"
@@ -2081,7 +2121,7 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
             {curseDispersed ? (
               <p className="curse-info-dispersed-note">You may now use blessings.</p>
             ) : (
-              <p className="curse-info-warning">While hexed, you may not use blessings.</p>
+              <p className="curse-info-warning">While cursed, you may not use blessings.</p>
             )}
             <div className="modal-buttons">
               <button className="troop-btn close-btn" type="button" onClick={() => setShowCurseInfoModal(false)}>
@@ -2132,6 +2172,32 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
           </div>
         </div>
       )}
+      {showCursedBlessingModal && (
+        <div className="modal-overlay">
+          <div className="modal curse-info-modal">
+            <div className="curse-info-header">
+              <h2>Cursed</h2>
+              <button
+                className="self-items-close"
+                type="button"
+                onClick={() => setShowCursedBlessingModal(false)}
+                aria-label="Close cursed warning"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="curse-info-body">
+              <p>You are cursed and can&apos;t use blessings.</p>
+              <p>Purchase Dispel Curse or try another day.</p>
+            </div>
+            <div className="modal-buttons">
+              <button className="troop-btn close-btn" type="button" onClick={() => setShowCursedBlessingModal(false)}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <AdminToolsModal
         isOpen={showAdminModal}
         onClose={() => setShowAdminModal(false)}
@@ -2141,6 +2207,12 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
         isAdminCampaign={isAdminCampaign}
         onSuccess={() => setAdminRefresh((prev) => prev + 1)}
       />
+      {loadingDay && (
+        <div className="day-loading">
+          <div className="day-loading-spinner" />
+          <div className="day-loading-text">Loading day…</div>
+        </div>
+      )}
         <DoubleDownModal
           visible={showDoubleDownModal}
           onAccept={async () => {

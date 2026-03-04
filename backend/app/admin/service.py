@@ -20,7 +20,7 @@ def list_admin_effects(user_id: int):
     payload_overrides = {
         "vowel_voodoo": "vowels",
         "consonant_cleaver": "letters",
-        "veil_of_obscured_sight": "side",
+        "blinding_brew": "side",
     }
     with get_db() as conn:
         require_admin(conn, user_id)
@@ -78,7 +78,7 @@ def _admin_status_payload(conn, user_id: int, campaign_id: int, effect_key: str)
         expires_at = datetime.combine(target_date + timedelta(days=1), datetime.min.time())
         return payload, expires_at
 
-    if effect_key == "grace_of_the_guiding_star":
+    if effect_key == "guiding_light":
         word_row = conn.execute(
             "SELECT word FROM campaign_words WHERE campaign_id = %s AND day = %s",
             (campaign_id, target_day)
@@ -132,7 +132,7 @@ def _admin_status_payload(conn, user_id: int, campaign_id: int, effect_key: str)
         expires_at = target_date + timedelta(days=1)
         return payload, expires_at
 
-    if effect_key == "god_of_the_easy_tongue":
+    if effect_key == "vowel_vision":
         word_row = conn.execute(
             "SELECT word FROM campaign_words WHERE campaign_id = %s AND day = %s",
             (campaign_id, target_day)
@@ -165,7 +165,7 @@ def admin_add_effect(user_id: int, campaign_id: int, effect_key: str, effect_pay
         elif payload_type == "word":
             if len(payload_value) != 5 or not payload_value.isalpha():
                 raise HTTPException(status_code=400, detail="Choose a valid 5-letter word.")
-            if effect_key == "hex_of_forced_utterance" and len(set(payload_value)) < 4:
+            if effect_key == "hex_of_compulsion" and len(set(payload_value)) < 4:
                 raise HTTPException(status_code=400, detail="Word must include at least 4 unique letters.")
             if payload_value not in VALID_WORDS:
                 raise HTTPException(status_code=400, detail="Word must be a valid guess.")
@@ -187,7 +187,7 @@ def admin_add_effect(user_id: int, campaign_id: int, effect_key: str, effect_pay
             payload_value = raw_value
         else:
             payload_value = "".join(random.sample(sorted(CONSONANTS), 4))
-    elif effect_key == "veil_of_obscured_sight":
+    elif effect_key == "blinding_brew":
         raw_value = str((effect_payload or {}).get("value") or "").strip().lower()
         if raw_value and raw_value not in {"left", "right"}:
             raise HTTPException(status_code=400, detail="Choose LEFT or RIGHT.")
@@ -238,7 +238,7 @@ def admin_add_effect(user_id: int, campaign_id: int, effect_key: str, effect_pay
                 details_payload["payload"] = {"type": "vowels", "value": payload_value}
             elif effect_key == "consonant_cleaver":
                 details_payload["payload"] = {"type": "letters", "value": payload_value}
-            elif effect_key == "veil_of_obscured_sight":
+            elif effect_key == "blinding_brew":
                 details_payload["payload"] = {"type": "side", "value": payload_value}
             details = json.dumps(details_payload)
             conn.execute("""

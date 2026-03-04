@@ -3,7 +3,7 @@ from datetime import timedelta
 from app.utils.campaigns import resolve_campaign_day
 
 
-def _god_of_the_easy_tongue(conn, user_id: int, campaign_id: int):
+def _vowel_vision(conn, user_id: int, campaign_id: int):
     _, _, _, target_day, target_date = resolve_campaign_day(conn, campaign_id, None)
     word_row = conn.execute(
         "SELECT word FROM campaign_words WHERE campaign_id = %s AND day = %s",
@@ -24,15 +24,15 @@ def _god_of_the_easy_tongue(conn, user_id: int, campaign_id: int):
                       applied_at = EXCLUDED.applied_at,
                       expires_at = EXCLUDED.expires_at,
                       active = TRUE
-    """, (user_id, campaign_id, "god_of_the_easy_tongue", json.dumps(payload), expires_at))
+    """, (user_id, campaign_id, "vowel_vision", json.dumps(payload), expires_at))
     return {"easy_tongue": payload}
 
 
-god_of_the_easy_tongue_item = {
-    "key": "god_of_the_easy_tongue",
-    "name": "God of the Easy Tongue",
+vowel_vision_item = {
+    "key": "vowel_vision",
+    "name": "Vowel Vision",
     "description": "Reveal the total vowel count in today's word.",
     "cost": 4,
     "category": "blessing",
-    "handler": _god_of_the_easy_tongue
+    "handler": _vowel_vision
 }

@@ -1,6 +1,6 @@
-veil_of_obscured_sight_item = {
-    "key": "veil_of_obscured_sight",
-    "name": "Veil of Obscured Sight",
+blinding_brew_item = {
+    "key": "blinding_brew",
+    "name": "Blinding Brew",
     "description": "Blackens one whole side of the gameboard.",
     "cost": 12,
     "category": "curse",
