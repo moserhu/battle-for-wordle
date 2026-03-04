@@ -1,5 +1,5 @@
 export const godOfTheEasyTongue = {
-  key: 'god_of_the_easy_tongue',
+  key: 'vowel_vision',
   name: 'God of the Easy Tongue',
   description: 'Reveal the total number of vowels in today\'s word.',
   cost: 4,

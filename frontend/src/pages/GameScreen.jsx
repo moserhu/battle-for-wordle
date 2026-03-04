@@ -20,7 +20,7 @@ import hexRuneIcon from '../assets/ui/hex_rune.png';
 const API_BASE = process.env.REACT_APP_API_URL || `${window.location.protocol}//${window.location.hostname}`;
 
 const EMPTY_GRID = Array.from({ length: 6 }, () => Array(5).fill(""));
-const FORCED_UTTERANCE_KEYS = new Set(["hex_of_forced_utterance", "edict_of_compulsion"]);
+const FORCED_UTTERANCE_KEYS = new Set(["hex_of_compulsion", "edict_of_compulsion"]);
 const toFiveLetterRow = (value) => {
   const normalized = String(value || "").toUpperCase();
   return Array.from({ length: 5 }, (_, idx) => normalized[idx] || "");
@@ -65,7 +65,7 @@ function isFinalCampaignDay(campaignDay) {
 }
 
 const CURSE_DETAILS_BY_KEY = {
-  hex_of_forced_utterance: {
+  hex_of_compulsion: {
     name: 'Hex of Forced Utterance',
     describe: (payloadValue) => {
       if (payloadValue) {
@@ -109,7 +109,7 @@ const CURSE_DETAILS_BY_KEY = {
       return 'Several consonants are blocked for your first two guesses.';
     },
   },
-  veil_of_obscured_sight: {
+  blinding_brew: {
     name: 'Veil of Obscured Sight',
     describe: (payloadValue) => {
       if (payloadValue) {
@@ -125,7 +125,7 @@ const CURSE_DETAILS_BY_KEY = {
 };
 
 function getCurseEffectParts(itemKey, payloadValue, fallbackText) {
-  if ((itemKey === "hex_of_forced_utterance" || itemKey === "edict_of_compulsion") && payloadValue) {
+  if ((itemKey === "hex_of_compulsion" || itemKey === "edict_of_compulsion") && payloadValue) {
     return {
       prefix: "Your first guess is forced to ",
       emphasis: String(payloadValue).toUpperCase(),
@@ -146,7 +146,7 @@ function getCurseEffectParts(itemKey, payloadValue, fallbackText) {
       suffix: " are blocked for your first two guesses.",
     };
   }
-  if (itemKey === "veil_of_obscured_sight" && payloadValue) {
+  if (itemKey === "blinding_brew" && payloadValue) {
     return {
       prefix: "",
       emphasis: String(payloadValue).toUpperCase(),
@@ -825,7 +825,7 @@ export default function GameScreen() {
   }, [statusEffects, isCurrentDay]);
   const easyTongueCount = useMemo(() => {
     if (!isCurrentDay) return null;
-    const effect = statusEffects.find((entry) => entry.effect_key === "god_of_the_easy_tongue");
+    const effect = statusEffects.find((entry) => entry.effect_key === "vowel_vision");
     const count = effect?.payload?.vowel_count;
     return Number.isInteger(count) ? count : null;
   }, [statusEffects, isCurrentDay]);
@@ -862,7 +862,7 @@ export default function GameScreen() {
   const cleavedConsonants = isCurrentDay ? getTargetPayload("consonant_cleaver") : null;
   const obscuredSightSide = useMemo(() => {
     if (!isCurrentDay) return null;
-    const raw = getTargetPayload("veil_of_obscured_sight");
+    const raw = getTargetPayload("blinding_brew");
     if (!raw) return null;
     const normalized = String(raw).trim().toLowerCase();
     if (normalized === "left" || normalized === "right") return normalized;
