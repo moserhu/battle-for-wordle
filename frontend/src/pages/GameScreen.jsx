@@ -232,6 +232,7 @@ export default function GameScreen() {
   const [selfUseBusy, setSelfUseBusy] = useState('');
   const [showBlessingCostModal, setShowBlessingCostModal] = useState(false);
   const [showBlessingCandleModal, setShowBlessingCandleModal] = useState(false);
+  const [showDispelConfirmModal, setShowDispelConfirmModal] = useState(false);
   const [pendingBlessingItemKey, setPendingBlessingItemKey] = useState('');
   const [showCurseInfoModal, setShowCurseInfoModal] = useState(false);
   const [showInfernalModal, setShowInfernalModal] = useState(false);
@@ -500,6 +501,7 @@ export default function GameScreen() {
     if (item?.payload_type && !effectPayload) return false;
 
     const isBlessing = item?.category === 'blessing';
+    const requiresBlessingCost = isBlessing && itemKey !== 'dispel_curse';
 
     setSelfUseBusy(itemKey);
     setSelfItemsError('');
@@ -512,8 +514,8 @@ export default function GameScreen() {
           item_key: itemKey,
           target_user_id: null,
           effect_payload: effectPayload,
-          accept_blessing_cost: isBlessing,
-          consume_candle_of_mercy: isBlessing && consumeCandle,
+          accept_blessing_cost: requiresBlessingCost,
+          consume_candle_of_mercy: requiresBlessingCost && consumeCandle,
         }),
       });
       const data = await res.json();
@@ -530,6 +532,10 @@ export default function GameScreen() {
     } catch (err) {
       const message = err?.message || 'Use failed.';
       const normalizedMessage = String(message).toLowerCase();
+      if (normalizedMessage.includes('dispel curse can only be used while cursed')) {
+        setSelfItemsError('Dispel Curse can only be used while cursed.');
+        return false;
+      }
       if (normalizedMessage.includes('final day of the cycle')) {
         setShowBlessingCandleModal(false);
         setShowBlessingCostModal(false);
@@ -571,7 +577,7 @@ export default function GameScreen() {
       setSelfItemsError('Candle of Mercy is only available through retroactive confirmation prompts.');
       return;
     }
-    if (item.category === 'blessing') {
+      if (item.category === 'blessing') {
       if (item.key !== 'dispel_curse' && isCursed && !curseDispersed) {
         setShowBlessingCandleModal(false);
         setShowBlessingCostModal(false);
@@ -592,6 +598,17 @@ export default function GameScreen() {
       }
       const effectPayload = buildSelfEffectPayload(itemKey, item);
       if (item.payload_type && !effectPayload) return;
+      if (item.key === 'dispel_curse') {
+        if (isCursed && !curseDispersed) {
+          setPendingBlessingItemKey(itemKey);
+          setShowBlessingCandleModal(false);
+          setShowBlessingCostModal(false);
+          setShowDispelConfirmModal(true);
+          return;
+        }
+        await executeSelfItemUse(itemKey, { consumeCandle: false });
+        return;
+      }
       setPendingBlessingItemKey(itemKey);
       setShowBlessingCandleModal(false);
       setShowBlessingCostModal(true);
@@ -628,6 +645,20 @@ export default function GameScreen() {
       setShowBlessingCostModal(false);
       setPendingBlessingItemKey('');
     }
+  };
+
+  const handleDispelConfirmYes = async () => {
+    if (!pendingBlessingItemKey) return;
+    const ok = await executeSelfItemUse(pendingBlessingItemKey, { consumeCandle: false });
+    if (ok) {
+      setShowDispelConfirmModal(false);
+      setPendingBlessingItemKey('');
+    }
+  };
+
+  const handleDispelConfirmNo = () => {
+    setShowDispelConfirmModal(false);
+    setPendingBlessingItemKey('');
   };
 
   useEffect(() => {
@@ -1890,6 +1921,7 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
                       setShowSelfItemsModal(false);
                       setShowBlessingCostModal(false);
                       setShowBlessingCandleModal(false);
+                      setShowDispelConfirmModal(false);
                       setPendingBlessingItemKey('');
                     }}
                     type="button"
@@ -1953,6 +1985,7 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
           <BlessingUseModals
             showCostModal={showBlessingCostModal}
             showCandleModal={showBlessingCandleModal}
+            showDispelConfirmModal={showDispelConfirmModal}
             pendingItemName={pendingBlessingItem?.name || ''}
             hasCandleInventory={hasCandleInventory}
             onCloseCost={() => {
@@ -1963,6 +1996,8 @@ const submitGuess = useCallback(async (forcedGuess = null) => {
             onUseCandle={handleBlessingUseCandle}
             onCandleYes={handleBlessingCandleYes}
             onCandleNo={handleBlessingCandleNo}
+            onDispelConfirm={handleDispelConfirmYes}
+            onDispelCancel={handleDispelConfirmNo}
           />
 
 

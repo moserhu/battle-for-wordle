@@ -85,6 +85,7 @@ export default function ItemsStorage() {
   const [infoModalItem, setInfoModalItem] = useState(null);
   const [showBlessingCostModal, setShowBlessingCostModal] = useState(false);
   const [showBlessingCandleModal, setShowBlessingCandleModal] = useState(false);
+  const [showDispelConfirmModal, setShowDispelConfirmModal] = useState(false);
   const [pendingBlessingUse, setPendingBlessingUse] = useState(null);
   const [showCursedBlessingModal, setShowCursedBlessingModal] = useState(false);
   const [blessingsBlockedByCurse, setBlessingsBlockedByCurse] = useState(false);
@@ -214,11 +215,12 @@ export default function ItemsStorage() {
     itemKey,
     targetUserId,
     payloadValue,
-    { acceptBlessingCost = false, consumeCandle = false } = {}
+    { acceptBlessingCost = false, consumeCandle = false, confirmDispel = false } = {}
   ) => {
     if (useBusy) return;
     const item = itemByKey.get(itemKey);
     const isBlessing = item?.category === 'blessing';
+    const requiresBlessingCost = isBlessing && itemKey !== 'dispel_curse';
     if (itemKey === 'candle_of_mercy') {
       const candleMsg = 'Candle of Mercy is only available through retroactive confirmation prompts.';
       setError(candleMsg);
@@ -266,7 +268,19 @@ export default function ItemsStorage() {
         return false;
       }
     }
-    if (isBlessing && !acceptBlessingCost) {
+    if (itemKey === 'dispel_curse' && blessingsBlockedByCurse && !confirmDispel) {
+      setPendingBlessingUse({
+        itemKey,
+        targetUserId: requiresTarget ? Number(selectedTarget) : null,
+        payloadValue: String(payloadValue || '').trim().toLowerCase(),
+      });
+      setShowBlessingCandleModal(false);
+      setShowBlessingCostModal(false);
+      setShowDispelConfirmModal(true);
+      setTargetModalItem(null);
+      return false;
+    }
+    if (requiresBlessingCost && !acceptBlessingCost) {
       if (itemKey !== 'dispel_curse' && blessingsBlockedByCurse) {
         setShowBlessingCandleModal(false);
         setShowBlessingCostModal(false);
@@ -303,8 +317,8 @@ export default function ItemsStorage() {
           )
             ? { value: String(payloadValue || '').trim().toLowerCase() }
             : null,
-          accept_blessing_cost: isBlessing,
-          consume_candle_of_mercy: isBlessing && consumeCandle,
+          accept_blessing_cost: requiresBlessingCost,
+          consume_candle_of_mercy: requiresBlessingCost && consumeCandle,
         })
       });
       const data = await res.json();
@@ -337,6 +351,12 @@ export default function ItemsStorage() {
         return false;
       }
       const normalized = message.toLowerCase();
+      if (normalized.includes('dispel curse can only be used while cursed')) {
+        const notCursedMsg = 'Dispel Curse can only be used while cursed.';
+        setError(notCursedMsg);
+        setTargetModalError(notCursedMsg);
+        return false;
+      }
       if (
         normalized.includes('not enough troops')
         || normalized.includes('sacrifice for this blessing')
@@ -416,6 +436,25 @@ export default function ItemsStorage() {
       setShowBlessingCostModal(false);
       setPendingBlessingUse(null);
     }
+  };
+
+  const handleDispelConfirmYes = async () => {
+    if (!pendingBlessingUse) return;
+    const success = await handleUseItem(
+      pendingBlessingUse.itemKey,
+      pendingBlessingUse.targetUserId,
+      pendingBlessingUse.payloadValue,
+      { confirmDispel: true }
+    );
+    if (success) {
+      setShowDispelConfirmModal(false);
+      setPendingBlessingUse(null);
+    }
+  };
+
+  const handleDispelConfirmNo = () => {
+    setShowDispelConfirmModal(false);
+    setPendingBlessingUse(null);
   };
 
   const openTargetModal = async (item) => {
@@ -758,6 +797,7 @@ export default function ItemsStorage() {
       <BlessingUseModals
         showCostModal={showBlessingCostModal}
         showCandleModal={showBlessingCandleModal}
+        showDispelConfirmModal={showDispelConfirmModal}
         pendingItemName={pendingBlessingUse?.itemKey ? (itemByKey.get(pendingBlessingUse.itemKey)?.name || pendingBlessingUse.itemKey) : ''}
         hasCandleInventory={hasCandleInventory}
         onCloseCost={() => {
@@ -768,6 +808,8 @@ export default function ItemsStorage() {
         onUseCandle={handleBlessingUseCandle}
         onCandleYes={handleBlessingCandleYes}
         onCandleNo={handleBlessingCandleNo}
+        onDispelConfirm={handleDispelConfirmYes}
+        onDispelCancel={handleDispelConfirmNo}
       />
       {showCursedBlessingModal && (
         <div className="items-modal-overlay" onClick={() => setShowCursedBlessingModal(false)}>

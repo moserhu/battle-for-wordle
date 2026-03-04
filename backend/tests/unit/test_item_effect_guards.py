@@ -55,6 +55,8 @@ class _FakeConn:
       return _FakeCursor((1,) if self.curse_event else None)
     if "FROM campaign_user_items" in normalized and "SELECT quantity" in normalized:
       return _FakeCursor((self.qty,))
+    if "SELECT COUNT(*)" in normalized and "FROM campaign_item_events" in normalized:
+      return _FakeCursor((0,))
     return _FakeCursor(None)
 
 
@@ -260,6 +262,68 @@ class ItemEffectGuardTests(unittest.TestCase):
 
     self.assertEqual(ctx.exception.status_code, 400)
     self.assertIn("only one blessing", ctx.exception.detail.lower())
+
+  def test_use_item_allows_dispel_curse_without_sacrifice_confirmation(self):
+    dispel = {
+      "key": "dispel_curse",
+      "name": "Dispel Curse",
+      "category": "blessing",
+      "affects_others": False,
+      "requires_target": False,
+    }
+    conn = _FakeConn(qty=1, score=0)
+    with (
+      patch.object(crud, "get_item", return_value=dispel),
+      patch.object(crud, "get_db", return_value=_FakeDbCtx(conn)),
+      patch.object(crud, "resolve_campaign_day", return_value=(None, 7, 2, 2, date(2026, 3, 1))),
+      patch.object(crud, "is_admin_campaign", return_value=False),
+      patch.object(crud, "_has_active_curse_effect_today", return_value=True),
+      patch.object(crud, "_is_curse_lock_dispersed_for_day", return_value=False),
+    ):
+      result = crud.use_item(
+        user_id=10,
+        campaign_id=20,
+        item_key="dispel_curse",
+        target_user_id=None,
+        effect_payload=None,
+        accept_blessing_cost=False,
+        consume_candle_of_mercy=False,
+      )
+
+    self.assertEqual(result["item_key"], "dispel_curse")
+    self.assertEqual(result["blessing_troop_cost_applied"], 0)
+    self.assertFalse(result["candle_consumed"])
+
+  def test_use_item_allows_dispel_curse_even_if_blessing_already_used_today(self):
+    dispel = {
+      "key": "dispel_curse",
+      "name": "Dispel Curse",
+      "category": "blessing",
+      "affects_others": False,
+      "requires_target": False,
+    }
+    conn = _FakeConn(qty=1, score=0, blessing_today=True)
+    with (
+      patch.object(crud, "get_item", return_value=dispel),
+      patch.object(crud, "get_db", return_value=_FakeDbCtx(conn)),
+      patch.object(crud, "resolve_campaign_day", return_value=(None, 7, 2, 2, date(2026, 3, 1))),
+      patch.object(crud, "is_admin_campaign", return_value=False),
+      patch.object(crud, "_has_active_curse_effect_today", return_value=True),
+      patch.object(crud, "_is_curse_lock_dispersed_for_day", return_value=False),
+    ):
+      result = crud.use_item(
+        user_id=10,
+        campaign_id=20,
+        item_key="dispel_curse",
+        target_user_id=None,
+        effect_payload=None,
+        accept_blessing_cost=False,
+        consume_candle_of_mercy=False,
+      )
+
+    self.assertEqual(result["item_key"], "dispel_curse")
+    self.assertEqual(result["blessing_troop_cost_applied"], 0)
+    self.assertFalse(result["candle_consumed"])
 
   def test_get_active_target_effects_returns_curse_dispersed_flag(self):
     effect_rows = [

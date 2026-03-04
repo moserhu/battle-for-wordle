@@ -5,6 +5,7 @@ import './BlessingUseModals.css';
 export default function BlessingUseModals({
   showCostModal = false,
   showCandleModal = false,
+  showDispelConfirmModal = false,
   pendingItemName = '',
   hasCandleInventory = false,
   onCloseCost,
@@ -12,6 +13,8 @@ export default function BlessingUseModals({
   onUseCandle,
   onCandleYes,
   onCandleNo,
+  onDispelConfirm,
+  onDispelCancel,
 }) {
   return (
     <>
@@ -75,6 +78,37 @@ export default function BlessingUseModals({
               </button>
               <button className="troop-btn close-btn" type="button" onClick={onCandleNo}>
                 No
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDispelConfirmModal && pendingItemName && (
+        <div className="blessing-use-overlay">
+          <div className="modal blessing-confirm-modal">
+            <div className="curse-info-header">
+              <h2 className="blessing-title">Dispel Curse</h2>
+              <button
+                className="self-items-close"
+                type="button"
+                onClick={onDispelCancel}
+                aria-label="Close dispel curse confirmation"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="blessing-confirm-body">
+              <p>Use <strong>{pendingItemName}</strong>?</p>
+              <p>This will <strong>not</strong> remove today&apos;s curse effect.</p>
+              <p>It only removes the cursed lock so you can use blessings.</p>
+            </div>
+            <div className="blessing-confirm-actions">
+              <button className="troop-btn blessing-sacrifice-btn" type="button" onClick={onDispelConfirm}>
+                Yes, use Dispel Curse
+              </button>
+              <button className="troop-btn close-btn" type="button" onClick={onDispelCancel}>
+                Cancel
               </button>
             </div>
           </div>

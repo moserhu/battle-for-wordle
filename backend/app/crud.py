@@ -2753,7 +2753,8 @@ def use_item(
         blessing_cost_applied = 0
         candle_consumed = False
         is_blessing = item.get("category") == "blessing"
-        if is_blessing:
+        requires_blessing_cost = is_blessing and item_key != "dispel_curse"
+        if is_blessing and item_key != "dispel_curse":
             prior_blessing_row = conn.execute(
                 """
                 SELECT 1
@@ -2764,9 +2765,10 @@ def use_item(
                   AND DATE(created_at AT TIME ZONE 'America/Chicago') = %s
                   AND COALESCE(details, '{}')::jsonb->>'category' = %s
                   AND item_key <> %s
+                  AND item_key <> %s
                 LIMIT 1
                 """,
-                (user_id, campaign_id, "use", target_date_str, "blessing", "candle_of_mercy"),
+                (user_id, campaign_id, "use", target_date_str, "blessing", "candle_of_mercy", "dispel_curse"),
             ).fetchone()
             if prior_blessing_row:
                 raise HTTPException(
@@ -2794,10 +2796,10 @@ def use_item(
                 status_code=400,
                 detail="Candle of Mercy cannot be used proactively. It is only available in retroactive confirmation prompts.",
             )
-        if is_blessing and not accept_blessing_cost:
+        if requires_blessing_cost and not accept_blessing_cost:
             raise HTTPException(status_code=400, detail="Blessings require sacrifice confirmation.")
         if (
-            is_blessing
+            requires_blessing_cost
             and consume_candle_of_mercy
             and current_day == cycle_length
             and target_day == current_day
@@ -2806,7 +2808,7 @@ def use_item(
                 status_code=400,
                 detail="Candle of Mercy cannot pay blessing sacrifice on the final day of the cycle.",
             )
-        if is_blessing and not consume_candle_of_mercy and not admin_testing_override:
+        if requires_blessing_cost and not consume_candle_of_mercy and not admin_testing_override:
             troops_row = conn.execute("""
                 SELECT score
                 FROM campaign_members
@@ -2842,7 +2844,7 @@ def use_item(
         if qty <= 0 and not admin_testing_override:
             raise HTTPException(status_code=400, detail="Item not available")
 
-        if is_blessing:
+        if requires_blessing_cost:
             if consume_candle_of_mercy:
                 candle_row = conn.execute("""
                     SELECT quantity
