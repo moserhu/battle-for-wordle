@@ -40,13 +40,17 @@ class _FakeConn:
     self.score = score
     self.guess_state_row = guess_state_row
     self.blessing_today = blessing_today
+    self.queries = []
 
   def execute(self, query, params=None):
+    self.queries.append((query, params))
     normalized = " ".join(query.split())
     if "SELECT score" in normalized and "FROM campaign_members" in normalized:
       return _FakeCursor((self.score,))
-    if "FROM campaign_item_events" in normalized and "details, '{}')::jsonb->>'category' = %s" in normalized:
-      return _FakeCursor((1,) if self.blessing_today else None)
+    # prior blessing guard query
+    if "FROM campaign_item_events" in normalized and "category' = %s" in normalized and "Only one blessing" not in normalized:
+      if "item_key <> %s" in normalized and "effective_on" in normalized:
+        return _FakeCursor((1,) if self.blessing_today else None)
     if "FROM campaign_guess_states" in normalized and "SELECT game_over, current_row" in normalized:
       return _FakeCursor(self.guess_state_row)
     if "FROM campaign_user_status_effects" in normalized and "effect_key = %s" in normalized and "cursed" in str(params):
@@ -262,6 +266,11 @@ class ItemEffectGuardTests(unittest.TestCase):
 
     self.assertEqual(ctx.exception.status_code, 400)
     self.assertIn("only one blessing", ctx.exception.detail.lower())
+
+    # Ensure the guard query is timezone-safe (UTC->CT) and/or uses effective_on.
+    guard_queries = [q for (q, _) in conn.queries if "FROM campaign_item_events" in q and "effective_on" in q]
+    self.assertTrue(guard_queries)
+    self.assertTrue(any("AT TIME ZONE 'UTC'" in q for q in guard_queries))
 
   def test_use_item_allows_dispel_curse_without_sacrifice_confirmation(self):
     dispel = {

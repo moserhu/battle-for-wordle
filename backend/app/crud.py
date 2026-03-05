@@ -2755,6 +2755,15 @@ def use_item(
         is_blessing = item.get("category") == "blessing"
         requires_blessing_cost = is_blessing and item_key != "dispel_curse"
         if is_blessing and item_key != "dispel_curse":
+            # Blessing-per-day guard.
+            #
+            # Important: `campaign_item_events.created_at` is stored as `timestamp without time zone`.
+            # On prod Postgres, the session timezone is UTC, so the stored value is a UTC wall-clock.
+            #
+            # Historically we compared `DATE(created_at AT TIME ZONE 'America/Chicago')`, which treats
+            # the naive timestamp as if it were already in CT and causes a ~6h drift bug.
+            #
+            # Going forward we prefer `details.effective_on` (explicit CT calendar day string).
             prior_blessing_row = conn.execute(
                 """
                 SELECT 1
@@ -2762,13 +2771,28 @@ def use_item(
                 WHERE user_id = %s
                   AND campaign_id = %s
                   AND event_type = %s
-                  AND DATE(created_at AT TIME ZONE 'America/Chicago') = %s
                   AND COALESCE(details, '{}')::jsonb->>'category' = %s
                   AND item_key <> %s
                   AND item_key <> %s
+                  AND (
+                    (COALESCE(details, '{}')::jsonb->>'effective_on') = %s
+                    OR (
+                      (COALESCE(details, '{}')::jsonb ? 'effective_on') = FALSE
+                      AND DATE((created_at AT TIME ZONE 'UTC') AT TIME ZONE 'America/Chicago') = %s
+                    )
+                  )
                 LIMIT 1
                 """,
-                (user_id, campaign_id, "use", target_date_str, "blessing", "candle_of_mercy", "dispel_curse"),
+                (
+                    user_id,
+                    campaign_id,
+                    "use",
+                    "blessing",
+                    "candle_of_mercy",
+                    "dispel_curse",
+                    target_date_str,
+                    target_date_str,
+                ),
             ).fetchone()
             if prior_blessing_row:
                 raise HTTPException(
@@ -2915,6 +2939,9 @@ def use_item(
             payload_type = "side"
 
         details_payload = {"name": item["name"], "category": item["category"]}
+        if is_blessing and not affects_others:
+            # Ensure blessing events are anchored to the CT calendar day to avoid timezone drift.
+            details_payload["effective_on"] = target_date_str
         sender_row = conn.execute("""
             SELECT display_name
             FROM campaign_members

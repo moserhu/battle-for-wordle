@@ -25,6 +25,14 @@ class _FakeCursor:
   def __init__(self, row):
     self._row = row
 
+  def fetchone(self):
+    if self._row is None:
+      return None
+    # If the stored row is a list of rows, fetchone returns the first.
+    if isinstance(self._row, list):
+      return self._row[0] if self._row else None
+    return self._row
+
   def fetchall(self):
     return self._row or []
 
@@ -37,6 +45,9 @@ class _EffectsConn:
     normalized = " ".join(query.split())
     if "SELECT item_key, details FROM campaign_item_events" in normalized:
       return _FakeCursor(self.rows)
+    # curse lock marker lookup
+    if "FROM campaign_user_status_effects" in normalized and "effect_key" in normalized:
+      return _FakeCursor(None)
     return _FakeCursor([])
 
 
@@ -79,6 +90,7 @@ class ItemKeyAliasTests(unittest.TestCase):
     self.assertEqual(result["effects"][0]["item_key"], "reapers_scythe")
     self.assertEqual(result["effects"][1]["item_key"], "hex_of_compulsion")
     self.assertEqual(result["effects"][1]["details"], {"raw": "{bad-json"})
+    self.assertIn("curse_dispersed", result)
 
   def test_get_active_target_effects_empty_rows_returns_empty_effects(self):
     conn = _EffectsConn([])
@@ -88,7 +100,9 @@ class ItemKeyAliasTests(unittest.TestCase):
     ):
       result = crud.get_active_target_effects(user_id=11, campaign_id=22)
 
-    self.assertEqual(result, {"day": 2, "effects": []})
+    self.assertEqual(result["day"], 2)
+    self.assertEqual(result["effects"], [])
+    self.assertIn("curse_dispersed", result)
 
 
 if __name__ == "__main__":
